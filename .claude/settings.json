@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:help.sap.com)",
+      "WebFetch(domain:community.sap.com)",
+      "WebFetch(domain:api.sap.com)"
+    ]
+  }
+}

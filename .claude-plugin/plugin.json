@@ -1,0 +1,15 @@
+{
+  "name": "abap-kebap",
+  "displayName": "ABAP Kebap — SAP ABAP Agent Team",
+  "version": "0.1.0",
+  "description": "SAP ABAP agent team for Claude Code: 3 role agents (architect designs, developer implements and tests, reviewer independently checks Clean ABAP + security + performance) and 36 deep ABAP/RAP/CDS/ABAP-Cloud skills grounded exclusively in public SAP sources.",
+  "author": { "name": "Abdullah GÜNEŞ" },
+  "license": "MIT",
+  "keywords": ["sap", "abap", "rap", "cds", "abap-cloud", "steampunk", "fiori"],
+  "skills": "./.claude/skills",
+  "agents": [
+    "./.claude/agents/abap-architect.md",
+    "./.claude/agents/abap-developer.md",
+    "./.claude/agents/abap-reviewer.md"
+  ]
+}

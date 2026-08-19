@@ -1,0 +1,31 @@
+# Claude Code local-only files
+.claude/settings.local.json
+.claude/sessions/
+.claude/file-history/
+.claude/plans/
+.claude/shell-snapshots/
+.claude/telemetry/
+.claude/cache/
+.claude/.last-cleanup
+.claude/.last-update-result.json
+.claude/.credentials.json
+.claude/backups/
+.claude/projects/
+.claude/ide/
+
+# OS / editor noise
+Thumbs.db
+.DS_Store
+desktop.ini
+*.swp
+*.swo
+.vscode/
+
+# Logs
+*.log
+
+# Local-only working folders (never published)
+.playwright-mcp/
+_scratch/
+example/
+.axet-code/

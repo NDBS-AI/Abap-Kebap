@@ -1,0 +1,167 @@
+{
+  "_comment": "Tier-1 static regression checks. Pure substring grep over repo files — zero model tokens, deterministic, run on every change. 'forbidden' patterns must not appear (optionally limited by 'in' path-substring); 'required' patterns must appear in the file(s) whose path contains 'in'. These encode PROJECT CONVENTIONS, some of which are stricter than raw SAP rules (noted per rule).",
+  "scanDirs": [".claude/skills", ".claude/agents", ".claude-plugin", ".github", "docs"],
+  "scanFiles": ["CLAUDE.md", "AGENTS.md"],
+  "extensions": [".md", ".json", ".abap", ".bdef", ".ddls", ".ddlx", ".dcls", ".xml"],
+  "rules": [
+    {
+      "id": "audit-uses-systemDateTime-not-systemDate-createdAt",
+      "kind": "forbidden",
+      "pattern": "@Semantics.systemDate.createdAt",
+      "exclude": ["docs/grounding-protocol.md", "docs/lessons.md"],
+      "note": "Project convention: RAP audit 'created at' is a timestamp -> @Semantics.systemDateTime.createdAt. @Semantics.systemDate.* is valid in SAP only for genuine date-only fields; do not use it for audit semantics here. (grounding-protocol.md is excluded: it discusses this very anti-pattern as a worked example.)"
+    },
+    {
+      "id": "audit-uses-systemDateTime-not-systemDate-lastChangedAt",
+      "kind": "forbidden",
+      "pattern": "@Semantics.systemDate.lastChangedAt",
+      "exclude": ["docs/lessons.md"],
+      "note": "Same convention as createdAt: audit 'last changed at' is a timestamp -> @Semantics.systemDateTime.lastChangedAt."
+    },
+    {
+      "id": "cds-annotations-ref-has-systemDateTime",
+      "kind": "required",
+      "pattern": "systemDateTime.createdAt",
+      "in": ".claude/skills/cds-views-authoring/references/annotations-reference.md",
+      "note": "The annotations reference must teach the correct timestamp audit annotation."
+    },
+    {
+      "id": "cds-skill-has-provider-contract",
+      "kind": "required",
+      "pattern": "transactional_query",
+      "in": ".claude/skills/cds-views-authoring/SKILL.md",
+      "note": "RAP projection contract must be documented."
+    },
+    {
+      "id": "rap-skill-has-saver-baseclass",
+      "kind": "required",
+      "pattern": "cl_abap_behavior_saver",
+      "in": ".claude/skills/rap-bo-modeling/SKILL.md",
+      "note": "The unmanaged/additional save saver base class must be documented."
+    },
+    {
+      "id": "clean-skill-prefers-xsdbool",
+      "kind": "required",
+      "pattern": "xsdbool",
+      "in": ".claude/skills/abap-clean-style/SKILL.md",
+      "note": "xsdbool vs boolc guidance must be present."
+    },
+    {
+      "id": "unit-skill-has-osql-double",
+      "kind": "required",
+      "pattern": "cl_osql_test_environment",
+      "in": ".claude/skills/abap-unit-tdd/SKILL.md",
+      "note": "ABAP SQL test double must be documented."
+    },
+    {
+      "id": "corresponding-base-trap-documented",
+      "kind": "required",
+      "pattern": "CORRESPONDING #( BASE",
+      "in": ".claude/skills/abap-clean-style/SKILL.md",
+      "note": "The MOVE-CORRESPONDING-vs-CORRESPONDING# BASE trap must be documented."
+    },
+    {
+      "id": "cds-systemdate-nuance-documented",
+      "kind": "required",
+      "pattern": "date-only",
+      "in": ".claude/skills/cds-views-authoring/references/annotations-reference.md",
+      "note": "The reference must document that @Semantics.systemDate.* is for date-only fields (not a blanket 'never systemDate'); systemDateTime is the RAP audit-timestamp standard."
+    },
+    {
+      "id": "rap-actions-warns-behavior-dump",
+      "kind": "required",
+      "pattern": "BEHAVIOR_ILLEGAL_STMT_IN_CALL",
+      "in": ".claude/skills/rap-actions-validations-determinations/SKILL.md",
+      "note": "The action skill must warn that COMMIT ENTITIES/COMMIT WORK inside a handler or saver dumps with this runtime error (grounded: github.com/SAP-samples/abap-cheat-sheets 17_SAP_LUW.md, 'modify transactional phase' example)."
+    },
+    {
+      "id": "rap-actions-teaches-commit-isolation-pattern",
+      "kind": "required",
+      "pattern": "CL_ABAP_PARALLEL",
+      "in": ".claude/skills/rap-actions-validations-determinations/SKILL.md",
+      "note": "Project convention: when a RAP action needs to modify AND commit another BO independently, teach the CL_ABAP_PARALLEL isolation pattern (own aRFC session/LUW) alongside same-LUW EML (default) and bgPF (after-commit async)."
+    },
+    {
+      "id": "parallel-covers-rap-commit-isolation",
+      "kind": "required",
+      "pattern": "COMMIT ENTITIES",
+      "in": ".claude/skills/abap-parallel-processing/SKILL.md",
+      "note": "The parallel-processing skill must document the RAP commit-isolation use case (committing another BO from a behavior implementation via a worker task) with its consistency caveat."
+    },
+    {
+      "id": "no-local-example-folder-citations",
+      "kind": "forbidden",
+      "pattern": "example/abap-",
+      "note": "Publishing convention: skills/agents/docs must cite public GitHub URLs (github.com/SAP-samples/...), never the local example/ mirror folder — it is deleted before the repo is published."
+    },
+    {
+      "id": "no-machine-local-paths",
+      "kind": "forbidden",
+      "pattern": "C:\\Users\\",
+      "note": "Publishing convention: no machine-local absolute paths (a Windows user-profile directory) in published content; cite public URLs instead. Pattern is drive-and-user agnostic so it catches any contributor's path, and embeds no real username."
+    },
+    {
+      "id": "claude-md-has-dev-loop",
+      "kind": "required",
+      "pattern": "superpowers:brainstorming",
+      "in": "CLAUDE.md",
+      "note": "Root CLAUDE.md must wire the superpowers development loop (brainstorming stage marker). Covered via scanFiles since CLAUDE.md lives outside scanDirs."
+    },
+    {
+      "id": "developer-agent-has-stage-note",
+      "kind": "required",
+      "pattern": "Your place in the development process",
+      "in": ".claude/agents/abap-developer.md",
+      "note": "The developer agent must carry the stage-note subsection tying it to the superpowers development loop."
+    },
+    {
+      "id": "developer-agent-always-loads-clean-style",
+      "kind": "required",
+      "pattern": "Always load `abap-clean-style` before generating any ABAP",
+      "in": ".claude/agents/abap-developer.md",
+      "note": "Project policy: abap-clean-style is loaded unconditionally before any ABAP generation, not only when the task maps to the style row. Locked after a review found the load was conditional and single-letter identifiers slipped into generated code."
+    },
+    {
+      "id": "unit-tdd-rap-test-no-bare-commit-entities",
+      "kind": "forbidden",
+      "pattern": "COMMIT ENTITIES.",
+      "in": ".claude/skills/abap-unit-tdd/examples/rap-test",
+      "note": "A bare COMMIT ENTITIES with no RESPONSE OF/FAILED/REPORTED discards the outcome and models committing without asserting anything. Where a test genuinely needs to cross the save sequence (e.g. testing an on-save determination), use COMMIT ENTITIES RESPONSE OF ... FAILED ... REPORTED ... and assert on the result, as in determine_sets_audit_fields_on_save."
+    },
+    {
+      "id": "unit-tdd-rap-test-no-unnecessary-numbering-commit",
+      "kind": "forbidden",
+      "pattern": "failed_commit",
+      "in": ".claude/skills/abap-unit-tdd/examples/rap-test",
+      "note": "Managed numbering keys are available in MAPPED without a commit; committing here only to read failed_commit/reported_commit models an unnecessary commit in a test. A test that genuinely needs to assert a save-sequence outcome should use a distinctly-named FAILED/REPORTED target (e.g. failed_save) scoped to that specific test."
+    },
+    {
+      "id": "internal-tables-no-hashed-insertion-order-claim",
+      "kind": "forbidden",
+      "pattern": "hashed tables in insertion order",
+      "in": ".claude/skills/abap-internal-tables",
+      "note": "Hashed-table traversal order is unspecified/implementation-defined per the ABAP Keyword Documentation, not a guaranteed insertion order. Use a sorted table or an explicit secondary sorted key when order matters."
+    },
+    {
+      "id": "internal-tables-no-hashed-insertion-order-claim-operations-md",
+      "kind": "forbidden",
+      "pattern": "hashed in insertion order",
+      "in": ".claude/skills/abap-internal-tables",
+      "note": "Same convention as internal-tables-no-hashed-insertion-order-claim, locking references/operations.md's differently-worded (pre-fix) phrasing of the same claim."
+    },
+    {
+      "id": "unit-tdd-no-assert-text-matches-denial",
+      "kind": "forbidden",
+      "pattern": "there is no positive `assert_text_matches`",
+      "in": ".claude/skills/abap-unit-tdd",
+      "note": "assert_text_matches is a real cl_abap_unit_assert method (see references/assert-cheatsheet.md); SKILL.md previously denied its existence, contradicting the cheatsheet in the same skill."
+    },
+    {
+      "id": "rap-actions-no-racy-max-order-id",
+      "kind": "forbidden",
+      "pattern": "MAX( order_id ) AS max_order_id",
+      "in": ".claude/skills/rap-actions-validations-determinations",
+      "note": "MAX(key)+index numbering is racy under concurrent saves. Use cl_numberrange_runtime=>number_get (see rap-saves-and-numbering's late-numbering-adjust-numbers.abap) instead of a demo MAX-based pattern."
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "abgunes",
+  "owner": { "name": "Abdullah GÜNEŞ" },
+  "description": "Marketplace hosting the ABAP Kebap SAP ABAP agent team plugin.",
+  "plugins": [
+    {
+      "name": "abap-kebap",
+      "source": "./",
+      "description": "SAP ABAP agent team: 3 role agents and 36 deep ABAP/RAP/CDS/ABAP-Cloud skills grounded in public SAP sources.",
+      "category": "development",
+      "tags": ["sap", "abap", "rap", "cds", "abap-cloud"]
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  .abapgit.xml — annotated example
+  ================================
+  Location: MUST be in the root folder of the git repository
+            (not inside the starting folder).
+  Editing:  prefer the "Repository Settings" page in the abapGit UI;
+            hand-edit only in exceptional cases.
+  Format:   ABAP asXML (written/read by abapGit itself).
+  Docs:     https://docs.abapgit.org/user-guide/repo-settings/dot-abapgit.html
+-->
+<asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+ <asx:values>
+  <DATA>
+
+   <!-- Original language of every object in this repo (sy-langu value:
+        E = English, D = German, T = Turkish, ...).
+        Changing this later requires UNINSTALLING and re-pulling the repo -
+        it is not a live-editable setting. Use E for shareable code. -->
+   <MASTER_LANGUAGE>E</MASTER_LANGUAGE>
+
+   <!-- OPTIONAL, experimental: also serialize translations for these
+        ISO language codes (comma-separated). Omit the element entirely
+        if you only need the master language.
+   <I18N_LANGUAGES>DE,TR</I18N_LANGUAGES>
+   -->
+
+   <!-- Folder where serialized objects live. Everything OUTSIDE this
+        folder (README.md, LICENSE, CI configs, docs/) is invisible to
+        deserialization. "/src/" is the near-universal convention;
+        "/" would serialize into the repo root. -->
+   <STARTING_FOLDER>/src/</STARTING_FOLDER>
+
+   <!-- How SAP package hierarchy maps to folders:
+        PREFIX - child package name must start with the parent's name;
+                 only the suffix becomes the folder.
+                 ZFOO_CORE under ZFOO  ->  /src/core/
+                 Portable: installers may pick a different top package.
+        FULL   - full package name is the folder.
+                 ZFOO_CORE             ->  /src/zfoo_core/
+                 Every installing system must use identical package names.
+        MIXED  - combination of both, for partly-prefixed conventions.
+        Decide BEFORE the first push: changing it re-paths every file. -->
+   <FOLDER_LOGIC>PREFIX</FOLDER_LOGIC>
+
+   <!-- Files abapGit must never deserialize (and offers to Ignore when
+        staging). Patterns use ABAP "CP" covers-pattern logic:
+          *  = any character sequence
+          +  = exactly one character
+        NOT regular expressions. Paths are matched from the repo root. -->
+   <IGNORE>
+    <item>/.gitignore</item>
+    <item>/LICENSE</item>
+    <item>/README.md</item>
+    <item>/CHANGELOG.md</item>
+    <item>/abaplint.json</item>
+    <item>/.github/*</item>
+   </IGNORE>
+
+   <!-- OPTIONAL: minimum software component versions the target system
+        must have before this repo may be pulled. Fails the pull early
+        with a clear message instead of half-deserializing.
+   <REQUIREMENTS>
+    <item>
+     <COMPONENT>SAP_BASIS</COMPONENT>
+     <MIN_RELEASE>750</MIN_RELEASE>
+     <MIN_PATCH>0000</MIN_PATCH>
+    </item>
+   </REQUIREMENTS>
+   -->
+
+  </DATA>
+ </asx:values>
+</asx:abap>

@@ -1,0 +1,37 @@
+name: validate
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - name: Validate skill and agent manifests
+        run: python scripts/validate_skills.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Run static regression checks
+        run: node evals/run-static.mjs
+      - name: Copilot mirrors are in sync
+        run: |
+          python scripts/build_copilot.py
+          git diff --exit-code -- .github/agents .github/prompts
+
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install -g @anthropic-ai/claude-code
+      - name: Validate Claude Code plugin and marketplace
+        run: claude plugin validate .

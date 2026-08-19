@@ -1,0 +1,14 @@
+# ABAP Agent Team — Copilot instructions
+
+This repository is an SAP ABAP skill catalog and agent team. When working here:
+
+- Agent skills live in `.claude/skills/` (Copilot loads them natively via the
+  Agent Skills standard). Consult the matching skill before writing or
+  reviewing ABAP, RAP, or CDS — the skill is the ground truth, not memory.
+- The ABAP non-negotiables and repo verification gates are in the root
+  `AGENTS.md`. Path-specific rules live in `.github/instructions/`.
+- The role agents in `.github/agents/` (architect, developer, reviewer)
+  are GENERATED from `.claude/agents/` by `scripts/build_copilot.py` —
+  never edit them directly; edit the source and regenerate.
+- Before claiming a change done, run `python scripts/validate_skills.py`
+  and `node evals/run-static.mjs`; both must pass.

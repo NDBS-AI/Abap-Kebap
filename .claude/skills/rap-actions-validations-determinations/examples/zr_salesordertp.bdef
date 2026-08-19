@@ -1,0 +1,112 @@
+// Behavior definition for ZR_SalesOrderTP — companion to zbp_zr_salesordertp.clas.locals_imp.abap
+//
+// A managed, draft-enabled single-entity BO demonstrating every behavior construct of the
+// rap-actions-validations-determinations skill:
+//   - instance action with result and dynamic feature control (acceptOrder)
+//   - action with input parameter and precheck (applyDiscount; ZA_OrderDiscount is a CDS
+//     abstract entity with one element: discount_percent)
+//   - factory action (copyOrder) — cardinality after the name, no result
+//   - static action (deleteAllCompleted) with global feature control
+//   - internal action (recalculateTotalAmount) — the determination delegate
+//   - determinations on modify and on save, validations on save
+//   - determine action bundling on-save items, wired to the UI via a side effect
+//   - precheck on the update operation
+//
+// Prerequisite artifacts (not shown): table zsalesorder, draft table zsalesorder_d,
+// CDS root view entity ZR_SalesOrderTP, message class ZSALESORDER_MSG,
+// abstract entity ZA_OrderDiscount.
+
+managed implementation in class zbp_zr_salesordertp unique;
+strict ( 2 );
+with draft;
+
+define behavior for ZR_SalesOrderTP alias Order
+persistent table zsalesorder
+draft table zsalesorder_d
+lock master
+total etag LastChangedAt
+etag master LocalLastChangedAt
+authorization master ( global )
+{
+  // ---- Field control (static) --------------------------------------------
+  field ( readonly ) OrderUuid, OrderId, TotalAmount,
+                     CreatedAt, CreatedBy, LocalLastChangedAt, LastChangedAt;
+  field ( mandatory ) CustomerId, OrderQuantity, UnitPrice;
+  field ( numbering : managed ) OrderUuid;
+
+  // ---- Field control (dynamic, per instance) ------------------------------
+  // read-only once the order is accepted → implemented in get_instance_features
+  field ( features : instance ) DiscountPercent;
+
+  // ---- Standard operations -------------------------------------------------
+  create;
+  update ( precheck );          // precheck_update filters illegal changes before the buffer
+  delete;
+
+  // ---- Draft lifecycle ------------------------------------------------------
+  draft action Edit;
+  draft action Activate optimized;
+  draft action Discard;
+  draft action Resume;
+  draft determine action Prepare
+  {
+    validation validateCustomer;
+    validation validateQuantity;
+  }
+
+  // ---- Actions ---------------------------------------------------------------
+  action ( features : instance ) acceptOrder result [1] $self;
+  action ( features : instance ) rejectOrder result [1] $self;
+  action ( precheck ) applyDiscount parameter ZA_OrderDiscount result [1] $self;
+  factory action copyOrder [1];
+  static action ( features : global ) deleteAllCompleted;
+  internal action recalculateTotalAmount;
+
+  // ---- Determinations ----------------------------------------------------------
+  // on modify: user sees the result while editing; triggers on the inputs,
+  // writes a different (readonly) field — no self-trigger loop
+  determination setInitialStatus     on modify { create; }
+  determination calculateTotalAmount on modify { field OrderQuantity, UnitPrice, DiscountPercent; }
+  // on save: final, human-readable id — runs during finalize
+  determination calculateOrderId     on save   { create; }
+
+  // ---- Validations ----------------------------------------------------------------
+  validation validateCustomer on save { create; field CustomerId; }
+  validation validateQuantity on save { create; field OrderQuantity; }
+
+  // ---- Determine action (only on-save items are assignable) -------------------------
+  determine action checkOrder
+  {
+    determination ( always ) calculateOrderId;
+    validation validateCustomer;
+    validation validateQuantity;
+  }
+
+  // ---- Side effects (UI refresh — see rap-business-events-side-effects) --------------
+  side effects
+  {
+    field OrderQuantity   affects field TotalAmount;
+    field UnitPrice       affects field TotalAmount;
+    field DiscountPercent affects field TotalAmount;
+    determine action checkOrder
+      executed on field CustomerId, field OrderQuantity
+      affects messages;
+  }
+
+  mapping for zsalesorder
+  {
+    OrderUuid          = order_uuid;
+    OrderId            = order_id;
+    CustomerId         = customer_id;
+    OrderQuantity      = order_quantity;
+    UnitPrice          = unit_price;
+    DiscountPercent    = discount_percent;
+    TotalAmount        = total_amount;
+    CurrencyCode       = currency_code;
+    OverallStatus      = overall_status;
+    CreatedAt          = created_at;
+    CreatedBy          = created_by;
+    LocalLastChangedAt = local_last_changed_at;
+    LastChangedAt      = last_changed_at;
+  }
+}
