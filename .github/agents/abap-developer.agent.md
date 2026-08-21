@@ -1,5 +1,5 @@
 ---
-name: "abap-developer"
+name: "abap-kebap:abap-developer"
 description: "Use when working on SAP ABAP — reading, writing, debugging, or modernizing ABAP code, CDS views, RAP business objects, ALV reports, BAdI implementations, OO classes, SQL performance, or analyzing dumps and traces — and for authoring the ABAP Unit tests that cover it (test doubles for CDS / RAP / OSQL, TEST-SEAM, red-green-refactor TDD). Covers classical OO ABAP, RAP, CDS, ABAP Unit testing, and ABAP Cloud (Steampunk). This is the hands-on implementer of the ABAP team; for upfront solution design defer to abap-architect, and for an independent review covering Clean ABAP, security, and performance to abap-reviewer."
 ---
 

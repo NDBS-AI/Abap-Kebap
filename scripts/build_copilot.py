@@ -35,6 +35,18 @@ FRONTMATTER_PATTERN = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 # Copilot's cloud agent enforces a 30,000-character prompt body cap.
 MAX_BODY_CHARS = 30_000
 
+# VS Code Copilot aggregates custom agents from several locations at once
+# (.github/agents, .claude/agents, ~/.copilot/agents, and each installed
+# plugin copy), so the same three agents surface many times as an
+# indistinguishable "abap-architect" in the picker. Prefix the DISPLAY name of
+# the Copilot mirrors with the plugin handle so this plugin's agents are
+# identifiable there. Only the frontmatter name carries the prefix — the
+# filename stays plain (a ':' is illegal in a filename but allowed in the name
+# value). The Claude side is left untouched: its validator requires
+# name == filename, and Claude already namespaces plugin agents as
+# "abap-kebap:<agent>" on its own.
+COPILOT_AGENT_NAME_PREFIX = "abap-kebap:"
+
 # Claude-specific phrasing -> Copilot-native equivalent. Copilot has no Skill
 # tool; it auto-loads skills from .claude/skills/ and users can invoke them
 # directly, so the instruction becomes "use the skill" rather than "load it".
@@ -73,7 +85,9 @@ def build_agent(source: Path) -> str:
     # Copilot agent frontmatter: name + description only. Claude's tools/
     # model/color fields do not translate; omitting tools grants the default
     # set, which matches these agents' read-inspect-propose role.
-    name = json.dumps(frontmatter["name"], ensure_ascii=False)
+    name = json.dumps(
+        f"{COPILOT_AGENT_NAME_PREFIX}{frontmatter['name']}", ensure_ascii=False
+    )
     description = json.dumps(frontmatter["description"], ensure_ascii=False)
     header = (
         f"---\n"

@@ -1,5 +1,5 @@
 ---
-name: "abap-architect"
+name: "abap-kebap:abap-architect"
 description: "Use when you need to DESIGN an ABAP solution before any code is written — choosing managed vs unmanaged vs abstract RAP, CDS VDM layering, data model and key design, package and transport strategy, released-API selection, classic-vs-cloud, and build-vs-extend decisions. Produces a design with options, trade-offs, and a recommendation — not implementation. For writing the code (and the ABAP Unit tests that cover it) use abap-developer; for an independent review covering Clean ABAP, security, and performance use abap-reviewer."
 ---
 
