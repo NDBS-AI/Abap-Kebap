@@ -149,6 +149,31 @@ METHODS get_global_features FOR GLOBAL FEATURES
 - No `keys`. `result` is a **structure** (`TYPE STRUCTURE FOR GLOBAL FEATURES RESULT Order`)
   with `%create`, `%update`, `%delete`, `%action-<name>` taking `fc-o-enabled/disabled`.
 
+## Default values function
+
+Prefills action (or `create`/create-by-association) input-parameter fields on the UI before the
+user sees them — declared in the BDEF with `{ default function GetDefaultsFor<Name>; }`
+(grammar: [bdef-behavior-grammar.md](bdef-behavior-grammar.md)).
+
+```abap
+METHODS get_defaults_for_convert_into_pc FOR READ
+  IMPORTING keys FOR FUNCTION PurchaseReqTP~GetDefaultsForConvertIntoPC RESULT result.
+```
+
+- **Naming is mandatory, not conventional:** the function name must start with `GetDefaultsFor`
+  — a wrong prefix fails at activation, ADT does not warn ahead of time.
+- **Prerequisite:** the action (or `create`) must declare an input `parameter` — there is
+  nothing to prefill otherwise.
+- `keys` carries `%cid` for `static`/factory/create actions (no instance yet) and `%tky` for
+  instance-bound actions — same rule as any other action handler (see Actions above).
+- Channels: `result`, `failed`, `reported` — a plain `FOR READ` shape, no `mapped`.
+- Usable for `create`, create-by-association, actions, and functions, in both the base BDEF and
+  the **projection** BDEF (`use function GetDefaultsFor...;`).
+- **Multi-select gap:** if several instances are selected and their computed defaults differ,
+  the framework leaves that field blank rather than guessing — do not assume "first row wins."
+- **Release gate:** requires a fairly recent kernel (SAP BTP ABAP Environment 2311+); confirm
+  availability before committing to it in an on-premise/private-cloud sprint.
+
 ## Prechecks
 
 ```abap
@@ -210,3 +235,4 @@ METHODS lock   FOR LOCK   IMPORTING keys FOR LOCK Order.
 | `FOR INSTANCE FEATURES` | no | yes | yes | yes (table) |
 | `FOR GLOBAL FEATURES` | no | no | yes | yes (structure) |
 | `FOR PRECHECK` | no | yes — drops rows from request | yes | no |
+| `FOR READ ... FOR FUNCTION` (default values) | no | yes | yes | yes |

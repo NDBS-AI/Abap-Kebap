@@ -55,7 +55,7 @@ Key rules:
 
 - **Non-factory actions** modify existing instances. Cardinality belongs to the `result` clause: `result [0..1] | [1] | [0..*] | [1..*]`, and the result type is `$self` (same entity), `entity SomeCdsEntity`, or — with `deep result` — an abstract BDEF. `result selective [1] ...` returns only requested parts; the handler then gets an extra `REQUEST` importing parameter.
 - **Factory actions** create instances. Cardinality sits directly after the name (`factory action copyOrder [1];`) and a `result` clause is **not allowed** — output travels through `mapped`.
-- **Parameters**: flat `parameter SOME_ENTITY` takes a CDS abstract entity (or DDIC type); `deep parameter` / `deep table parameter` take an abstract BDEF defined `with hierarchy`. `{ default function GetDefaults...; }` can prefill parameter values on the UI.
+- **Parameters**: flat `parameter SOME_ENTITY` takes a CDS abstract entity (or DDIC type); `deep parameter` / `deep table parameter` take an abstract BDEF defined `with hierarchy`. `{ default function GetDefaults...; }` can prefill parameter values on the UI — naming must start with `GetDefaultsFor`, and the action needs a `parameter` to prefill; full handler signature, `%cid`/`%tky` rule, and the multi-select/release caveats: [references/handler-signatures.md](references/handler-signatures.md#default-values-function).
 - **`static`** actions relate to the entity, not an instance — input rows carry `%cid`, not `%tky`.
 - **`internal`** actions are invisible to consumers — the standard target for determinations that delegate their calculation.
 
@@ -532,4 +532,7 @@ define behavior for ZC_SalesOrder alias Order
 - **Saver methods finalize / check_before_save** (where on-save determinations/validations run): https://help.sap.com/doc/abapdocu_cp_index_htm/CLOUD/en-US/abensaver_finalize.htm and https://help.sap.com/doc/abapdocu_cp_index_htm/CLOUD/en-US/abensaver_check_before_save.htm
 - **SAP-samples/abap-cheat-sheets** — `36_RAP_Behavior_Definition_Language.md`, `08_EML_ABAP_for_RAP.md`: https://github.com/SAP-samples/abap-cheat-sheets
 - **SAP-samples/abap-platform-rap100** — exercises 4–7 (determinations, validations, actions, dynamic feature control): https://github.com/SAP-samples/abap-platform-rap100
+- **RAP BDL — default function**: https://help.sap.com/doc/abapdocu_cp_index_htm/CLOUD/en-US/ABENBDL_DEFAULT_FUNCTION.html
+- **Worked example — defaulting action parameters with complex business logic** (SAP Community blog by Ramjee Korada): https://community.sap.com/t5/technology-blog-posts-by-members/abap-rap-defaulting-action-parameters-with-complex-business-logic-in-a/ba-p/13579938
+- **File upload via action popup** (`deep parameter` + `@Semantics.largeObject`, software-heroes.com): [examples/file-upload-action.md](examples/file-upload-action.md)
 - Linked skills: [rap-bo-modeling](../rap-bo-modeling/SKILL.md), [rap-eml](../rap-eml/SKILL.md), [rap-business-events-side-effects](../rap-business-events-side-effects/SKILL.md), [rap-saves-and-numbering](../rap-saves-and-numbering/SKILL.md), [abap-authorization](../abap-authorization/SKILL.md)

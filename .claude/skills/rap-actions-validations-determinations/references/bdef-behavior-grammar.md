@@ -57,11 +57,16 @@ Multiple additions combine comma-separated: `action ( features : instance, prech
 action act parameter SOME_ENTITY;              // flat input: CDS abstract entity or DDIC type
 action act deep parameter SOME_ABSTRACT_BDEF;  // structured input: abstract BDEF "with hierarchy"
 action act deep table parameter SOME_ABSTRACT_BDEF;  // tabular input
-action act { default function GetDefaults; }   // RAP default values function prefills the parameter UI
+action act { default function GetDefaults; }               // prefills the parameter UI
+action act { default function GetDefaults external 'Ext'; } // external name for OData metadata
 ```
 
 The abstract-entity pattern for flat parameters (`define abstract entity ZA_... { ... }`) is the
 standard way to model an action popup — see cds-entity-types for authoring abstract entities.
+
+The default values function name must start with `GetDefaultsFor` and the action must declare a
+`parameter` — full handler signature, `%cid`/`%tky` handling, and the multi-select/release
+caveats: [handler-signatures.md](handler-signatures.md#default-values-function).
 
 ### Results
 

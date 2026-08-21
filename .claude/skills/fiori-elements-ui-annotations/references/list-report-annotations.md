@@ -425,6 +425,11 @@ on the MIME element. MDE: plain `@UI.lineItem` on the stream element,
 `@UI.hidden: true` on filename/mimetype (showcase `#Stream`, `#StreamTable`).
 Read-only control for the stream is BDEF feature control, not an annotation.
 
+When the file is not itself the persisted record but an input to custom logic (parsed,
+attached elsewhere, validated), an action-popup upload is the alternative to a direct stream
+field — see rap-actions-validations-determinations'
+[examples/file-upload-action.md](../../rap-actions-validations-determinations/examples/file-upload-action.md).
+
 ## Variants
 
 Grounded in [03_list_report_content.md](https://github.com/SAP-samples/abap-platform-fiori-feature-showcase/blob/main/03_list_report_content.md)
