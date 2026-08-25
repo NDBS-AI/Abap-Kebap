@@ -111,14 +111,14 @@
       "id": "developer-agent-has-stage-note",
       "kind": "required",
       "pattern": "Your place in the development process",
-      "in": ".claude/agents/abap-developer.md",
+      "in": ".claude/agents/abap-kebap-developer.md",
       "note": "The developer agent must carry the stage-note subsection tying it to the superpowers development loop."
     },
     {
       "id": "developer-agent-always-loads-clean-style",
       "kind": "required",
       "pattern": "Always load `abap-clean-style` before generating any ABAP",
-      "in": ".claude/agents/abap-developer.md",
+      "in": ".claude/agents/abap-kebap-developer.md",
       "note": "Project policy: abap-clean-style is loaded unconditionally before any ABAP generation, not only when the task maps to the style row. Locked after a review found the load was conditional and single-letter identifiers slipped into generated code."
     },
     {

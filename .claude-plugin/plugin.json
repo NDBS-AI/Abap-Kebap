@@ -8,8 +8,8 @@
   "keywords": ["sap", "abap", "rap", "cds", "abap-cloud", "steampunk", "fiori"],
   "skills": "./.claude/skills",
   "agents": [
-    "./.claude/agents/abap-architect.md",
-    "./.claude/agents/abap-developer.md",
-    "./.claude/agents/abap-reviewer.md"
+    "./.claude/agents/abap-kebap-architect.md",
+    "./.claude/agents/abap-kebap-developer.md",
+    "./.claude/agents/abap-kebap-reviewer.md"
   ]
 }

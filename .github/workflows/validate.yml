@@ -20,10 +20,10 @@ jobs:
           node-version: "20"
       - name: Run static regression checks
         run: node evals/run-static.mjs
-      - name: Copilot mirrors are in sync
+      - name: Copilot prompt mirrors are in sync
         run: |
           python scripts/build_copilot.py
-          git diff --exit-code -- .github/agents .github/prompts
+          git diff --exit-code -- .github/prompts
 
   plugin:
     runs-on: ubuntu-latest

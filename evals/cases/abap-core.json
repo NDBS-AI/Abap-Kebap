@@ -1,7 +1,7 @@
 [
   {
     "id": "cds-created-at-annotation",
-    "target_agent": "abap-developer",
+    "target_agent": "abap-kebap-developer",
     "prompt": "In a CDS view used by a RAP business object, which annotation marks the 'created at' timestamp field? Give the exact annotation token.",
     "must_contain": ["systemDateTime.createdAt"],
     "must_not_contain": ["systemDate.createdAt"],
@@ -9,7 +9,7 @@
   },
   {
     "id": "cds-projection-provider-contract",
-    "target_agent": "abap-developer",
+    "target_agent": "abap-kebap-developer",
     "prompt": "What clause must a RAP projection (consumption) CDS view declare so it can serve a transactional OData service?",
     "must_contain": ["transactional_query"],
     "must_not_contain": [],
@@ -17,7 +17,7 @@
   },
   {
     "id": "rap-unmanaged-saver-baseclass",
-    "target_agent": "abap-developer",
+    "target_agent": "abap-kebap-developer",
     "prompt": "In a RAP BO defined 'with unmanaged save', what base class does the saver class inherit from, and which method is redefined to persist changes?",
     "must_contain": ["cl_abap_behavior_saver", "save_modified"],
     "must_not_contain": [],
@@ -25,7 +25,7 @@
   },
   {
     "id": "rap-managed-default",
-    "target_agent": "abap-developer",
+    "target_agent": "abap-kebap-developer",
     "prompt": "For a brand-new custom transactional entity where you own the database tables, should the RAP business object be managed or unmanaged? One word plus one sentence why.",
     "must_contain": ["managed"],
     "must_not_contain": [],
@@ -33,7 +33,7 @@
   },
   {
     "id": "sql-fae-empty-check",
-    "target_agent": "abap-developer",
+    "target_agent": "abap-kebap-developer",
     "prompt": "Before running SELECT ... FOR ALL ENTRIES IN itab, what must you check about itab, and what goes wrong if you do not?",
     "must_contain": ["empty"],
     "must_not_contain": [],
@@ -41,7 +41,7 @@
   },
   {
     "id": "sql-no-select-star",
-    "target_agent": "abap-developer",
+    "target_agent": "abap-kebap-developer",
     "prompt": "Is SELECT * acceptable in production ABAP SQL? What should you do instead?",
     "must_contain": [],
     "must_not_contain": [],
@@ -49,7 +49,7 @@
   },
   {
     "id": "corresponding-base-semantics",
-    "target_agent": "abap-developer",
+    "target_agent": "abap-kebap-developer",
     "prompt": "Using the CORRESPONDING #( ) constructor expression, how do you keep the target's existing values in fields that the source does not supply (i.e. MOVE-CORRESPONDING semantics)?",
     "must_contain": ["BASE"],
     "must_not_contain": [],
@@ -57,7 +57,7 @@
   },
   {
     "id": "clean-xsdbool-over-boolc",
-    "target_agent": "abap-developer",
+    "target_agent": "abap-kebap-developer",
     "prompt": "To turn a logical expression into an abap_bool value, should you use xsdbool or boolc? Why?",
     "must_contain": ["xsdbool"],
     "must_not_contain": [],
@@ -65,7 +65,7 @@
   },
   {
     "id": "clean-loop-variable-naming",
-    "target_agent": "abap-reviewer",
+    "target_agent": "abap-kebap-reviewer",
     "prompt": "Review this line per Clean ABAP: LOOP AT lt_items INTO DATA(i). Is the variable name acceptable? What should it be?",
     "must_contain": [],
     "must_not_contain": [],
@@ -73,7 +73,7 @@
   },
   {
     "id": "object-creation-modern",
-    "target_agent": "abap-developer",
+    "target_agent": "abap-kebap-developer",
     "prompt": "What is the Clean ABAP preferred way to instantiate an object on ABAP 7.40+?",
     "must_contain": ["NEW"],
     "must_not_contain": [],
@@ -81,7 +81,7 @@
   },
   {
     "id": "auth-check-before-write",
-    "target_agent": "abap-reviewer",
+    "target_agent": "abap-kebap-reviewer",
     "prompt": "A method reads input and then updates a custom database table. Relative to the write, where must the AUTHORITY-CHECK be placed, and why?",
     "must_contain": ["before"],
     "must_not_contain": [],
@@ -89,7 +89,7 @@
   },
   {
     "id": "cloud-no-native-table-select",
-    "target_agent": "abap-developer",
+    "target_agent": "abap-kebap-developer",
     "prompt": "In ABAP for Cloud Development, can you SELECT directly from a standard SAP table such as SCARR? If not, what do you use instead?",
     "must_contain": ["released"],
     "must_not_contain": [],
@@ -97,7 +97,7 @@
   },
   {
     "id": "unit-test-no-real-db",
-    "target_agent": "abap-developer",
+    "target_agent": "abap-kebap-developer",
     "prompt": "May an ABAP Unit test read from the real database? For an ABAP SQL dependency, what should the test use instead?",
     "must_contain": ["cl_osql_test_environment"],
     "must_not_contain": [],

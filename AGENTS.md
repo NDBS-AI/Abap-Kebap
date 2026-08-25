@@ -50,9 +50,9 @@ Details: `docs/agent-orchestration.md`, `CLAUDE.md`.
 ## Layout
 
 - `.claude/skills/<name>/` — the 36 skills (single source of truth)
-- `.claude/agents/` — Claude Code role agents (source for the generated
-  `.github/agents/*.agent.md` Copilot mirrors — edit the source, then run
-  `python scripts/build_copilot.py`)
+- `.claude/agents/` — role agents (`abap-kebap-architect`,
+  `abap-kebap-developer`, `abap-kebap-reviewer`); single source, read natively
+  by both Claude Code and VS Code Copilot (no `.github/agents` mirror)
 - `.claude-plugin/` — Claude Code plugin + marketplace manifests (plugin name: `abap-kebap`)
 - `evals/`, `scripts/` — the free verification gates
 - `docs/lessons.md` — corrections captured via `/abap-learn`, each locked by a static rule

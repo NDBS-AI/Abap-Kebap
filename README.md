@@ -2,7 +2,7 @@
 
 A team of **3 focused Claude Code agents** for SAP ABAP, backed by **36 in-depth skills** spanning the full ABAP language and platform surface: the core language (internal tables, data objects, constructor expressions, strings/regex, dynamic programming, built-in functions), data & persistence (Open SQL, DDIC, AMDP, SAP LUW), modern stack (CDS, RAP, ABAP Cloud, OData, RAP events), cross-cutting concerns (authorization, XML/JSON), quality (Clean ABAP, code review, ABAP Unit, debugging), and legacy maintenance (classic UI, modernization, enhancements, version control).
 
-`abap-developer` is the hands-on implementer (and writes the ABAP Unit tests that cover its own code); two specialist agents add independent expert perspectives — `abap-architect` for design before code, and `abap-reviewer` for an independent Clean ABAP + security + performance review — so the same code is looked at through more than one lens and the gaps one lens misses get caught by another. The skills behind every agent are loaded on demand via the `Skill` tool, so each agent stays small in context but can pull in deep knowledge when a task requires it. Each skill is distilled from the official [SAP-samples/abap-cheat-sheets](https://github.com/SAP-samples/abap-cheat-sheets) — decision-oriented `SKILL.md` (≤500 lines) with full syntax catalogs in `references/`.
+`abap-kebap-developer` is the hands-on implementer (and writes the ABAP Unit tests that cover its own code); two specialist agents add independent expert perspectives — `abap-kebap-architect` for design before code, and `abap-kebap-reviewer` for an independent Clean ABAP + security + performance review — so the same code is looked at through more than one lens and the gaps one lens misses get caught by another. The skills behind every agent are loaded on demand via the `Skill` tool, so each agent stays small in context but can pull in deep knowledge when a task requires it. Each skill is distilled from the official [SAP-samples/abap-cheat-sheets](https://github.com/SAP-samples/abap-cheat-sheets) — decision-oriented `SKILL.md` (≤500 lines) with full syntax catalogs in `references/`.
 
 ---
 
@@ -15,13 +15,14 @@ A team of **3 focused Claude Code agents** for SAP ABAP, backed by **36 in-depth
 /plugin install abap-kebap@abgunes
 ```
 
-Skills are then invoked as `/abap-kebap:<skill-name>` and agents as `abap-kebap:<agent-name>`.
+Skills are then invoked as `/abap-kebap:<skill-name>`; the role agents are
+`abap-kebap-architect`, `abap-kebap-developer`, and `abap-kebap-reviewer`.
 The `/abap-learn` command is deliberately **not** part of the plugin — it edits this
 repo's skills and static-check rules, so it is a contributor tool; clone the repo to use it.
 For GitHub Copilot users it also ships as a VS Code prompt file
 ([`.github/prompts/abap-learn.prompt.md`](.github/prompts/abap-learn.prompt.md)), invocable
 as `/abap-learn` in Copilot Chat — generated from the Claude command by
-`scripts/build_copilot.py` (CI regenerates and fails on drift, same as the agent mirrors).
+`scripts/build_copilot.py` (CI regenerates and fails on drift).
 
 **With GitHub Copilot** — no plugin to install; Copilot reads what this repo already
 ships. Put the repo where Copilot runs, and it picks these up:
@@ -31,7 +32,7 @@ ships. Put the repo where Copilot runs, and it picks these up:
 | [`AGENTS.md`](AGENTS.md) (root) | Agent instructions — the ABAP non-negotiables, plus the cue to open the matching `.claude/skills/<name>/SKILL.md` before writing or reviewing ABAP | Coding agent (github.com), Copilot CLI, IDEs |
 | [`.github/copilot-instructions.md`](.github/copilot-instructions.md) | Repository-wide custom instructions | Chat, code review, coding agent |
 | [`.github/instructions/`](.github/instructions/) (`applyTo` globs — `**/*.abap`, CDS) | Path-specific instructions | VS Code / Visual Studio Chat, coding agent, code review |
-| [`.github/agents/*.agent.md`](.github/agents/) | Custom agents — `abap-architect` / `abap-developer` / `abap-reviewer` | Coding agent (github.com), Copilot CLI, VS Code |
+| [`.claude/agents/*.md`](.claude/agents/) | Custom agents — `abap-kebap-architect` / `abap-kebap-developer` / `abap-kebap-reviewer` (Claude sub-agent format) | VS Code Chat agent picker (reads `.claude/agents` natively) |
 
 **Setup:**
 
@@ -44,15 +45,21 @@ ships. Put the repo where Copilot runs, and it picks these up:
    rules fire when you touch a matching file (`*.abap`, CDS). In VS Code, if custom
    instructions aren't picked up, confirm the `github.copilot.chat.codeGeneration.useInstructionFiles`
    setting is on (it is by default).
-3. **Pick a role agent** when you want one specific lens:
-   - **Copilot CLI:** run `/agent` and choose the agent, or `copilot --agent=abap-reviewer -p "review ZCL_ORDER_PROCESSOR"`.
-   - **github.com:** select the agent from the dropdown in the agents panel before dispatching a task.
-   - **VS Code:** choose it from the agent picker in the Chat view.
+3. **Pick a role agent** when you want one specific lens — in **VS Code**, choose
+   `abap-kebap-architect` / `abap-kebap-developer` / `abap-kebap-reviewer` from the agent
+   picker in the Chat view. (The github.com coding agent and Copilot CLI historically read
+   `.github/agents`; whether they also read `.claude/agents` is unconfirmed — if your setup
+   needs a `.github/agents` mirror for those surfaces, see the note below.)
 
-The `.github/agents/*.agent.md` mirrors are **generated** from the Claude sources by
-`scripts/build_copilot.py` (CI regenerates and fails on drift) — never edit them by hand:
-edit `.claude/agents/*.md`, then run `python scripts/build_copilot.py`. Each generated body
-stays under Copilot's 30,000-character custom-agent prompt cap.
+The role agents live **only** in `.claude/agents/*.md` (single source of truth): Claude Code
+loads them as plugin agents, and VS Code Copilot reads the same `.claude/agents` folder
+natively (Claude sub-agent format), so each role appears **once** in the VS Code picker as
+`abap-kebap-<role>`. There is deliberately no `.github/agents` mirror — shipping both made
+VS Code list every agent twice (it scans both folders with no cross-folder dedup). Only the
+`/abap-learn` prompt file is still generated, by `scripts/build_copilot.py`. If you later
+confirm the github.com coding agent or Copilot CLI require a `.github/agents` copy, restore
+the agent-mirror step in `scripts/build_copilot.py` — but expect the VS Code duplicate to
+return, since it will then read both folders again.
 
 **Optional — live SAP content search via MCP.** Local `sap-devs` CLI — tutorial search
 with guided walkthroughs, tips, canonical samples, error lookup (CAP/BTP-centric), and
@@ -84,11 +91,11 @@ Three peer agents under `.claude/agents/`. All are read-only advisors that share
 
 | Agent | Role / distinct lens |
 |---|---|
-| `abap-developer` | The hands-on implementer — writes, modernizes, debugs ABAP against an agreed design, and authors the ABAP Unit tests (doubles for CDS/RAP/OSQL, TEST-SEAM) that cover it. |
-| `abap-architect` | Solution design *before* code — managed/unmanaged RAP, CDS VDM layering, package/transport strategy, released-API selection. Produces a design, not code. |
-| `abap-reviewer` | The independent quality gate — Clean ABAP + correctness, security, and performance in one adversarial pass (the ATC + Code Vulnerability Analyzer gate in one agent). Critical / Important / Nit findings with `path:line`. |
+| `abap-kebap-developer` | The hands-on implementer — writes, modernizes, debugs ABAP against an agreed design, and authors the ABAP Unit tests (doubles for CDS/RAP/OSQL, TEST-SEAM) that cover it. |
+| `abap-kebap-architect` | Solution design *before* code — managed/unmanaged RAP, CDS VDM layering, package/transport strategy, released-API selection. Produces a design, not code. |
+| `abap-kebap-reviewer` | The independent quality gate — Clean ABAP + correctness, security, and performance in one adversarial pass (the ATC + Code Vulnerability Analyzer gate in one agent). Critical / Important / Nit findings with `path:line`. |
 
-You dispatch these agents yourself — there is no automatic multi-agent orchestration. For most work that means a **single agent** (usually `abap-reviewer`); you *can* run several in parallel for a thorough multi-lens pass on high-stakes code, at the cost of N agent contexts. The dispatch patterns are in [`docs/agent-orchestration.md`](docs/agent-orchestration.md). Each agent carries its own persona, output format, scope limits, and a role-specific skill-use map.
+You dispatch these agents yourself — there is no automatic multi-agent orchestration. For most work that means a **single agent** (usually `abap-kebap-reviewer`); you *can* run several in parallel for a thorough multi-lens pass on high-stakes code, at the cost of N agent contexts. The dispatch patterns are in [`docs/agent-orchestration.md`](docs/agent-orchestration.md). Each agent carries its own persona, output format, scope limits, and a role-specific skill-use map.
 
 ### The skills
 
@@ -206,7 +213,7 @@ Copy-Item .claude\agents\abap-*.md $HOME\.claude\agents\
 Copy-Item .claude\skills\* $HOME\.claude\skills\ -Recurse
 ```
 
-This copies all **3 agents** (`abap-developer`, `abap-architect`, `abap-reviewer`) and the 36 skills. The orchestration playbook (`docs/agent-orchestration.md`) is reference material — keep it in the cloned repo or copy it somewhere handy.
+This copies all **3 agents** (`abap-kebap-developer`, `abap-kebap-architect`, `abap-kebap-reviewer`) and the 36 skills. The orchestration playbook (`docs/agent-orchestration.md`) is reference material — keep it in the cloned repo or copy it somewhere handy.
 
 ---
 
@@ -215,30 +222,30 @@ This copies all **3 agents** (`abap-developer`, `abap-architect`, `abap-reviewer
 ### Dispatch a single agent
 Pick the agent whose lens fits the task:
 ```
-Use the abap-reviewer agent to review this class for Clean ABAP issues:
+Use the abap-kebap-reviewer agent to review this class for Clean ABAP issues:
 <paste ABAP>
 ```
 
-- **Implement / debug / modernize / write tests** → `abap-developer`
-- **Design before building** → `abap-architect`
-- **Independent review (Clean ABAP + security + performance)** → `abap-reviewer`
+- **Implement / debug / modernize / write tests** → `abap-kebap-developer`
+- **Design before building** → `abap-kebap-architect`
+- **Independent review (Clean ABAP + security + performance)** → `abap-kebap-reviewer`
 
 ### Dispatching the team
 You orchestrate the agents yourself — there is no auto-orchestration. See [`docs/agent-orchestration.md`](docs/agent-orchestration.md).
 
-- **Review** — for most reviews, dispatch a single `abap-reviewer` — it already covers Clean ABAP + correctness, security, and performance. For a design-level lens on high-stakes code you *can* add `abap-architect` in parallel and merge — but that is a second agent context, so reserve it.
-- **Build** — `abap-architect` → *(you approve the design)* → `abap-developer` (implements + tests, test-first) → `abap-reviewer`, each a manual dispatch, looping back on Critical findings.
+- **Review** — for most reviews, dispatch a single `abap-kebap-reviewer` — it already covers Clean ABAP + correctness, security, and performance. For a design-level lens on high-stakes code you *can* add `abap-kebap-architect` in parallel and merge — but that is a second agent context, so reserve it.
+- **Build** — `abap-kebap-architect` → *(you approve the design)* → `abap-kebap-developer` (implements + tests, test-first) → `abap-kebap-reviewer`, each a manual dispatch, looping back on Critical findings.
 
 Default to one agent; escalate to several only when the stakes justify the cost.
 
 ### Common tasks
-- **Review** — "Review the diff against Clean ABAP." → `abap-reviewer` (add `abap-architect` for a thorough pass)
-- **Audit** — "Audit ZCL_PRICE_CALC for auth gaps and SQL cost." → `abap-reviewer`
-- **Debug** — "Dump ST22 says TIME_OUT in ZCL_PRICE_CALC. Why?" → `abap-developer`
-- **Modernize** — "Refactor this FORM-based report into a class." → `abap-developer`
-- **Design** — "How should I structure a RAP BO for ZCUSTOMER with draft and attachments?" → `abap-architect`
+- **Review** — "Review the diff against Clean ABAP." → `abap-kebap-reviewer` (add `abap-kebap-architect` for a thorough pass)
+- **Audit** — "Audit ZCL_PRICE_CALC for auth gaps and SQL cost." → `abap-kebap-reviewer`
+- **Debug** — "Dump ST22 says TIME_OUT in ZCL_PRICE_CALC. Why?" → `abap-kebap-developer`
+- **Modernize** — "Refactor this FORM-based report into a class." → `abap-kebap-developer`
+- **Design** — "How should I structure a RAP BO for ZCUSTOMER with draft and attachments?" → `abap-kebap-architect`
 - **Build RAP BO** — "Scaffold a managed RAP BO for ZCUSTOMER with draft." → build pipeline
-- **Test** — "Write ABAP Unit tests with a CDS test double for ZCL_PRICE_CALC." → `abap-developer`
+- **Test** — "Write ABAP Unit tests with a CDS test double for ZCL_PRICE_CALC." → `abap-kebap-developer`
 
 ### Load a skill directly (without the agent)
 You can also load a single skill in the main thread by typing its name as a slash command:
@@ -251,7 +258,7 @@ You can also load a single skill in the main thread by typing its name as a slas
 
 ## Development process
 
-For development discipline — design-before-code, plan-before-implement, test-first, verify-before-done, independent review — install the [superpowers plugin](https://github.com/obra/superpowers). The **main session** drives its process loop and dispatches an ABAP agent at each stage: `brainstorming` → `abap-architect`, `writing-plans`, `test-driven-development` → `abap-developer` (writes the failing test first, then makes it pass), `systematic-debugging` → `abap-developer`, `requesting-code-review` → `abap-reviewer`, and `verification-before-completion` → the repo gates. The agents run as subagents, so they never invoke those interactive process skills themselves.
+For development discipline — design-before-code, plan-before-implement, test-first, verify-before-done, independent review — install the [superpowers plugin](https://github.com/obra/superpowers). The **main session** drives its process loop and dispatches an ABAP agent at each stage: `brainstorming` → `abap-kebap-architect`, `writing-plans`, `test-driven-development` → `abap-kebap-developer` (writes the failing test first, then makes it pass), `systematic-debugging` → `abap-kebap-developer`, `requesting-code-review` → `abap-kebap-reviewer`, and `verification-before-completion` → the repo gates. The agents run as subagents, so they never invoke those interactive process skills themselves.
 
 The full mapping and dispatch examples are in [`docs/agent-orchestration.md`](docs/agent-orchestration.md) Play 3. Without the plugin, a built-in fallback — five inline gates — lives in the root [`CLAUDE.md`](CLAUDE.md), which auto-loads in every clone.
 

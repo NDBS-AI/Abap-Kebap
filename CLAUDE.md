@@ -8,12 +8,12 @@ process loop: the **main session** drives the loop and dispatches an ABAP agent 
 
 | Stage | Superpowers skill (main session) | Dispatch → agent | Domain skills |
 |---|---|---|---|
-| Design a feature / RAP BO | `superpowers:brainstorming` — during approach exploration | `abap-architect` | design-level skills per its map |
+| Design a feature / RAP BO | `superpowers:brainstorming` — during approach exploration | `abap-kebap-architect` | design-level skills per its map |
 | Plan | `superpowers:writing-plans` | — (plan tasks name the domain skills) | — |
-| Implement (red) | `superpowers:test-driven-development` discipline | `abap-developer` writes the failing ABAP Unit test first | `abap-unit-tdd` |
-| Implement (green/refactor) | same | `abap-developer` | `abap-clean-style` before generating ABAP, plus topic skills |
-| Bugfix | `superpowers:systematic-debugging` (generic discipline) | `abap-developer` | `abap-systematic-debugging` — the ABAP adaptation (ST22/ST05/SAT) |
-| Review gate | `superpowers:requesting-code-review` pattern | `abap-reviewer` — Clean ABAP + security + performance in one gate | `abap-code-review` |
+| Implement (red) | `superpowers:test-driven-development` discipline | `abap-kebap-developer` writes the failing ABAP Unit test first | `abap-unit-tdd` |
+| Implement (green/refactor) | same | `abap-kebap-developer` | `abap-clean-style` before generating ABAP, plus topic skills |
+| Bugfix | `superpowers:systematic-debugging` (generic discipline) | `abap-kebap-developer` | `abap-systematic-debugging` — the ABAP adaptation (ST22/ST05/SAT) |
+| Review gate | `superpowers:requesting-code-review` pattern | `abap-kebap-reviewer` — Clean ABAP + security + performance in one gate | `abap-code-review` |
 | Done gate | `superpowers:verification-before-completion` | — | repo gates: `python scripts/validate_skills.py`, `node evals/run-static.mjs`; behavioral evals at milestones only |
 
 ## The subagent rule

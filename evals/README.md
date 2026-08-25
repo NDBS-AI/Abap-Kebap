@@ -23,7 +23,7 @@ Tier 1 is the everyday net. Tier 2 is the occasional end-to-end check. The first
 ```json
 {
   "id": "cds-created-at-annotation",
-  "target_agent": "abap-developer",
+  "target_agent": "abap-kebap-developer",
   "prompt": "…the question…",
   "must_contain": ["systemDateTime.createdAt"],
   "must_not_contain": ["systemDate.createdAt"],
@@ -31,7 +31,7 @@ Tier 1 is the everyday net. Tier 2 is the occasional end-to-end check. The first
 }
 ```
 
-- `target_agent` — which agent answers (`abap-architect`, `abap-developer`, `abap-reviewer`).
+- `target_agent` — which agent answers (`abap-kebap-architect`, `abap-kebap-developer`, `abap-kebap-reviewer`).
 - `must_contain` / `must_not_contain` — case-insensitive substring assertions, graded deterministically in JS (no model tokens).
 - `rubric` — optional; graded by a cheap judge model. A case passes when the string assertions pass **and** (no rubric, or the judge passes).
 

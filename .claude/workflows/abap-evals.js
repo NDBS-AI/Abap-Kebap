@@ -42,7 +42,7 @@ const results = await pipeline(
     agent(
       `${c.prompt}\n\n(Eval mode: answer from your loaded skills and your own knowledge only. Do NOT use WebSearch or WebFetch — this is a test of the skill content, not the live web. Be concise.)`,
       {
-        agentType: c.target_agent || 'abap-developer',
+        agentType: c.target_agent || 'abap-kebap-developer',
         model: evalModel,
         label: `eval:${c.id}`,
         phase: 'Run',

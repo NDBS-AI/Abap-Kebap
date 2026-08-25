@@ -2,13 +2,21 @@
 """Generate GitHub Copilot mirrors from the Claude Code sources.
 
 Sources of truth:
-  .claude/agents/<name>.md   -> .github/agents/<name>.agent.md   (custom agents)
   .claude/commands/<name>.md -> .github/prompts/<name>.prompt.md (prompt files)
 
 Deterministic - CI regenerates and fails on git diff, so hand edits to the
 mirrors cannot drift from the sources. Copilot reads the skills themselves as
-files from .claude/skills/ on the cue in AGENTS.md; only the agent role prompts
-and the slash commands need this translation.
+files from .claude/skills/ on the cue in AGENTS.md, and reads the role agents
+natively from .claude/agents/ (Claude sub-agent format); only the slash
+commands need this translation.
+
+The role agents are deliberately NOT mirrored to .github/agents anymore: VS
+Code Copilot scans BOTH .github/agents and .claude/agents with no cross-folder
+dedup, so shipping a mirror made every agent appear twice in the picker. With
+only .claude/agents present, each role shows once as abap-kebap-<role>. If the
+github.com coding agent or Copilot CLI turn out to require a .github/agents
+copy, reinstate the build_agent() step below - but the VS Code duplicate will
+return with it.
 """
 
 from __future__ import annotations
@@ -26,26 +34,9 @@ except ImportError:
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_DIR = ROOT / ".claude" / "agents"
-TARGET_DIR = ROOT / ".github" / "agents"
 COMMAND_SOURCE_DIR = ROOT / ".claude" / "commands"
 PROMPT_TARGET_DIR = ROOT / ".github" / "prompts"
 FRONTMATTER_PATTERN = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
-
-# Copilot's cloud agent enforces a 30,000-character prompt body cap.
-MAX_BODY_CHARS = 30_000
-
-# VS Code Copilot aggregates custom agents from several locations at once
-# (.github/agents, .claude/agents, ~/.copilot/agents, and each installed
-# plugin copy), so the same three agents surface many times as an
-# indistinguishable "abap-architect" in the picker. Prefix the DISPLAY name of
-# the Copilot mirrors with the plugin handle so this plugin's agents are
-# identifiable there. Only the frontmatter name carries the prefix — the
-# filename stays plain (a ':' is illegal in a filename but allowed in the name
-# value). The Claude side is left untouched: its validator requires
-# name == filename, and Claude already namespaces plugin agents as
-# "abap-kebap:<agent>" on its own.
-COPILOT_AGENT_NAME_PREFIX = "abap-kebap:"
 
 # Claude-specific phrasing -> Copilot-native equivalent. Copilot has no Skill
 # tool; it auto-loads skills from .claude/skills/ and users can invoke them
@@ -63,41 +54,6 @@ BODY_REPLACEMENTS = [
 COMMAND_BODY_REPLACEMENTS = [
     ("Use Grep over", "Search across"),
 ]
-
-
-def build_agent(source: Path) -> str:
-    text = source.read_text(encoding="utf-8")
-    match = FRONTMATTER_PATTERN.match(text)
-    if not match:
-        raise SystemExit(f"{source}: missing frontmatter")
-    frontmatter = yaml.safe_load(match.group(1))
-    body = text[match.end():]
-
-    for old, new in BODY_REPLACEMENTS:
-        body = body.replace(old, new)
-
-    if len(body) > MAX_BODY_CHARS:
-        raise SystemExit(
-            f"{source}: body is {len(body)} chars, over Copilot's "
-            f"{MAX_BODY_CHARS} cap - trim the source agent"
-        )
-
-    # Copilot agent frontmatter: name + description only. Claude's tools/
-    # model/color fields do not translate; omitting tools grants the default
-    # set, which matches these agents' read-inspect-propose role.
-    name = json.dumps(
-        f"{COPILOT_AGENT_NAME_PREFIX}{frontmatter['name']}", ensure_ascii=False
-    )
-    description = json.dumps(frontmatter["description"], ensure_ascii=False)
-    header = (
-        f"---\n"
-        f"name: {name}\n"
-        f"description: {description}\n"
-        f"---\n\n"
-        f"<!-- GENERATED from .claude/agents/{source.name} by "
-        f"scripts/build_copilot.py - edit the source, then regenerate. -->\n"
-    )
-    return header + body
 
 
 def build_prompt(source: Path) -> str:
@@ -138,38 +94,24 @@ def build_prompt(source: Path) -> str:
 
 
 def main() -> int:
-    sources = sorted(SOURCE_DIR.glob("*.md"))
-    if not sources:
-        print(f"No agent sources found in {SOURCE_DIR}", file=sys.stderr)
-        return 1
+    # Prompt-file mirrors for slash commands. The role agents are read natively
+    # from .claude/agents/ by both Claude Code and VS Code Copilot, so they are
+    # no longer mirrored here (see module docstring).
+    command_sources = sorted(COMMAND_SOURCE_DIR.glob("*.md")) if COMMAND_SOURCE_DIR.exists() else []
+    if not command_sources:
+        print(f"No command sources found in {COMMAND_SOURCE_DIR}", file=sys.stderr)
+        return 0
 
-    TARGET_DIR.mkdir(parents=True, exist_ok=True)
-    expected = {f"{source.stem}.agent.md" for source in sources}
-
-    for source in sources:
-        target = TARGET_DIR / f"{source.stem}.agent.md"
-        target.write_text(build_agent(source), encoding="utf-8", newline="\n")
+    PROMPT_TARGET_DIR.mkdir(parents=True, exist_ok=True)
+    expected_prompts = {f"{source.stem}.prompt.md" for source in command_sources}
+    for source in command_sources:
+        target = PROMPT_TARGET_DIR / f"{source.stem}.prompt.md"
+        target.write_text(build_prompt(source), encoding="utf-8", newline="\n")
         print(f"generated {target.relative_to(ROOT)}")
-
-    # Remove mirrors whose source agent was deleted
-    for stale in TARGET_DIR.glob("*.agent.md"):
-        if stale.name not in expected:
+    for stale in PROMPT_TARGET_DIR.glob("*.prompt.md"):
+        if stale.name not in expected_prompts:
             stale.unlink()
             print(f"removed stale {stale.relative_to(ROOT)}")
-
-    # Prompt-file mirrors for slash commands
-    command_sources = sorted(COMMAND_SOURCE_DIR.glob("*.md")) if COMMAND_SOURCE_DIR.exists() else []
-    if command_sources:
-        PROMPT_TARGET_DIR.mkdir(parents=True, exist_ok=True)
-        expected_prompts = {f"{source.stem}.prompt.md" for source in command_sources}
-        for source in command_sources:
-            target = PROMPT_TARGET_DIR / f"{source.stem}.prompt.md"
-            target.write_text(build_prompt(source), encoding="utf-8", newline="\n")
-            print(f"generated {target.relative_to(ROOT)}")
-        for stale in PROMPT_TARGET_DIR.glob("*.prompt.md"):
-            if stale.name not in expected_prompts:
-                stale.unlink()
-                print(f"removed stale {stale.relative_to(ROOT)}")
 
     return 0
 
