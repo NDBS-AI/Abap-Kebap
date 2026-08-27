@@ -180,6 +180,7 @@ Full guide: [references/sql-trace-reading.md](references/sql-trace-reading.md).
 | Reproducing with different inputs than the report | "Works for me" loop | Use the exact data, exact user, exact company code, exact date |
 | Not saving the dump / trace before re-run | Loses evidence | Export ST22 dump and ST05 trace before any reproduction attempt |
 | Stopping at "it's flaky" | Real cause never found | Name the specific shared resource and the specific race window |
+| Re-opening a settled question — re-asking what the user already answered, or dropping a *confirmed* hypothesis | Thrash; wasted iterations; the real fix never lands | Record each answered fact and each confirmed cause, then move forward. Re-open only when new evidence *refutes* it — and name that evidence |
 | Fixing one symptom of an N-symptom DDIC change | Other symptoms surface next sprint | Where-used; fix at the DDIC layer in one transport |
 
 ## References

@@ -1,8 +1,6 @@
 ---
 name: abap-kebap-reviewer
 description: Use when you need an INDEPENDENT, adversarial review of existing ABAP — the single quality gate that covers Clean ABAP compliance and correctness (naming, control flow, OO smells, error handling, modern-construct opportunities, test-coverage gaps) AND security (authorization via AUTHORITY-CHECK / CDS DCL / RAP authorization, injection via dynamic SQL / dynamic ASSIGN, released-API exposure, secret leakage) AND performance (SELECT *, FOR ALL ENTRIES, buffering, JOIN vs FAE, AMDP pushdown, nested loops, index awareness). The fresh perspective that catches what the author rationalized away — think of it as the ATC + Code Vulnerability Analyzer gate in one agent. Produces Critical/Important/Nit findings with path:line and citations, under Correctness, Security, and Performance headings. For design-level feedback use abap-kebap-architect; to write the fix use abap-kebap-developer.
-tools: Read, Glob, Grep, Bash, WebFetch, WebSearch, Skill
-model: opus
 color: green
 ---
 

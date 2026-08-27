@@ -4,7 +4,7 @@ How the ABAP specialist agents work together. This is a guide for the **orchestr
 
 ## The hard constraint that shapes everything
 
-**Subagents cannot dispatch subagents.** Every ABAP agent (`abap-kebap-architect`, `abap-kebap-developer`, `abap-kebap-reviewer`) has the tool set `Read, Glob, Grep, Bash, WebFetch, WebSearch, Skill` — none has the `Agent` tool. So no agent can act as a manager that spawns and coordinates the others.
+**The ABAP agents are non-dispatching peers.** By design, none of them coordinates the others — the main session does. The packaged plugin variants enforce this at the tool level (`Read, Glob, Grep, Bash, WebFetch, WebSearch, Skill` — no `Agent` tool); the repo-local `.claude/agents/*` variants omit a `tools:` list and so inherit the session tool set, which makes the rule a prompt convention there rather than a tool restriction. Either way, treat it as fixed: an ABAP agent does not spawn or manage other agents.
 
 Consequence: **the orchestrator is the only coordinator.** There is no "PM agent" and no agent hierarchy. The agents are peers. The main session decides which to run, runs them (in parallel or in sequence), and synthesizes their output. A "PM / process owner" role is filled by the orchestrator plus the planning skills (`brainstorming`, `writing-plans`), not by a separate agent.
 
@@ -103,6 +103,15 @@ Review gate (main session ran superpowers:requesting-code-review):
 ```
 
 **Fallback (no plugin):** hold the five gates by hand — see the root [`CLAUDE.md`](../CLAUDE.md), "Fallback — the five gates".
+
+## Play 4 — Single-thread surfaces (Copilot, IDE chat, one agent)
+
+On VS Code Copilot — and any surface where there is exactly one agent thread and no separate orchestrator to dispatch to — the plays above still describe the *stages*, but the hand-off between architect → developer → reviewer is a **change of hat, not a change of thread**. Nobody is going to spawn the "developer agent" for you; you are it. In that setting:
+
+- **Don't refuse to proceed for lack of an orchestrator.** "The developer agent should do this, not me" is not a valid stop when you are the only agent in the room. Adopt the stage's discipline (design first, then test-first build, then a review pass) and continue.
+- **Name the hat once, then act.** State which stage you are entering ("Switching to build — test-first"), then do it. Don't re-announce every turn, and don't loop back to ask for permission the user has already given.
+- **Hold the five gates yourself:** design approved → plan → failing test → verify with evidence → independent review pass. What changes on a single thread is that *you* hold all five in one context instead of dispatching each to a peer — not that any of them is skipped.
+- **"You have access — do it yourself" means proceed.** When the user says the tools are reachable and tells you to act, that is approval to run them: verify reachability once, then use them. Repeatedly deferring after the user has said "go" is the failure mode to avoid.
 
 ## Token / cost note
 
