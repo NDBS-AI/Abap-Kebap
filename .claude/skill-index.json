@@ -1,0 +1,188 @@
+{
+  "schema_version": 1,
+  "generated_from": ".claude/skills/*/SKILL.md",
+  "routing_contract": "docs/skill-routing.md",
+  "skill_count": 36,
+  "skills": [
+    {
+      "name": "abap-abapgit",
+      "description": "Use when putting ABAP code under git version control with abapGit — linking or cloning repositories, installing abapGit (standalone report or developer version), configuring .abapgit.xml (starting folder, folder logic PREFIX/FULL/MIXED, ignore patterns, requirements), mapping SAP packages to repositories, pulling, staging, committing and pushing changes, switching branches, resolving overwrite prompts and serialization errors, deciding between transports, abapGit, and gCTS, using the abapGit Repositories view in ADT for the SAP BTP ABAP environment, checking which object types serialize, or wiring abapGit repositories into CI with abaplint. Triggers include \"set up abapGit\", \"pull this repo\", \"serialize this package\", \"push ABAP to GitHub\", \"link a repository\", \".abapgit.xml\", \"folder logic\", \"export to zip\", \"abapGit vs gCTS\", \"transport vs git\", \"SSL handshake error\", and \"run abaplint on my ABAP\". Covers on-premise systems (BASIS 702+) and the SAP-distributed abapGit in ABAP Cloud / BTP.",
+      "path": ".claude/skills/abap-abapgit/SKILL.md"
+    },
+    {
+      "name": "abap-amdp-hierarchies",
+      "description": "Use when writing or reviewing AMDP (ABAP Managed Database Procedures) and SQL hierarchies — implementing a database procedure or database function in SQLScript, building a CDS table function or CDS scalar function backend, deciding AMDP vs Open SQL vs CDS, pushing complex logic down to SAP HANA, marking a class with IF_AMDP_MARKER_HDB, handling READ-ONLY / USING / FOR HDB LANGUAGE SQLSCRIPT additions, making AMDP client-safe for ABAP Cloud, or working with parent-child / recursive hierarchical data via the ABAP SQL HIERARCHY generator, HIERARCHY_DESCENDANTS / HIERARCHY_ANCESTORS / HIERARCHY_SIBLINGS navigators, or CDS define hierarchy.",
+      "path": ".claude/skills/abap-amdp-hierarchies/SKILL.md"
+    },
+    {
+      "name": "abap-authorization",
+      "description": "Use when writing or reviewing ABAP authorization and security — the AUTHORITY-CHECK statement (syntax, sy-subrc, ID ... FIELD ..., DUMMY); authorization objects, fields, values, and ACTVT; where to place an auth check so it cannot be bypassed; classic role/profile (PFCG) concepts; CDS access control (DCL define role, grant select on, aspect pfcg_auth); RAP authorization (master/dependent, global vs instance, the authorization handler method); ABAP Cloud authorization (IAM apps, business catalogs, business roles); or running a security review of who-can-do-what.",
+      "path": ".claude/skills/abap-authorization/SKILL.md"
+    },
+    {
+      "name": "abap-background-processing",
+      "description": "Use when ABAP logic must run asynchronously or in the background in ABAP Cloud — choosing between the Background Processing Framework (bgPF), the Application Jobs API, and bgRFC; implementing bgPF operation classes with if_bgmc_op_single or if_bgmc_op_single_tx_uncontr and starting them via cl_bgmc_process_factory (controlled vs uncontrolled transactions, transactional vs queued); building application jobs with if_apj_dt_exec_object and if_apj_rt_exec_object plus job catalog entries and job templates; scheduling and monitoring jobs from code with cl_apj_rt_api, including from a RAP action's save phase; and writing or reading the Application Log via the BALI API (cl_bali_log, cl_bali_log_db, cl_bali_free_text_setter). Triggers include run this in the background, schedule an application job, job catalog entry, job template, bgPF, write to the application log, read the BAL log, asynchronous processing in RAP, and show job status in Fiori.",
+      "path": ".claude/skills/abap-background-processing/SKILL.md"
+    },
+    {
+      "name": "abap-builtin-functions",
+      "description": "Use when calling ABAP built-in functions (numeric, string, table, logical, type/describe), handling dates / times / time stamps (types d, t, utclong, timestamp, timestampl; sy-datum/sy-uzeit; cl_abap_context_info, XCO_CP_TIME, CONVERT, GET TIME STAMP), or doing numeric operations — rounding (round / ceil / floor / trunc / frac / rescale), integer vs packed vs decfloat vs binary-float type choice, the calculation type and conversion rules in mixed arithmetic, / DIV MOD and ** operators, overflow and zero-division handling, type conversions inside calculations, or utility functions like line_exists / line_index / lines / abs / sign / nmin / nmax. Covers classic ABAP and ABAP Cloud (Steampunk). Distilled from SAP's official ABAP cheat sheets.",
+      "path": ".claude/skills/abap-builtin-functions/SKILL.md"
+    },
+    {
+      "name": "abap-business-configuration",
+      "description": "Use when building or maintaining business configuration (customizing) in ABAP Cloud — creating a RAP-based Business Configuration Maintenance Object (BCMO) so business users can maintain a customizing table in ABAP Cloud through the Custom Business Configurations Fiori app, generating the objects with the ADT Generate ABAP Repository Objects wizard, registering a service binding through the mbc_cp_api Maintain Business Configurations API, recording changes on customizing transport requests inside the RAP save sequence, or activating Business Configuration Sets with the runtime API. Covers delivery-class-C client-dependent tables, language-dependent text tables, S_TABU_NAM authorization and IAM apps, transport patterns across software components, and CL_SCPR_CD_BCSET_ACTIVATION. Triggers include business configuration maintenance object, customizing table in ABAP Cloud, Custom Business Configurations app, transport customizing, BC set, MBC, SMBC, delivery class C, and record changes on transport request.",
+      "path": ".claude/skills/abap-business-configuration/SKILL.md"
+    },
+    {
+      "name": "abap-classic-ui",
+      "description": "Use when reading, maintaining, or debugging classic SAP GUI UIs — dynpros (screens with PBO/PAI flow logic, OK_CODE/sy-ucomm, CALL/SET/LEAVE SCREEN, LOOP AT SCREEN), selection screens (PARAMETERS, SELECT-OPTIONS, SELECTION-SCREEN blocks/comments/pushbuttons, AT SELECTION-SCREEN events, variants, the ranges/selection table with sign/option/low/high), and classic lists (WRITE, FORMAT, AT LINE-SELECTION, HIDE, READ LINE, interactive lists). Also for understanding REUSE_ALV / CL_GUI_ALV_GRID / CL_SALV_TABLE in legacy reports. This is LEGACY maintenance territory — for new UI use RAP + Fiori.",
+      "path": ".claude/skills/abap-classic-ui/SKILL.md"
+    },
+    {
+      "name": "abap-clean-style",
+      "description": "Use when writing new ABAP, reviewing existing ABAP for Clean ABAP compliance, deciding naming, choosing between modern (NEW #, VALUE #, inline data) and legacy (CREATE OBJECT, CONCATENATE, MOVE) syntax, designing class visibility, picking the right exception class type, or weighing whether to add a comment. Pulls SAP's official Clean ABAP rules into a scannable reference so you do not need to re-derive style from first principles each time.",
+      "path": ".claude/skills/abap-clean-style/SKILL.md"
+    },
+    {
+      "name": "abap-cloud-development",
+      "description": "Use when working in ABAP Cloud / Steampunk (SAP BTP ABAP environment, S/4HANA Cloud, embedded Steampunk), choosing the ABAP language version (Standard ABAP / ABAP for Key Users / ABAP for Cloud Development), figuring out what is allowed or forbidden in ABAP Cloud and S/4HANA Cloud, finding the released API for a classic construct, checking whether an object is released (release contract C0/C1), navigating ABAP release news version-by-version, picking the right released class (XCO, cl_abap_context_info, cl_abap_*_utilities), or using generative AI in ABAP (ABAP AI SDK / Intelligent Scenario Lifecycle Management). This is the single source of truth other ABAP skills cite for cloud restrictions and released objects.",
+      "path": ".claude/skills/abap-cloud-development/SKILL.md"
+    },
+    {
+      "name": "abap-code-review",
+      "description": "Use when reviewing ABAP code — a diff, a class, a function group, an enhancement, or a CDS view. Produces a disciplined, severity-scored review (Critical / Important / Nit) with file:line citations, confidence threshold, and one concrete fix per finding. Pulls in clean-style, sql-performance, oo-patterns, and modernization skills as the code under review demands.",
+      "path": ".claude/skills/abap-code-review/SKILL.md"
+    },
+    {
+      "name": "abap-constructor-expressions",
+      "description": "Use when constructing or transforming ABAP data with constructor operators — VALUE (structures, internal tables, ranges, deep/nested), CORRESPONDING (MAPPING/EXCEPT/BASE/DEEP/DISCARDING DUPLICATES/lookup tables), NEW (anonymous data objects and instances), REF (data references), CAST (up/downcasts, RTTS), CONV (forced conversions), EXACT (lossless), COND / SWITCH (conditional results, THROW), REDUCE (folds), FILTER (USING KEY / WHERE / EXCEPT / filter tables); or when writing inline table/structure construction, LET helper variables, or FOR iteration expressions (FOR ... IN, FOR ... UNTIL/WHILE, THEN, STEP, FROM/TO, INDEX INTO, nested/multiple FOR, FOR GROUPS ... GROUP BY). Pulls SAP's official Constructor Expressions cheat sheet into one scannable reference with verbatim syntax.",
+      "path": ".claude/skills/abap-constructor-expressions/SKILL.md"
+    },
+    {
+      "name": "abap-data-objects",
+      "description": "Use when declaring ABAP data types or data objects, choosing TYPES vs DATA, picking a built-in elementary type (i, int8, p, decfloat16/34, f, c, n, x, d, t, utclong, string, xstring), defining or operating on structures (flat, nested, deep, INCLUDE TYPE/STRUCTURE, MOVE-CORRESPONDING and CORRESPONDING # with BASE/MAPPING/EXCEPT/DEEP), working with data references (TYPE REF TO data, REF #, GET REFERENCE, dereferencing ->*, up/downcast), creating anonymous data objects (NEW, CREATE DATA), constants and immutable variables (CONSTANTS, FINAL), generic types for parameters and field symbols (any, data, clike, csequence, numeric, simple, any/index/sorted/standard table), enumerated types, ranges tables, or doing bit/byte operations on xstring. Distilled from SAP's official ABAP cheat sheets.",
+      "path": ".claude/skills/abap-data-objects/SKILL.md"
+    },
+    {
+      "name": "abap-dictionary-ddic",
+      "description": "Use when working with the ABAP Dictionary (DDIC) — defining database tables, data elements, domains, structures, table types, or search helps; setting technical settings (delivery class, data class, size category, buffering); handling currency/quantity fields with their CUKY/UNIT reference fields; choosing built-in DDIC types vs ABAP types; or deciding whether to model something in DDIC or in ABAP CDS. Triggers: ABAP Dictionary, DDIC, database tables, data elements, domains, structures, table types, search helps, technical settings, buffering, currency field, quantity field, DDIC vs CDS, released DDIC, ADT table definition.",
+      "path": ".claude/skills/abap-dictionary-ddic/SKILL.md"
+    },
+    {
+      "name": "abap-dynamic-programming",
+      "description": "Use when writing or reviewing dynamic ABAP — field symbols (FIELD-SYMBOLS, ASSIGN, ASSIGN COMPONENT, UNASSIGN, IS ASSIGNED); data references (TYPE REF TO data, CREATE DATA, GET REFERENCE, ->* dereferencing); RTTI / run-time type identification with cl_abap_typedescr and its subclasses (elemdescr, structdescr, tabledescr, refdescr, classdescr, intfdescr) via describe_by_data / describe_by_name / describe_by_object_ref; RTTC run-time type creation with CREATE DATA ... TYPE HANDLE; dynamic CREATE DATA / CREATE OBJECT; dynamic SQL (dynamic SELECT field list, FROM, WHERE, ORDER BY); dynamic method / function-module calls with PARAMETER-TABLE; generic programming; or deciding whether a dynamic technique is worth its cost.",
+      "path": ".claude/skills/abap-dynamic-programming/SKILL.md"
+    },
+    {
+      "name": "abap-internal-tables",
+      "description": "Use when declaring or working with internal tables — choosing between STANDARD, SORTED, and HASHED table kinds; defining primary or secondary keys; reading lines with READ TABLE, table expressions itab[ ], or LOOP AT (with WHERE / FROM TO / USING KEY); modifying with MODIFY, INSERT, APPEND, DELETE, or COLLECT; deduplicating with SORT and DELETE ADJACENT DUPLICATES; grouping with LOOP AT ... GROUP BY; or fixing a slow linear key search. Covers ABAP Cloud as well as classic.",
+      "path": ".claude/skills/abap-internal-tables/SKILL.md"
+    },
+    {
+      "name": "abap-modernization-playbook",
+      "description": "Use when deciding whether to modernize a piece of legacy ABAP — converting FORM/PERFORM to a method, MACRO to a method, classical DB SELECT to a CDS view, function module to a class, classic ALV to RAP/Fiori, modification to BAdI/enhancement, or migrating to ABAP Cloud / Steampunk. Includes \"do not touch\" signals so you don't break working code for the sake of style.",
+      "path": ".claude/skills/abap-modernization-playbook/SKILL.md"
+    },
+    {
+      "name": "abap-odata",
+      "description": "Use when creating, exposing, or consuming OData services in ABAP beyond RAP business-object modeling — choosing between a classic SEGW project (OData V2, on-premise), CDS-based exposure via SADL (@OData.publish, referenced data source), and a RAP service definition plus service binding; understanding OData V2 vs V4 differences that matter in ABAP; activating and registering services on-premise via /IWFND/MAINT_SERVICE and ICF versus publishing service bindings and communication arrangements in ABAP Cloud; consuming external OData through a service consumption model in ADT, the OData client proxy factories, or plain HTTP clients (cl_web_http_client_manager versus cl_http_client); and testing with /IWFND/GW_CLIENT, /IWFND/ERROR_LOG, or the ADT preview. Triggers include create OData service, SEGW, expose CDS view as OData, service binding, OData V2 vs V4, consume external OData, OData client proxy, service consumption model, communication arrangement, CSRF token, $batch, and $metadata error.",
+      "path": ".claude/skills/abap-odata/SKILL.md"
+    },
+    {
+      "name": "abap-oo-patterns",
+      "description": "Use when designing or refactoring ABAP classes — picking a class structure, choosing between inheritance and composition, designing an exception class hierarchy, deciding on factory vs direct construction, splitting a god class, designing for testability with dependency injection, or applying a classic OO pattern (Strategy, Template Method, Observer, Decorator) in ABAP's specific constraints. Pulls Clean ABAP class rules into actionable design guidance.",
+      "path": ".claude/skills/abap-oo-patterns/SKILL.md"
+    },
+    {
+      "name": "abap-output-management",
+      "description": "Use when ABAP Cloud code must produce output for people — sending email with the BCS mail API (cl_bcs_mail_message recipients, HTML/plain body parts, binary attachments, send vs send_async and the COMMIT WORK dependency); creating and rendering email templates (ADT editor, CDS-backed placeholders, cl_smtg_email_templ_renderer); knowing the SMTP configuration boundary (communication arrangement SAP_COM_0548, allowlists via cl_bcs_mail_system_config); printing through print queues (cl_print_queue_utils); rendering Adobe/ADS print forms from XDP templates (cl_fp_ads_util, cl_fp_form_reader, RAP form data via cl_fp_fdp_services); and merging PDFs (cl_rspo_pdf_merger). Triggers include send an email from ABAP, email template, email attachment, send_async, cl_bcs_mail_message, print a PDF, print queue, adobe form, ADS rendering, XDP form template, form data provider, merge PDF files, SAP_COM_0548, Monitor Email Transmissions, and output management in ABAP Cloud.",
+      "path": ".claude/skills/abap-output-management/SKILL.md"
+    },
+    {
+      "name": "abap-parallel-processing",
+      "description": "Use when ABAP work should be split across multiple work processes to cut elapsed time — deciding whether parallelization pays at all (data-intensive, independent work units) or whether the work belongs in the database or a background framework instead; implementing worker classes with IF_ABAP_PARALLEL whose instances carry the work-unit state; fanning out with CL_ABAP_PARALLEL's run_inst (instance tables cl_abap_parallel=>t_in_inst_tab / t_out_inst_tab) or the serialized run variant with xstring in/out tables; sizing the fan-out with constructor parameters such as p_num_tasks, p_percentage, and p_local_server; collecting and merging per-task results and message info; and understanding the aRFC/free-dialog-work-process mechanics and per-task LUW isolation underneath. Triggers include CL_ABAP_PARALLEL, IF_ABAP_PARALLEL, run_inst, parallelize this loop, process in parallel tasks, speed up mass processing, parallel processing in ABAP Cloud, STARTING NEW TASK, aRFC, and SPTA framework.",
+      "path": ".claude/skills/abap-parallel-processing/SKILL.md"
+    },
+    {
+      "name": "abap-sap-luw",
+      "description": "Use when reasoning about transactional consistency in ABAP — the SAP LUW vs the database LUW, when a database commit fires (implicit on dialog-step end / synchronous RFC / WAIT / message; explicit via COMMIT WORK, COMMIT CONNECTION, DB_COMMIT), COMMIT WORK [AND WAIT] / ROLLBACK WORK, bundling work so all changes land in one database LUW (update function modules with CALL FUNCTION ... IN UPDATE TASK and V1/V2 priority, PERFORM ... ON COMMIT / ON ROLLBACK, CALL FUNCTION ... IN BACKGROUND UNIT / bgRFC), SAP locking (ENQUEUE_/DEQUEUE_ function modules, lock objects, lock modes E/S/X) vs database locks, how the RAP save sequence and EML COMMIT ENTITIES / ROLLBACK ENTITIES map onto the classic LUW, the controlled SAP LUW (cl_abap_tx modify/save), and consistency pitfalls like premature commits or unreleased locks.",
+      "path": ".claude/skills/abap-sap-luw/SKILL.md"
+    },
+    {
+      "name": "abap-sql-performance",
+      "description": "Use when writing or reviewing ABAP SQL (also historically called Open SQL) — choosing between FOR ALL ENTRIES (FAE), INNER JOIN, and subquery; investigating an ST05 trace that shows slow or N+1 selects; deciding whether to push aggregation to the database; handling table buffering correctly; or auditing for SELECT *, missing WHERE, and unbounded reads. Includes ABAP Cloud (Steampunk) SQL restrictions. For the hypothesis-driven diagnosis workflow that produces the trace in the first place, use abap-systematic-debugging.",
+      "path": ".claude/skills/abap-sql-performance/SKILL.md"
+    },
+    {
+      "name": "abap-strings-regex",
+      "description": "Use when building or transforming strings in ABAP — string templates `|...{ }...|` with formatting options (NUMBER, DATE, TIME, CASE, WIDTH, ALIGN, PAD, SIGN, ALPHA), choosing string vs c, concatenation (CONCATENATE vs && vs templates), string functions (strlen, find, count, contains, matches, substring/substring_before/after/from/to, replace, condense, to_upper/to_lower, shift, translate, reverse, repeat, insert, segment, split), the FIND and REPLACE statements with ALL OCCURRENCES, or pattern matching with PCRE regular expressions, the FIND/REPLACE ... PCRE addition, the pcre parameter, and the cl_abap_regex / cl_abap_matcher OO API. Also when deciding regex vs plain string functions, or migrating obsolete POSIX REGEX to PCRE.",
+      "path": ".claude/skills/abap-strings-regex/SKILL.md"
+    },
+    {
+      "name": "abap-systematic-debugging",
+      "description": "Use when an ABAP runtime problem needs root cause analysis — a short dump (ST22), an application log error (SLG1), a performance regression (ST05 SQL trace, SAT runtime), an inconsistency between dev and prod, a \"works on my system\" report, or a flaky job (SM37). Forces a hypothesis-driven workflow so you stop guessing, start measuring, and stop fixing the wrong layer. This is the diagnosis process — once a trace points at a specific SQL statement, the fix itself lives in abap-sql-performance.",
+      "path": ".claude/skills/abap-systematic-debugging/SKILL.md"
+    },
+    {
+      "name": "abap-unit-tdd",
+      "description": "Use when writing ABAP Unit tests, applying TDD discipline in ABAP, designing test doubles for OO collaborators, replacing live DB calls with cl_osql_test_environment, doubling CDS views with cds_test_environment, mocking RAP behavior with the behavior test framework, or reviewing test code for risk_level / duration / determinism / isolation. Covers the TDD red-green-refactor cycle adapted to ABAP and the test-double catalog for OO, DB, CDS, and RAP.",
+      "path": ".claude/skills/abap-unit-tdd/SKILL.md"
+    },
+    {
+      "name": "abap-xco-library",
+      "description": "Use when working with the XCO (Extension Components) library in ABAP Cloud — \"read an XLSX in ABAP\", \"parse an uploaded Excel file\", \"xco_cp_xlsx\", \"write an XLSX from an internal table\", \"generate a class from code\", \"xco generation API\", \"xco_cp_generation\", \"generate a database table / CDS view / behavior definition programmatically\", \"RAP BO generation\", \"attach to transport xco_cp_cts\", \"create and release a transport request in code\", \"xco_cp=>sy\" (current date, time, moment, user, language in ABAP Cloud), \"XCO time library\" / \"xco_cp_time\", UUID format conversion (\"xco_cp_uuid\"), string helpers (\"xco_cp=>string\", split/join/camelCase), Base64 (\"xco_cp_binary\"), hash values (\"xco_cp_hash\"), XCO regular-expression engines, querying the ABAP Repository for objects (\"xco_cp_abap_repository\"), reading DDIC object metadata via XCO Read APIs, application logs (\"xco_cp_bal\"), or tenant / namespace / system information in the SAP BTP ABAP environment.",
+      "path": ".claude/skills/abap-xco-library/SKILL.md"
+    },
+    {
+      "name": "abap-xml-json",
+      "description": "Use when serializing or deserializing XML or JSON in ABAP — converting ABAP data (structures, internal tables, objects, references) to and from XML or JSON and back. Covers CALL TRANSFORMATION (SOURCE/RESULT, SOURCE XML / RESULT XML, SOURCE JSON / RESULT JSON), the predefined identity transformation ID, asXML and asJSON intermediate formats, Simple Transformations (ST) and XSL Transformations (XSLT) and when to pick each, the sXML serial library (cl_sxml_string_writer / cl_sxml_string_reader, token-based and object-oriented readers/writers, JSON-XML), the iXML DOM library, JSON via the ID transformation, /ui2/cl_json (serialize/deserialize, format_output, pretty_mode, name_mappings, generate), and XCO JSON (xco_cp_json) for ABAP Cloud. Also for serializing IF_SERIALIZABLE_OBJECT instances, choosing between transformation / sXML / JSON class, and string<->xstring conversion for binary XML/JSON payloads.",
+      "path": ".claude/skills/abap-xml-json/SKILL.md"
+    },
+    {
+      "name": "cds-entity-types",
+      "description": "Use when choosing or implementing a CDS artifact kind beyond a plain view — deciding between define view entity, define root view entity, projection views with provider contracts (transactional_query, transactional_interface, analytical_query), abstract entities, custom entities, table functions, hierarchies, and view extensions; implementing a custom entity query provider with if_rap_query_provider (paging, filter ranges, sorting, aggregation, $count, set_data); or exposing non-database data such as a released API, application logs, change documents, or an external HTTP/OData service through CDS and RAP. Triggers include \"custom entity\", \"if_rap_query_provider\", \"expose an API as CDS\", \"how do I call an API in RAP\", \"unmanaged query\", \"abstract entity for action parameter\", \"CDS table function\", \"define hierarchy\", \"extend view entity\", \"value help custom entity\", and \"@ObjectModel.query.implementedBy\".",
+      "path": ".claude/skills/cds-entity-types/SKILL.md"
+    },
+    {
+      "name": "cds-views-authoring",
+      "description": "Use when writing or reviewing CDS views — choosing between basic interface, composite, and consumption views; picking the right annotations (@AbapCatalog, @AccessControl, @EndUserText, @ObjectModel, @Search, @UI, @Consumption); deciding association vs join; handling parameters and table functions; avoiding deep view chains and join expansion surprises; or working within ABAP Cloud / Steampunk DDIC restrictions. For artifact kinds beyond a plain view (provider contracts, custom and abstract entities, table function implementations, hierarchies) use cds-entity-types; for Fiori Elements @UI annotation depth use fiori-elements-ui-annotations.",
+      "path": ".claude/skills/cds-views-authoring/SKILL.md"
+    },
+    {
+      "name": "enhancements-extensibility",
+      "description": "Use when choosing how to extend standard SAP behavior — picking between classic BAdI, new BAdI, implicit enhancement, customer exit, user-exit, modification, RAP extension (virtual element / association / determination / action), or side-by-side (BTP) extension. Covers ABAP Cloud / Steampunk restrictions and provides a decision tree so you do not pick the wrong tool and pay for it at the next upgrade.",
+      "path": ".claude/skills/enhancements-extensibility/SKILL.md"
+    },
+    {
+      "name": "fiori-elements-ui-annotations",
+      "description": "Use when shaping a RAP/CDS-based Fiori Elements List Report or Object Page with CDS annotations — placing @UI.* in metadata extensions and wiring the @Search, @Consumption, and @ObjectModel.text companions. Covers @UI.lineItem, add a column to the list report, object page facet, @UI.facet, field group, header info, selection field, presentation variant, value help annotation, @Consumption.valueHelpDefinition, criticality color, criticalityRepresentation, data point, rating or progress indicator, micro chart, field shows ID instead of text, @UI.textArrangement, @UI.hidden, intent-based navigation, and action buttons via type #FOR_ACTION. Also disambiguates what is NOT an annotation — side effects, draft indicators, mandatory/read-only field control, and action enable/disable live in the behavior definition. Applies to OData V4 RAP apps with metadata extensions on the projection view; grounded in SAP's Fiori Elements Feature Showcase for the ABAP platform.",
+      "path": ".claude/skills/fiori-elements-ui-annotations/SKILL.md"
+    },
+    {
+      "name": "rap-actions-validations-determinations",
+      "description": "Use when declaring or implementing behavior inside a RAP behavior definition and its behavior pool — actions (instance, static, factory, internal, repeatable, with parameter or result), validations on save, determinations on modify / on save, determine actions, static and dynamic feature control, and prechecks. Covers the BDEF grammar and the matching handler signature and implementation for each — FOR MODIFY ... FOR ACTION with %param and RESULT, FOR VALIDATE ON SAVE with failed/reported and %element, FOR DETERMINE ON MODIFY / ON SAVE, FOR INSTANCE FEATURES / FOR GLOBAL FEATURES with if_abap_behv=>fc constants, FOR PRECHECK — plus the execution order across the interaction phase and save sequence, and how behavior surfaces in projection BDEFs. Triggers include add an action to my BO, factory action to copy an instance, action with a parameter, validation not firing, determination loop, on modify vs on save, disable an action dynamically, grey out the button, and precheck vs validation.",
+      "path": ".claude/skills/rap-actions-validations-determinations/SKILL.md"
+    },
+    {
+      "name": "rap-bo-modeling",
+      "description": "Use when designing or implementing a RAP (RESTful ABAP Programming Model) business object — choosing managed vs unmanaged vs draft-enabled, writing behavior definitions (BDEF), scaffolding the behavior pool, the projection layer, and the service binding, and wiring CRUD end-to-end. Pulls the RAP architecture into one place so you can scaffold a BO. For the depth of actions, validations, determinations, and feature control use rap-actions-validations-determinations; for consuming or testing a BO via EML statements use rap-eml; for save-sequence enhancements and numbering use rap-saves-and-numbering.",
+      "path": ".claude/skills/rap-bo-modeling/SKILL.md"
+    },
+    {
+      "name": "rap-business-events-side-effects",
+      "description": "Use when defining, raising, or consuming RAP business events, or when declaring RAP side effects so a Fiori Elements UI reloads the right data. Covers event definitions in the behavior definition (event with parameter, CDS abstract entity payload, managed derived events, event for side effects), raising events with RAISE ENTITY EVENT in the RAP save phase, local consumption via event handler classes (FOR EVENTS OF, CL_ABAP_BEHAVIOR_EVENT_HANDLER), external consumption via event bindings, Enterprise Event Enablement, SAP Event Mesh, and the Event Consumption Model, the side effects block with its triggers (field, action, $self, determine action, event) and targets (field, entity, permissions, messages), enabling side effects in the projection behavior definition, and how determinations, side effects, and events differ. Triggers include RAP event, business event, raise entity event, event binding, event mesh, consume event, side effects, affects field, field not refreshing, and UI refresh after action.",
+      "path": ".claude/skills/rap-business-events-side-effects/SKILL.md"
+    },
+    {
+      "name": "rap-eml",
+      "description": "Use when consuming, modifying, or testing RAP business objects from ABAP code with EML (Entity Manipulation Language) — MODIFY ENTITIES (CREATE, CREATE BY association, UPDATE, DELETE, EXECUTE action), READ ENTITIES (FIELDS WITH, ALL FIELDS WITH, BY association), COMMIT ENTITIES, ROLLBACK ENTITIES, GET PERMISSIONS, SET LOCKS, and the BDEF derived types behind them (TYPE TABLE FOR CREATE, TYPE RESPONSE FOR FAILED) with components %cid, %cid_ref, %key, %tky, %pky, %pid, %is_draft, %control, %element, %param, %msg, %fail, %target and constants like if_abap_behv=>mk-on. Trigger phrases include \"read a RAP BO from code\", \"create an instance via EML\", \"%control\", \"%tky vs %key\", \"COMMIT ENTITIES failed\", \"sy-subrc after COMMIT ENTITIES\", \"IN LOCAL MODE\", \"AUTO FILL CID\", \"deep create with %cid_ref\", \"mapped failed reported\", \"MAPPING FROM ENTITY\", \"EML in ABAP Unit tests\". Covers consumer-side EML and the additions that exist only inside behavior pools.",
+      "path": ".claude/skills/rap-eml/SKILL.md"
+    },
+    {
+      "name": "rap-saves-and-numbering",
+      "description": "Use when a RAP business object's save handling or key assignment goes beyond the managed defaults — understanding what the managed runtime does in each phase of the RAP save sequence (finalize, check_before_save, adjust_numbers, save, cleanup), implementing a saver class, enhancing a managed BO with additional save (change documents, application log, business events), replacing persistence with unmanaged save and save_modified, implementing a fully unmanaged BO, or wrapping legacy APIs — wrap a BAPI in RAP, function modules that must not COMMIT WORK, bgPF handoff. Covers the complete numbering matrix: early vs late, internal vs external, managed UUID numbering, early numbering with FOR NUMBERING handlers, and late numbering with adjust_numbers, %pid, %tmp/%pre, and CONVERT KEY. Also the transactional phase rules — what is allowed or forbidden in the interaction phase, the early save phase, and the late save phase of a RAP transaction.",
+      "path": ".claude/skills/rap-saves-and-numbering/SKILL.md"
+    }
+  ]
+}

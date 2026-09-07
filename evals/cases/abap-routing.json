@@ -1,0 +1,114 @@
+[
+  {
+    "id": "route-rap-actions-single",
+    "target_agent": "abap-kebap-developer",
+    "prompt": "Implement an action and a validation for this existing managed RAP business object.",
+    "routing": {
+      "required_clusters": ["rap-business-object"],
+      "forbidden_clusters": ["cds-data-model", "async-processing", "repository-tooling", "rap-fiori-ui"]
+    }
+  },
+  {
+    "id": "route-odata-single",
+    "target_agent": "abap-kebap-developer",
+    "prompt": "Expose this existing business object through OData. That is the only concern for this task.",
+    "routing": {
+      "required_clusters": ["service-integration"],
+      "forbidden_clusters": ["async-processing", "repository-tooling", "output-management", "rap-business-object"]
+    }
+  },
+  {
+    "id": "route-regex-standalone",
+    "target_agent": "abap-kebap-developer",
+    "prompt": "How do named regex capture groups work in ABAP?",
+    "routing": {
+      "required_standalone_skills": ["abap-strings-regex"]
+    }
+  },
+  {
+    "id": "route-rap-fiori-composition",
+    "target_agent": "abap-kebap-developer",
+    "prompt": "Build a managed RAP business object and add Fiori Elements UI annotations (@UI.lineItem etc.) for it.",
+    "routing": {
+      "required_clusters": ["rap-business-object", "rap-fiori-ui"],
+      "forbidden_clusters": ["async-processing", "repository-tooling"]
+    }
+  },
+  {
+    "id": "route-corresponding-no-cds",
+    "target_agent": "abap-kebap-developer",
+    "prompt": "Explain how CORRESPONDING #( ) works in ABAP — purely the language construct, no CDS or RAP context.",
+    "routing": {
+      "forbidden_clusters": ["cds-data-model", "rap-business-object"]
+    }
+  },
+  {
+    "id": "route-cds-association-boundary",
+    "target_agent": "abap-kebap-developer",
+    "prompt": "Add an association between two existing CDS views. There is no RAP behavior involved — this is a pure data-model change.",
+    "routing": {
+      "required_clusters": ["cds-data-model"],
+      "forbidden_clusters": ["rap-business-object", "rap-fiori-ui"]
+    }
+  },
+  {
+    "id": "route-commit-work-boundary",
+    "target_agent": "abap-kebap-developer",
+    "prompt": "Explain exactly when COMMIT WORK triggers an actual database commit versus just closing the SAP LUW.",
+    "routing": {
+      "required_clusters": ["transaction-luw"],
+      "forbidden_clusters": ["async-processing"]
+    }
+  },
+  {
+    "id": "route-rap-async-composition",
+    "target_agent": "abap-kebap-developer",
+    "prompt": "After a RAP business object's save completes, schedule expensive follow-up processing asynchronously in the background.",
+    "routing": {
+      "required_clusters": ["rap-business-object", "async-processing"]
+    }
+  },
+  {
+    "id": "route-pure-fiori-ui-boundary",
+    "target_agent": "abap-kebap-developer",
+    "prompt": "Add @UI.lineItem and value-help annotations on top of an existing CDS projection for a Fiori Elements list report. No RAP behavior is being changed.",
+    "routing": {
+      "required_clusters": ["rap-fiori-ui"],
+      "forbidden_clusters": ["rap-business-object"]
+    }
+  },
+  {
+    "id": "route-architect-rap-bo-design",
+    "target_agent": "abap-kebap-architect",
+    "prompt": "Design the shape, save strategy, and authorization model for a new RAP business object.",
+    "routing": {
+      "required_clusters": ["rap-business-object"]
+    }
+  },
+  {
+    "id": "route-architect-service-architecture",
+    "target_agent": "abap-kebap-architect",
+    "prompt": "Design how this service should be exposed through OData.",
+    "routing": {
+      "required_clusters": ["service-architecture"],
+      "forbidden_clusters": ["rap-business-object", "async-architecture", "transaction-architecture"],
+      "forbidden_standalone_skills": ["fiori-elements-ui-annotations"]
+    }
+  },
+  {
+    "id": "route-reviewer-rap-bo-cds",
+    "target_agent": "abap-kebap-reviewer",
+    "prompt": "Review this RAP business object and its CDS projection for authorization, exposure, and design issues.",
+    "routing": {
+      "required_clusters": ["rap-bo-cds"]
+    }
+  },
+  {
+    "id": "route-reviewer-sql-hana-performance",
+    "target_agent": "abap-kebap-reviewer",
+    "prompt": "Review this report for AMDP/HANA pushdown opportunities — the current implementation loops over internal tables to do aggregation the database should do.",
+    "routing": {
+      "required_clusters": ["sql-hana-performance"]
+    }
+  }
+]

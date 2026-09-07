@@ -117,9 +117,30 @@
     {
       "id": "developer-agent-always-loads-clean-style",
       "kind": "required",
-      "pattern": "Always load `abap-clean-style` before generating any ABAP",
+      "pattern": "- abap-clean-style",
       "in": ".claude/agents/abap-kebap-developer.md",
-      "note": "Project policy: abap-clean-style is loaded unconditionally before any ABAP generation, not only when the task maps to the style row. Locked after a review found the load was conditional and single-letter identifiers slipped into generated code."
+      "note": "Project policy: abap-clean-style is active before any ABAP generation, not only when the task maps to the style row. Locked after a review found the load was conditional and single-letter identifiers slipped into generated code. Now enforced structurally — abap-clean-style must sit in the developer agent's `skills:` frontmatter so its full content (incl. the naming grid) is preloaded into the subagent at startup, independent of any Skill-tool call."
+    },
+    {
+      "id": "developer-agent-states-naming-convention-unconditional",
+      "kind": "required",
+      "pattern": "Follow the shipped naming convention.",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "Independent lock on the naming-convention instruction paragraph itself (separate from the frontmatter-membership check above) — a prior external redesign deleted this whole paragraph while leaving the frontmatter check passing under a rewritten pattern, so the two checks must not share one point of failure."
+    },
+    {
+      "id": "architect-agent-states-naming-convention",
+      "kind": "required",
+      "pattern": "Design names to the shipped naming convention",
+      "in": ".claude/agents/abap-kebap-architect.md",
+      "note": "The architect must propose names per the shipped naming convention, not Clean ABAP's prefix-free default, before development starts."
+    },
+    {
+      "id": "reviewer-agent-states-naming-convention",
+      "kind": "required",
+      "pattern": "Hungarian prefixes are *not* a finding",
+      "in": ".claude/agents/abap-kebap-reviewer.md",
+      "note": "The reviewer must judge naming against the shipped Hungarian convention, not flag it as a Clean ABAP violation."
     },
     {
       "id": "unit-tdd-rap-test-no-bare-commit-entities",

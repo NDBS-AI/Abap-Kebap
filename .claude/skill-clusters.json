@@ -1,0 +1,312 @@
+{
+  "version": 1,
+  "note": "Hand-maintained. Role-scoped: the same domain needs different skills for design (architect) vs implementation (developer) vs review (reviewer). Every name in an 'includes' list must exist in .claude/skill-index.json — validated by scripts/validate_skills.py. A cluster's own Tier-1 preloaded skills (this agent's `skills:` frontmatter) are deliberately omitted from 'includes' to avoid a redundant re-load instruction; the routing algorithm dedupes regardless.",
+  "standalone_skills": {
+    "note": "Skills intentionally reachable ONLY via .claude/skill-index.json standalone lookup (Tier 3) — no cluster fits them, and they don't need one. Listing a name here suppresses the 'orphaned skill' hard error for it; scripts/validate_skills.py errors if a listed name isn't a real skill, or if it's ALSO covered by some cluster (redundant — remove it from one or the other).",
+    "skills": [
+      "abap-builtin-functions",
+      "abap-business-configuration",
+      "abap-strings-regex"
+    ]
+  },
+  "clusters": {
+    "abap-kebap-developer": {
+      "rap-business-object": {
+        "description": "Implementing a RAP business object end-to-end: behavior, actions, validations, determinations, EML, save sequence, the CDS data model underneath it.",
+        "load_when": [
+          "implementing or extending a RAP BO's behavior, actions, validations, or determinations",
+          "writing EML to consume or test a RAP BO",
+          "implementing the save sequence or numbering for a RAP BO"
+        ],
+        "do_not_load_when": [
+          "the question is only generic CDS syntax with no RAP behavior involved",
+          "the question is only ABAP Unit syntax unrelated to RAP"
+        ],
+        "includes": [
+          "rap-bo-modeling",
+          "rap-actions-validations-determinations",
+          "rap-eml",
+          "rap-saves-and-numbering",
+          "cds-views-authoring",
+          "cds-entity-types"
+        ]
+      },
+      "rap-events-side-effects": {
+        "description": "RAP business events and Fiori-refresh side effects.",
+        "load_when": [
+          "the RAP BO raises or consumes business events, or needs Fiori-refresh side effects"
+        ],
+        "includes": [
+          "rap-business-events-side-effects"
+        ]
+      },
+      "rap-fiori-ui": {
+        "description": "The Fiori UI layer on top of a RAP BO: @UI annotations, metadata extensions, facets, value helps.",
+        "load_when": [
+          "the task includes @UI annotations, metadata extensions, facets, or value helps for the BO"
+        ],
+        "includes": [
+          "fiori-elements-ui-annotations"
+        ]
+      },
+      "cds-data-model": {
+        "description": "A CDS data model task with no RAP behavior involved: views, VDM layering, annotations, entity types.",
+        "load_when": [
+          "writing or modifying a CDS view, association, or annotation with no RAP behavior in scope",
+          "designing custom/abstract CDS entity types, table functions, or hierarchies"
+        ],
+        "do_not_load_when": [
+          "the task is really a RAP BO — use rap-business-object instead, it already includes the CDS skills",
+          "the task also needs Fiori UI annotations — add cluster rap-fiori-ui on top, don't expect this cluster to cover it"
+        ],
+        "includes": [
+          "cds-views-authoring",
+          "cds-entity-types",
+          "abap-dictionary-ddic"
+        ]
+      },
+      "classic-modernization": {
+        "description": "Converting legacy procedural or classic-UI ABAP toward modern OO/RAP constructs.",
+        "load_when": [
+          "converting FORM/PERFORM or a MACRO to a method",
+          "converting a classic ALV/dynpro report toward OO or RAP+Fiori"
+        ],
+        "includes": [
+          "abap-modernization-playbook",
+          "abap-oo-patterns",
+          "abap-classic-ui",
+          "enhancements-extensibility"
+        ]
+      },
+      "oo-core": {
+        "description": "Core OO design and data-handling questions not specific to RAP/CDS: classes, patterns, data objects, constructor expressions, internal tables.",
+        "load_when": [
+          "designing or refactoring classes, interfaces, or exception hierarchies",
+          "choosing a constructor expression (VALUE/CORRESPONDING/REDUCE/FILTER/COND/SWITCH) or an internal-table kind/key"
+        ],
+        "includes": [
+          "abap-oo-patterns",
+          "abap-data-objects",
+          "abap-constructor-expressions",
+          "abap-internal-tables"
+        ]
+      },
+      "sql-hana-performance": {
+        "description": "Database and HANA-pushdown performance work beyond core Open SQL (already Tier-1 preloaded for this role).",
+        "load_when": [
+          "pushing logic down to HANA via AMDP/SQLScript",
+          "internal-table access pattern is part of a performance investigation",
+          "table buffering, key, or DDIC design is implicated in the slowdown"
+        ],
+        "includes": [
+          "abap-amdp-hierarchies",
+          "abap-internal-tables",
+          "abap-dictionary-ddic"
+        ]
+      },
+      "transaction-luw": {
+        "description": "SAP LUW and locking correctness.",
+        "load_when": [
+          "reasoning about COMMIT/ROLLBACK WORK, ENQUEUE/DEQUEUE, or SAP LUW boundaries"
+        ],
+        "includes": [
+          "abap-sap-luw"
+        ]
+      },
+      "async-processing": {
+        "description": "Asynchronous or parallel execution.",
+        "load_when": [
+          "scheduling background jobs or fanning work out in parallel"
+        ],
+        "includes": [
+          "abap-background-processing",
+          "abap-parallel-processing"
+        ]
+      },
+      "service-integration": {
+        "description": "Exposing or consuming external services: OData, XML/JSON payloads.",
+        "load_when": [
+          "exposing or consuming an OData service",
+          "serializing/parsing XML or JSON"
+        ],
+        "includes": [
+          "abap-odata",
+          "abap-xml-json"
+        ]
+      },
+      "output-management": {
+        "description": "Print/forms/PDF output.",
+        "load_when": [
+          "generating a form, print output, or PDF"
+        ],
+        "includes": [
+          "abap-output-management"
+        ]
+      },
+      "repository-tooling": {
+        "description": "Generating repository objects from code and version control.",
+        "load_when": [
+          "generating a repository object via XCO",
+          "working with abapGit repositories"
+        ],
+        "includes": [
+          "abap-xco-library",
+          "abap-abapgit"
+        ]
+      },
+      "debugging": {
+        "description": "Root-causing a dump, trace, or runtime error before fixing it.",
+        "load_when": [
+          "diagnosing an ST22 dump, ST05/SAT trace, or an unexplained runtime error"
+        ],
+        "includes": [
+          "abap-systematic-debugging"
+        ]
+      }
+    },
+    "abap-kebap-architect": {
+      "rap-business-object": {
+        "description": "Designing a RAP business object's shape, save strategy, and authorization model (rap-bo-modeling and cds-views-authoring are already Tier-1 preloaded for this role).",
+        "load_when": [
+          "choosing managed/unmanaged/abstract RAP, draft, or the behavior contract shape",
+          "deciding the save sequence or numbering strategy",
+          "designing the authorization model for the BO"
+        ],
+        "includes": [
+          "cds-entity-types",
+          "rap-saves-and-numbering",
+          "abap-authorization"
+        ]
+      },
+      "rap-business-object-cloud": {
+        "description": "Addition to the RAP business object cluster when the target is ABAP Cloud / Steampunk.",
+        "load_when": [
+          "the RAP BO targets ABAP Cloud / Steampunk and released-API compatibility is a design constraint"
+        ],
+        "includes": [
+          "abap-cloud-development"
+        ]
+      },
+      "cds-data-model": {
+        "description": "Designing a CDS data model's layering, keys, and access control (cds-views-authoring is already Tier-1 preloaded for this role).",
+        "load_when": [
+          "deciding CDS VDM layering, associations, or entity-type choice",
+          "designing keys, buffering strategy, or the authorization model for the model"
+        ],
+        "includes": [
+          "cds-entity-types",
+          "abap-dictionary-ddic",
+          "abap-authorization"
+        ]
+      },
+      "extend-standard": {
+        "description": "Deciding how to extend standard SAP without modifying it.",
+        "load_when": [
+          "choosing between a BAdI, an implicit enhancement, or a RAP BO extension"
+        ],
+        "includes": [
+          "enhancements-extensibility",
+          "abap-modernization-playbook"
+        ]
+      },
+      "modernization-strategy": {
+        "description": "Deciding whether and how to modernize legacy ABAP toward OO, CDS, or ABAP Cloud.",
+        "load_when": [
+          "recommending FORM->method, DB SELECT->CDS, or ALV->RAP+Fiori",
+          "recommending a classic-to-cloud migration path"
+        ],
+        "includes": [
+          "abap-modernization-playbook",
+          "abap-oo-patterns",
+          "abap-cloud-development"
+        ]
+      },
+      "service-architecture": {
+        "description": "Architecture for OData exposure and service activation.",
+        "load_when": [
+          "designing OData exposure or service activation strategy"
+        ],
+        "includes": [
+          "abap-odata"
+        ]
+      },
+      "async-architecture": {
+        "description": "Architecture for asynchronous or parallel-fan-out execution.",
+        "load_when": [
+          "designing background-job, async, or parallel-fan-out architecture"
+        ],
+        "includes": [
+          "abap-background-processing",
+          "abap-parallel-processing"
+        ]
+      },
+      "transaction-architecture": {
+        "description": "Architecture for SAP LUW / transactional boundaries.",
+        "load_when": [
+          "designing SAP LUW / transactional boundaries or locking strategy"
+        ],
+        "includes": [
+          "abap-sap-luw"
+        ]
+      }
+    },
+    "abap-kebap-reviewer": {
+      "rap-bo-cds": {
+        "description": "Reviewing a RAP BO or CDS view for authorization, injection, exposure, and OO smells (abap-code-review, abap-clean-style, abap-sql-performance are already Tier-1 preloaded for this role).",
+        "load_when": [
+          "the artifact under review is a RAP BO or CDS view/projection"
+        ],
+        "includes": [
+          "abap-authorization",
+          "abap-dynamic-programming",
+          "abap-odata",
+          "abap-oo-patterns"
+        ]
+      },
+      "oo-classes": {
+        "description": "Reviewing OO classes and constructor-expression usage for design smells.",
+        "load_when": [
+          "the artifact under review is primarily class/interface design or constructor-expression usage"
+        ],
+        "includes": [
+          "abap-oo-patterns",
+          "abap-constructor-expressions",
+          "abap-internal-tables"
+        ]
+      },
+      "classic-procedural": {
+        "description": "Reviewing a classic report or procedural ABAP for modernization and OO opportunities.",
+        "load_when": [
+          "the artifact under review is a classic report, FORM/PERFORM, or procedural code"
+        ],
+        "includes": [
+          "abap-modernization-playbook",
+          "abap-oo-patterns",
+          "abap-internal-tables"
+        ]
+      },
+      "sql-hana-performance": {
+        "description": "Reviewing performance-critical SQL/HANA code beyond core Open SQL (already Tier-1 preloaded for this role).",
+        "load_when": [
+          "the artifact under review pushes logic to HANA (AMDP/SQLScript/table functions) or performance is the primary review lens"
+        ],
+        "includes": [
+          "abap-amdp-hierarchies",
+          "abap-internal-tables"
+        ]
+      },
+      "security-sensitive": {
+        "description": "Reviewing auth, dynamic code, or released-API exposure as the primary security lens.",
+        "load_when": [
+          "the review scope is explicitly security: authorization, dynamic SQL/ASSIGN, released-API exposure"
+        ],
+        "includes": [
+          "abap-authorization",
+          "abap-dynamic-programming",
+          "abap-cloud-development",
+          "abap-odata"
+        ]
+      }
+    }
+  }
+}

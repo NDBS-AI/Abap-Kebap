@@ -13,6 +13,10 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pyyaml
+      - name: Skill index is in sync
+        run: |
+          python scripts/generate_skill_index.py
+          git diff --exit-code -- .claude/skill-index.json
       - name: Validate skill and agent manifests
         run: python scripts/validate_skills.py
       - uses: actions/setup-node@v4
