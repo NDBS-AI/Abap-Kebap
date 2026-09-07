@@ -20,6 +20,7 @@ A walkable, copy-able checklist. Use it once per review. Mark items as `[x]` che
 ## Clean ABAP
 
 - [ ] Names reveal intent (no `lv_tmp`, `do_processing`)
+- [ ] Every local, parameter, and field symbol matches the shipped scope+type grid (`lv_`/`ls_`/`lt_`/`lo_`, `<fv_>`/`<fs_>`/`<ft_>`, `rv_`/`rs_`/`rt_`/`ro_`) — **reject single-letter identifiers** (`<k>`, `x`, `ls_p`). RAP framework names (`keys`, `entities`, `failed`, `reported`, `mapped`, `RESULT result`) stay bare, but a loop variable or local *derived* from them still takes the grid (`LOOP AT keys ASSIGNING <fs_key>`). See [abap-clean-style/references/naming-conventions.md](../../abap-clean-style/references/naming-conventions.md) §5.
 - [ ] No `CREATE OBJECT` on 7.40+
 - [ ] No `CONCATENATE … INTO` for new strings
 - [ ] No `CASE TYPE OF` in business logic

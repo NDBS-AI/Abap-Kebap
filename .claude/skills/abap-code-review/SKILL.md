@@ -97,7 +97,7 @@ For every review, walk through the bullets below. Each maps to a deeper skill â€
 
 | Check | Skill | What to look for |
 |---|---|---|
-| Naming + style | [abap-clean-style](../abap-clean-style/SKILL.md) | Hungarian leakage, `CREATE OBJECT`, `CASE TYPE OF` in business logic, magic literals, `MESSAGE 'X' TYPE 'E'` in business code |
+| Naming + style | [abap-clean-style](../abap-clean-style/SKILL.md) | Single-letter locals/field symbols (`<k>`, `x`), identifiers off the shipped scope+type grid (a loop var over `keys` is `<fs_key>`, not `<key>`), `CREATE OBJECT`, `CASE TYPE OF` in business logic, magic literals, `MESSAGE 'X' TYPE 'E'` in business code |
 | SQL hygiene | [abap-sql-performance](../abap-sql-performance/SKILL.md) | `SELECT *`, `SELECT â€¦ INTO TABLE` without `WHERE`, FAE without empty-check, FAE without DISTINCT, JOIN abuse, missing `ORDER BY` on top-N reads |
 | OO design | [abap-oo-patterns](../abap-oo-patterns/SKILL.md) | God classes (> ~500 LOC), public attributes, switch-on-type, public mutators that should be commands, missing `FINAL`, exception type mismatched to recoverability |
 | Error handling | [abap-clean-style](../abap-clean-style/SKILL.md#errors) | Empty `CATCH`, wrong exception base, `RAISE` with no `previous`, swallowed `cx_root`, `MESSAGE` instead of `RAISE` |

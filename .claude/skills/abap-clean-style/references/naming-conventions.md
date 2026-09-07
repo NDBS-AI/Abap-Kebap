@@ -99,6 +99,29 @@ the type letter of what they point at:
 | a structure | `<fs_...>` | `<fs_line>` |
 | an internal table | `<ft_...>` | `<ft_items>` |
 
+### Field symbols over RAP framework tables (the one collision)
+
+The `f`-scope grid still applies when you iterate a framework-populated table
+whose **name** is left bare per the §3 RAP note (`keys`, `entities`, …). The
+table keeps its reserved name; the field symbol you introduce over it is your
+own local, so it takes the grid — **not** a single letter:
+
+```abap
+METHOD get_features.
+  " `keys` is framework-populated — leave the name bare (§3).
+  " `<fs_key>` is your own local field symbol — it takes the grid.
+  LOOP AT keys ASSIGNING FIELD-SYMBOL(<fs_key>).
+    DATA(lv_travel_id) = <fs_key>-travel_id.   " local derived from keys → grid too
+    " ...
+  ENDLOOP.
+ENDMETHOD.
+```
+
+The RAP idiom you will see in SAP samples often writes `<key>` / `<k>` here.
+That is exactly the slip the grid forbids: a loop target, or any local derived
+from a framework parameter, is still a local — name it `<fs_key>`, `<fs_travel>`,
+`lv_travel_id`, etc. Only the framework-bound parameter names in §3 stay bare.
+
 ---
 
 ## 6. What does **not** get the scope+type grid
