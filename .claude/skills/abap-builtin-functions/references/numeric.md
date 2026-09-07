@@ -27,41 +27,41 @@ Calculations use numeric data objects or objects convertible to numeric types. O
 
 ```abap
 "Integers — i can be specified directly as a numeric literal
-DATA i_a TYPE i.
-i_a = 2.
-DATA i_b TYPE i VALUE 1.
-DATA(i_d) = 3.                  "automatically typed i
-FINAL(i_e) = 4.                 "immutable
-DATA(i_f) = CONV i( '4' ).
+DATA lv_i_a TYPE i.
+lv_i_a = 2.
+DATA lv_i_b TYPE i VALUE 1.
+DATA(lv_i_d) = 3.                  "automatically typed i
+FINAL(lv_i_e) = 4.                 "immutable
+DATA(lv_i_f) = CONV i( '4' ).
 
-DATA int8_b TYPE int8 VALUE 1.
-DATA(int8_d) = CONV int8( 2 ).
+DATA lv_int8_b TYPE int8 VALUE 1.
+DATA(lv_int8_d) = CONV int8( 2 ).
 
 "Packed — values must come from character literals interpretable as packed
-DATA p_d2 TYPE p LENGTH 16 DECIMALS 2 VALUE '8915050542191264935993694231.83-'.
+DATA lv_p_d2 TYPE p LENGTH 16 DECIMALS 2 VALUE '8915050542191264935993694231.83-'.
 TYPES ty_p_l8d2 TYPE p LENGTH 8 DECIMALS 2.   "length 8 -> 15 digits, 2 reserved for decimals
-DATA p_l8d2_a TYPE ty_p_l8d2.
-p_l8d2_a = '1234567890123.99-'.
-p_l8d2_a = '1234567890123.99+'.
-DATA(p_l8d2_c) = CONV ty_p_l8d2( '1.23' ).
+DATA lv_p_l8d2_a TYPE ty_p_l8d2.
+lv_p_l8d2_a = '1234567890123.99-'.
+lv_p_l8d2_a = '1234567890123.99+'.
+DATA(lv_p_l8d2_c) = CONV ty_p_l8d2( '1.23' ).
 
 "Decimal floating point
-DATA dec16 TYPE decfloat16 VALUE '0.7805874561940696'.        "16 places
-DATA dec34 TYPE decfloat34 VALUE '0.0587780463975441530508753423121495'. "34 places
+DATA lv_dec16 TYPE decfloat16 VALUE '0.7805874561940696'.        "16 places
+DATA lv_dec34 TYPE decfloat34 VALUE '0.0587780463975441530508753423121495'. "34 places
 
 "Binary floating point — not exact
-DATA float TYPE f VALUE '2.1643779466775481E-01'.
-float = CONV f( '0.815' ).                "8.1499999999999995E-01
-DATA(dec34_b) = CONV decfloat34( '0.815' ). "0.815
-ASSERT float <> dec34_b.
+DATA lv_float TYPE f VALUE '2.1643779466775481E-01'.
+lv_float = CONV f( '0.815' ).                "8.1499999999999995E-01
+DATA(lv_dec34_b) = CONV decfloat34( '0.815' ). "0.815
+ASSERT lv_float <> lv_dec34_b.
 ```
 
 ### Generic numeric field symbols
 
 ```abap
-FIELD-SYMBOLS <number> TYPE numeric.   "accepts i, int8, p, decfloat16/34, f
-FIELD-SYMBOLS <packed> TYPE p.         "accepts any packed type
-FIELD-SYMBOLS <dec>    TYPE decfloat.  "accepts decfloat16 / decfloat34
+FIELD-SYMBOLS <fv_number> TYPE numeric.   "accepts i, int8, p, decfloat16/34, f
+FIELD-SYMBOLS <fv_packed> TYPE p.         "accepts any packed type
+FIELD-SYMBOLS <fv_dec>    TYPE decfloat.  "accepts decfloat16 / decfloat34
 ```
 
 ### Notations in character-like fields
@@ -69,9 +69,9 @@ FIELD-SYMBOLS <dec>    TYPE decfloat.  "accepts decfloat16 / decfloat34
 Most types (except `i`) take their value from character literals. Which notation is allowed depends on the type:
 
 ```abap
-DATA(math_notation) = `- 123.45`.   "Mathematical: sign on the left (blank-separated allowed)
-DATA(comm_notation) = `123.45-`.    "Commercial:   sign on the right
-DATA(sci_notation)  = `-1.23456E03`."Scientific:   mantissa + E/e + exponent
+DATA(lv_math_notation) = `- 123.45`.   "Mathematical: sign on the left (blank-separated allowed)
+DATA(lv_comm_notation) = `123.45-`.    "Commercial:   sign on the right
+DATA(lv_sci_notation)  = `-1.23456E03`."Scientific:   mantissa + E/e + exponent
 ```
 
 | Type | Mathematical | Commercial | Scientific |
@@ -93,41 +93,41 @@ Operators: `+`, `-`, `*`, `/`, `DIV`, `MOD`, `**`. Parentheses prioritize. Opera
 - **`**`** — left to the power of right; **can produce type `f`** — use `ipow` to avoid `f`.
 
 ```abap
-DATA res TYPE i.
-res = 7 DIV 3.   "2 (integer part of 2.333…)
-res = 4 DIV 5.   "0
-res = 7 MOD 3.   "1
-res = 4 MOD 5.   "4
-res = 9 + 8 - 7. "10
-res = 1 + 1 * 3. "4  (* before +)
-res = 3 + 3 / 3. "4
-res = ( 3 + 3 ) / 3. "2
+DATA lv_res TYPE i.
+lv_res = 7 DIV 3.   "2 (integer part of 2.333…)
+lv_res = 4 DIV 5.   "0
+lv_res = 7 MOD 3.   "1
+lv_res = 4 MOD 5.   "4
+lv_res = 9 + 8 - 7. "10
+lv_res = 1 + 1 * 3. "4  (* before +)
+lv_res = 3 + 3 / 3. "4
+lv_res = ( 3 + 3 ) / 3. "2
 
 "** producing type f vs decfloat34
-DATA(power_result1) = 2 ** 5.                       "type f ('F')
-DATA(power_result2) = CONV decfloat34( '2' ) ** 5.  "type decfloat34 ('e')
+DATA(lv_power_result1) = 2 ** 5.                       "type f ('F')
+DATA(lv_power_result2) = CONV decfloat34( '2' ) ** 5.  "type decfloat34 ('e')
 ```
 
 Operands in arithmetic expressions may be: named/unnamed numeric data objects, objects convertible to numeric, numeric functions, or functional method calls returning numeric.
 
 ```abap
-result = 1 + '2'.                       "3 (char literal '2' converted)
-DATA str TYPE string VALUE `7      `.
-result = num + str.                     "convertible string operand
-result = 1 + ipow( base = 2 exp = 3 ).  "function operand -> 9
+lv_result = 1 + '2'.                       "3 (char literal '2' converted)
+DATA lv_str TYPE string VALUE `7      `.
+lv_result = lv_num + lv_str.                     "convertible string operand
+lv_result = 1 + ipow( base = 2 exp = 3 ).  "function operand -> 9
 TRY.
-    result = 1 + '#'.                   "non-convertible -> cx_sy_conversion_no_number
-  CATCH cx_sy_conversion_no_number INTO DATA(error).
+    lv_result = 1 + '#'.                   "non-convertible -> cx_sy_conversion_no_number
+  CATCH cx_sy_conversion_no_number INTO DATA(lo_error).
 ENDTRY.
 ```
 
 ### Rounding pitfalls with integer targets
 
 ```abap
-res = 1 / 3.            ASSERT res = 0.  "0.333 -> 0
-res = 2 / 3.            ASSERT res = 1.  "0.666 -> 1 (rounded)
-res = 3 * ( 1 / 3 ).    ASSERT res = 0.  "3 * 0
-res = 3 * ( 2 / 3 ).    ASSERT res = 3.  "3 * 1
+lv_res = 1 / 3.            ASSERT lv_res = 0.  "0.333 -> 0
+lv_res = 2 / 3.            ASSERT lv_res = 1.  "0.666 -> 1 (rounded)
+lv_res = 3 * ( 1 / 3 ).    ASSERT lv_res = 0.  "3 * 0
+lv_res = 3 * ( 2 / 3 ).    ASSERT lv_res = 3.  "3 * 1
 ```
 
 ---
@@ -150,21 +150,21 @@ Conversion rules for non-numeric operands:
 `type_kind` constants (from `cl_abap_typedescr`) seen in the examples: `'e'` = decfloat34, `'a'` = decfloat16, `'F'` = f, `'P'` = p, `'8'` = int8, `'I'` = i.
 
 ```abap
-DATA(res_dec_a) = 1 + CONV decfloat34( '1.1' ).                 "'e' decfloat34
-DATA(res_dec_c) = CONV decfloat16( '2.2' ) + 5.                 "'a' decfloat16
-DATA(res_dec_g) = CONV decfloat34( '2.2' ) + CONV f( '2.2E-01' )."'e' decfloat34 (outranks f)
-DATA(res_f_a)   = 1 + CONV f( '2.23645E-01' ).                  "'F' f
-DATA(res_int8_a)= CONV int8( 2 ) + 2.                           "'8' int8
-DATA(res_i_a)   = 2 + 5.                                        "'I' i
+DATA(lv_res_dec_a) = 1 + CONV decfloat34( '1.1' ).                 "'e' decfloat34
+DATA(lv_res_dec_c) = CONV decfloat16( '2.2' ) + 5.                 "'a' decfloat16
+DATA(lv_res_dec_g) = CONV decfloat34( '2.2' ) + CONV f( '2.2E-01' )."'e' decfloat34 (outranks f)
+DATA(lv_res_f_a)   = 1 + CONV f( '2.23645E-01' ).                  "'F' f
+DATA(lv_res_int8_a)= CONV int8( 2 ) + 2.                           "'8' int8
+DATA(lv_res_i_a)   = 2 + 5.                                        "'I' i
 ```
 
 > **Packed pitfall:** an inline-declared result of a `p` calculation gets `p LENGTH 8 DECIMALS 0` — length/decimals cannot be inferred, so decimals are lost. Declare the target explicitly; `##TYPE` suppresses the syntax warning.
 
 ```abap
-DATA p_l16d3 TYPE p LENGTH 16 DECIMALS 3 VALUE '1.234'.
-DATA(res_p_a) = p_l16d3 + 1 ##TYPE.
-ASSERT cl_abap_typedescr=>describe_by_data( res_p_a )->length   = 8.
-ASSERT cl_abap_typedescr=>describe_by_data( res_p_a )->decimals = 0.
+DATA lv_p_l16d3 TYPE p LENGTH 16 DECIMALS 3 VALUE '1.234'.
+DATA(lv_res_p_a) = lv_p_l16d3 + 1 ##TYPE.
+ASSERT cl_abap_typedescr=>describe_by_data( lv_res_p_a )->length   = 8.
+ASSERT cl_abap_typedescr=>describe_by_data( lv_res_p_a )->decimals = 0.
 ```
 
 Use `CONV` to adjust the calculation type on the right-hand side. For generally typed operands, the standard type is used.
@@ -176,11 +176,11 @@ Use `CONV` to adjust the calculation type on the right-hand side. For generally 
 `+=`, `-=`, `*=`, `/=` — shorthand for `a = a + ( b )` etc.
 
 ```abap
-DATA int_calc TYPE i.
-int_calc = 1.   int_calc += 1.  "2
-int_calc = 10.  int_calc -= 1.  "9
-int_calc = 5.   int_calc *= 3.  "15
-int_calc = 100. int_calc /= 2.  "50
+DATA lv_int_calc TYPE i.
+lv_int_calc = 1.   lv_int_calc += 1.  "2
+lv_int_calc = 10.  lv_int_calc -= 1.  "9
+lv_int_calc = 5.   lv_int_calc *= 3.  "15
+lv_int_calc = 100. lv_int_calc /= 2.  "50
 ```
 
 ---
@@ -198,36 +198,36 @@ int_calc = 100. int_calc /= 2.  "50
 
 ```abap
 TRY.
-    res = 2147483647 + 1.
-  CATCH cx_sy_arithmetic_overflow INTO DATA(e3).
+    lv_res = 2147483647 + 1.
+  CATCH cx_sy_arithmetic_overflow INTO DATA(lo_e3).
 ENDTRY.
 
 TRY.
-    res = 1 / 0.
-  CATCH cx_sy_zerodivide INTO DATA(e1).
+    lv_res = 1 / 0.
+  CATCH cx_sy_zerodivide INTO DATA(lo_e1).
 ENDTRY.
 TRY.
-    res = 0 / 0.                  "no exception
-  CATCH cx_sy_zerodivide INTO DATA(e2).
+    lv_res = 0 / 0.                  "no exception
+  CATCH cx_sy_zerodivide INTO DATA(lo_e2).
 ENDTRY.
-ASSERT e2 IS INITIAL.
+ASSERT lo_e2 IS INITIAL.
 ```
 
 ### Lossless calculations with EXACT
 
 ```abap
 TYPES ty_pl8d3 TYPE p LENGTH 8 DECIMALS 3.
-DATA(p_a) = EXACT ty_pl8d3( '123.987' ).   "ok
+DATA(lv_p_a) = EXACT ty_pl8d3( '123.987' ).   "ok
 TRY.
-    DATA(p_d) = EXACT ty_pl8d3( '123.9876' ). "4 decimals -> rounding needed
-  CATCH cx_sy_conversion_rounding INTO DATA(err).
+    DATA(lv_p_d) = EXACT ty_pl8d3( '123.9876' ). "4 decimals -> rounding needed
+  CATCH cx_sy_conversion_rounding INTO DATA(lo_err).
 ENDTRY.
 
 TYPES ty_pl8d2 TYPE p LENGTH 8 DECIMALS 2.
-DATA(p_e) = EXACT ty_pl8d2( 1 / 4 ).       "ok (0.25)
+DATA(lv_p_e) = EXACT ty_pl8d2( 1 / 4 ).       "ok (0.25)
 TRY.
-    DATA(p_g) = EXACT ty_pl8d2( 1 / 3 ).   "rounding -> exception
-  CATCH cx_sy_conversion_rounding INTO err.
+    DATA(lv_p_g) = EXACT ty_pl8d2( 1 / 3 ).   "rounding -> exception
+  CATCH cx_sy_conversion_rounding INTO lo_err.
 ENDTRY.
 ```
 
@@ -293,9 +293,9 @@ tan( '90' )                         "-1.9952…
 ### factorial / binomial
 
 ```abap
-DATA(result)    = factorial( count ).        "factorial of a positive integer
-DATA(bin_coeff) = binomial( n = n_val k = k_val ). "binomial coefficient
-"Large results: format with STYLE = SIMPLE, e.g. |{ result STYLE = SIMPLE }|
+DATA(lv_result)    = factorial( lv_count ).        "factorial of a positive integer
+DATA(lv_bin_coeff) = binomial( n = lv_n_val k = lv_k_val ). "binomial coefficient
+"Large results: format with STYLE = SIMPLE, e.g. |{ lv_result STYLE = SIMPLE }|
 ```
 
 ---
@@ -305,26 +305,26 @@ DATA(bin_coeff) = binomial( n = n_val k = k_val ). "binomial coefficient
 ### cl_abap_math — min/max constants & helpers
 
 ```abap
-DATA(min_int4)      = cl_abap_math=>min_int4.
-DATA(max_int4)      = cl_abap_math=>max_int4.
-DATA(max_int1)      = cl_abap_math=>max_int1.
-DATA(max_int2)      = cl_abap_math=>max_int2.
-DATA(max_int8)      = cl_abap_math=>max_int8.
-DATA(max_decfloat16)= cl_abap_math=>max_decfloat16.
-DATA(max_decfloat34)= cl_abap_math=>max_decfloat34.
+DATA(lv_min_int4)      = cl_abap_math=>min_int4.
+DATA(lv_max_int4)      = cl_abap_math=>max_int4.
+DATA(lv_max_int1)      = cl_abap_math=>max_int1.
+DATA(lv_max_int2)      = cl_abap_math=>max_int2.
+DATA(lv_max_int8)      = cl_abap_math=>max_int8.
+DATA(lv_max_decfloat16)= cl_abap_math=>max_decfloat16.
+DATA(lv_max_decfloat34)= cl_abap_math=>max_decfloat34.
 "…and min_* counterparts. Also holds rounding-mode constants for round( … mode = … ).
 ```
 
 ### cl_abap_random* — seeded random numbers
 
 ```abap
-DATA(random_i)     = cl_abap_random_int=>create( seed = cl_abap_random=>seed( )
+DATA(lv_random_i)     = cl_abap_random_int=>create( seed = cl_abap_random=>seed( )
                                                  min  = 1 max = 100 )->get_next( ).
-DATA(random_int8)  = cl_abap_random_int8=>create( seed = cl_abap_random=>seed( ) )->get_next( ).
-DATA(random_dec16) = cl_abap_random_decfloat16=>create( seed = cl_abap_random=>seed( ) )->get_next( ).
-DATA(random_dec34) = cl_abap_random_decfloat34=>create( seed = cl_abap_random=>seed( ) )->get_next( ).
-DATA(random_f)     = cl_abap_random_float=>create( seed = cl_abap_random=>seed( ) )->get_next( ).
-DATA(random_p)     = cl_abap_random_packed=>create( seed = cl_abap_random=>seed( ) )->get_next( ).
+DATA(lv_random_int8)  = cl_abap_random_int8=>create( seed = cl_abap_random=>seed( ) )->get_next( ).
+DATA(lv_random_dec16) = cl_abap_random_decfloat16=>create( seed = cl_abap_random=>seed( ) )->get_next( ).
+DATA(lv_random_dec34) = cl_abap_random_decfloat34=>create( seed = cl_abap_random=>seed( ) )->get_next( ).
+DATA(lv_random_f)     = cl_abap_random_float=>create( seed = cl_abap_random=>seed( ) )->get_next( ).
+DATA(lv_random_p)     = cl_abap_random_packed=>create( seed = cl_abap_random=>seed( ) )->get_next( ).
 "cl_abap_random_packed_dec1 … _dec14 for packed types with 1–14 decimals
 ```
 
@@ -333,20 +333,20 @@ DATA(random_p)     = cl_abap_random_packed=>create( seed = cl_abap_random=>seed(
 Use for large numbers, avoiding overflow, exact integer math beyond `int8`.
 
 ```abap
-DATA(bigint_int4)  = cl_abap_bigint=>factory_from_int4( 10 ).
-DATA(big_string)   = cl_abap_bigint=>factory_from_string( `283469208407283452340` ).
-DATA(big_int8)     = cl_abap_bigint=>factory_from_int8( CONV int8( 1234567890123456 ) ).
+DATA(lo_bigint_int4)  = cl_abap_bigint=>factory_from_int4( 10 ).
+DATA(lo_big_string)   = cl_abap_bigint=>factory_from_string( `283469208407283452340` ).
+DATA(lo_big_int8)     = cl_abap_bigint=>factory_from_int8( CONV int8( 1234567890123456 ) ).
 
-DATA(sum)   = cl_abap_bigint=>factory_from_int4( 4 )->add( bigint_int4 )->to_string( ).
-DATA(absv)  = cl_abap_bigint=>factory_from_int4( -10 )->abs( )->to_string( ).
-DATA(divr)  = cl_abap_bigint=>factory_from_int4( 20 )->div( bigint_int4 ). "structure: -quotient / -remainder
-DATA(quot)  = divr-quotient->to_string( ).
-DATA(rem)   = divr-remainder->to_string( ).
-DATA(gcdv)  = cl_abap_bigint=>factory_from_int4( 50 )->gcd( bigint_int4 )->to_string( ).
-DATA(powv)  = cl_abap_bigint=>factory_from_int4( 8 )->pow( 2 )->to_string( ).
-DATA(sqrtv) = cl_abap_bigint=>factory_from_int4( 9 )->sqrt( )->to_string( ).
+DATA(lv_sum)   = cl_abap_bigint=>factory_from_int4( 4 )->add( lo_bigint_int4 )->to_string( ).
+DATA(lv_absv)  = cl_abap_bigint=>factory_from_int4( -10 )->abs( )->to_string( ).
+DATA(ls_divr)  = cl_abap_bigint=>factory_from_int4( 20 )->div( lo_bigint_int4 ). "structure: -quotient / -remainder
+DATA(lv_quot)  = ls_divr-quotient->to_string( ).
+DATA(lv_rem)   = ls_divr-remainder->to_string( ).
+DATA(lv_gcdv)  = cl_abap_bigint=>factory_from_int4( 50 )->gcd( lo_bigint_int4 )->to_string( ).
+DATA(lv_powv)  = cl_abap_bigint=>factory_from_int4( 8 )->pow( 2 )->to_string( ).
+DATA(lv_sqrtv) = cl_abap_bigint=>factory_from_int4( 9 )->sqrt( )->to_string( ).
 "Methods mutate the instance; use ->clone( ) to keep the original:
-DATA(a44) = cl_abap_bigint=>factory_from_int4( 15 )->clone( )->add( cl_abap_bigint=>factory_from_int4( 5 ) ).
+DATA(lo_a44) = cl_abap_bigint=>factory_from_int4( 15 )->clone( )->add( cl_abap_bigint=>factory_from_int4( 5 ) ).
 "Also: to_external, to_utf8, to_df34, compare, mod, mul, sub, is_zero/is_negative/is_larger, is_int4, …
 ```
 
@@ -355,11 +355,11 @@ DATA(a44) = cl_abap_bigint=>factory_from_int4( 15 )->clone( )->add( cl_abap_bigi
 Preserves fractions (no decimal rounding).
 
 ```abap
-DATA(r1) = cl_abap_rational=>factory_from_string( `-1/3` ).
-DATA(r3) = cl_abap_rational=>factory_from_dec( CONV p_l16d5( '123456.789' ) ).
-DATA(r5) = cl_abap_rational=>factory_from_df34( `1.4` ).
-DATA(r8) = cl_abap_rational=>factory_from_string( `-2/3` )->add_int4( 1 )->to_df34( ).
-DATA(r9) = cl_abap_rational=>factory_from_string( `-2/3` )->add_int4( 1 )->to_string( ).
+DATA(lo_r1) = cl_abap_rational=>factory_from_string( `-1/3` ).
+DATA(lo_r3) = cl_abap_rational=>factory_from_dec( CONV p_l16d5( '123456.789' ) ).
+DATA(lo_r5) = cl_abap_rational=>factory_from_df34( `1.4` ).
+DATA(lv_r8) = cl_abap_rational=>factory_from_string( `-2/3` )->add_int4( 1 )->to_df34( ).
+DATA(lv_r9) = cl_abap_rational=>factory_from_string( `-2/3` )->add_int4( 1 )->to_string( ).
 "to_dec( IMPORTING ev_decimal = … ), add_bigint, factory_from_int4/int8/bigint/decimal_string …
 ```
 
@@ -384,7 +384,7 @@ SELECT SINGLE
    abs( int4`-2` ) AS abs,                     "2
    round( decfloat34`1.337`, 2 ) AS round     "1.34
  FROM i_timezone
- INTO @DATA(some_data).
+ INTO @DATA(ls_some_data).
 ```
 
 See [builtin-catalog.md](builtin-catalog.md) for the SQL/CDS string, date, and special functions.

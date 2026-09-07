@@ -24,18 +24,18 @@ The most common scenario: your class collaborates with another class through an 
 
 ```abap
 INTERFACE if_rate_provider PUBLIC.
-  METHODS rate IMPORTING currency TYPE waers
-               RETURNING VALUE(result) TYPE decfloat34
+  METHODS rate IMPORTING iv_currency     TYPE waers
+               RETURNING VALUE(rv_result) TYPE decfloat34
                RAISING   cx_rate_unavailable.
 ENDINTERFACE.
 
 CLASS zcl_order_pricing DEFINITION PUBLIC FINAL.
   PUBLIC SECTION.
-    METHODS constructor IMPORTING rate_provider TYPE REF TO if_rate_provider.
-    METHODS total_in_eur IMPORTING order TYPE order_data
-                         RETURNING VALUE(result) TYPE decfloat34.
+    METHODS constructor IMPORTING io_rate_provider TYPE REF TO if_rate_provider.
+    METHODS total_in_eur IMPORTING is_order       TYPE order_data
+                         RETURNING VALUE(rv_result) TYPE decfloat34.
   PRIVATE SECTION.
-    DATA rate_provider TYPE REF TO if_rate_provider.
+    DATA mo_rate_provider TYPE REF TO if_rate_provider.
 ENDCLASS.
 
 " --- in test include ---
@@ -43,49 +43,49 @@ CLASS ltcl_fake_rate DEFINITION FOR TESTING.
   PUBLIC SECTION.
     INTERFACES if_rate_provider.
     METHODS:
-      stub_rate IMPORTING currency TYPE waers value TYPE decfloat34,
-      stub_raise IMPORTING currency TYPE waers.
+      stub_rate IMPORTING iv_currency TYPE waers iv_value TYPE decfloat34,
+      stub_raise IMPORTING iv_currency TYPE waers.
   PRIVATE SECTION.
-    DATA rates    TYPE HASHED TABLE OF rate_row WITH UNIQUE KEY currency.
-    DATA raises   TYPE TABLE OF waers.
+    DATA mt_rates    TYPE HASHED TABLE OF rate_row WITH UNIQUE KEY currency.
+    DATA mt_raises   TYPE TABLE OF waers.
 ENDCLASS.
 
 CLASS ltcl_fake_rate IMPLEMENTATION.
   METHOD stub_rate.
-    INSERT VALUE #( currency = currency value = value ) INTO TABLE rates.
+    INSERT VALUE #( currency = iv_currency value = iv_value ) INTO TABLE mt_rates.
   ENDMETHOD.
   METHOD stub_raise.
-    APPEND currency TO raises.
+    APPEND iv_currency TO mt_raises.
   ENDMETHOD.
   METHOD if_rate_provider~rate.
-    IF line_exists( raises[ table_line = currency ] ).
-      RAISE EXCEPTION TYPE cx_rate_unavailable EXPORTING currency = currency.
+    IF line_exists( mt_raises[ table_line = iv_currency ] ).
+      RAISE EXCEPTION TYPE cx_rate_unavailable EXPORTING currency = iv_currency.
     ENDIF.
-    READ TABLE rates ASSIGNING FIELD-SYMBOL(<rate>) WITH TABLE KEY currency = currency.
+    READ TABLE mt_rates ASSIGNING FIELD-SYMBOL(<fs_rate>) WITH TABLE KEY currency = iv_currency.
     IF sy-subrc = 0.
-      result = <rate>-value.
+      rv_result = <fs_rate>-value.
     ELSE.
-      result = '1.00'.   " default
+      rv_result = '1.00'.   " default
     ENDIF.
   ENDMETHOD.
 ENDCLASS.
 
 " --- in test class ---
 METHOD setup.
-  fake_rates = NEW ltcl_fake_rate( ).
-  cut        = NEW zcl_order_pricing( rate_provider = fake_rates ).
+  mo_fake_rates = NEW ltcl_fake_rate( ).
+  mo_cut        = NEW zcl_order_pricing( io_rate_provider = mo_fake_rates ).
 ENDMETHOD.
 
 METHOD test_eur_passes_through.
-  fake_rates->stub_rate( currency = 'EUR' value = '1.00' ).
-  DATA(result) = cut->total_in_eur( VALUE #( amount = '100' currency = 'EUR' ) ).
-  cl_abap_unit_assert=>assert_equals( act = result exp = CONV decfloat34( '100' ) ).
+  mo_fake_rates->stub_rate( iv_currency = 'EUR' iv_value = '1.00' ).
+  DATA(lv_result) = mo_cut->total_in_eur( VALUE #( amount = '100' currency = 'EUR' ) ).
+  cl_abap_unit_assert=>assert_equals( act = lv_result exp = CONV decfloat34( '100' ) ).
 ENDMETHOD.
 
 METHOD test_raises_when_rate_unavailable.
-  fake_rates->stub_raise( currency = 'XYZ' ).
+  mo_fake_rates->stub_raise( iv_currency = 'XYZ' ).
   TRY.
-      cut->total_in_eur( VALUE #( amount = '100' currency = 'XYZ' ) ).
+      mo_cut->total_in_eur( VALUE #( amount = '100' currency = 'XYZ' ) ).
       cl_abap_unit_assert=>fail( 'Expected cx_rate_unavailable' ).
     CATCH cx_rate_unavailable.
       " expected
@@ -100,7 +100,7 @@ Some logic genuinely depends on data from a table:
 ```abap
 CLASS ltcl_overdue_finder DEFINITION FOR TESTING RISK LEVEL HARMLESS DURATION SHORT FINAL.
   PRIVATE SECTION.
-    CLASS-DATA env TYPE REF TO if_osql_test_environment.
+    CLASS-DATA mo_env TYPE REF TO if_osql_test_environment.
     CLASS-METHODS:
       class_setup,
       class_teardown.
@@ -111,30 +111,30 @@ ENDCLASS.
 
 CLASS ltcl_overdue_finder IMPLEMENTATION.
   METHOD class_setup.
-    env = cl_osql_test_environment=>create(
+    mo_env = cl_osql_test_environment=>create(
             i_dependency_list = VALUE #( ( 'ZINVOICE' ) ( 'KNA1' ) ) ).
   ENDMETHOD.
 
   METHOD class_teardown.
-    env->destroy( ).
+    mo_env->destroy( ).
   ENDMETHOD.
 
   METHOD setup.
-    env->clear_doubles( ).
+    mo_env->clear_doubles( ).
   ENDMETHOD.
 
   METHOD finds_overdue.
-    DATA invoices TYPE STANDARD TABLE OF zinvoice WITH EMPTY KEY.
-    invoices = VALUE #(
+    DATA lt_invoices TYPE STANDARD TABLE OF zinvoice WITH EMPTY KEY.
+    lt_invoices = VALUE #(
       ( id = '1' status = 'O' due_date = sy-datum - 5 amount = '100' kunnr = '1' )
       ( id = '2' status = 'O' due_date = sy-datum + 5 amount = '200' kunnr = '1' )
       ( id = '3' status = 'P' due_date = sy-datum - 5 amount = '300' kunnr = '1' ) ).
-    env->insert_test_data( i_data = invoices ).
+    mo_env->insert_test_data( i_data = lt_invoices ).
 
-    DATA(result) = NEW zcl_overdue_finder( )->find( as_of = sy-datum ).
+    DATA(lt_result) = NEW zcl_overdue_finder( )->find( as_of = sy-datum ).
 
     cl_abap_unit_assert=>assert_equals(
-      act = lines( result )
+      act = lines( lt_result )
       exp = 1
       msg = 'Only one open overdue invoice' ).
   ENDMETHOD.
@@ -151,13 +151,13 @@ Key:
 Similar shape, but registers the CDS view:
 
 ```abap
-env = cl_cds_test_environment=>create(
+mo_env = cl_cds_test_environment=>create(
         i_for_entity = 'Z_C_OPENSALESORDERBYCUSTOMER' ).
 
-DATA sales_orders TYPE STANDARD TABLE OF z_i_salesorder WITH EMPTY KEY.
-sales_orders = VALUE #(
+DATA lt_sales_orders TYPE STANDARD TABLE OF z_i_salesorder WITH EMPTY KEY.
+lt_sales_orders = VALUE #(
   ( SalesOrderId = '4500000001' CustomerId = '1' NetAmount = '100' Currency = 'EUR' ) ).
-env->insert_test_data( i_data = sales_orders ).
+mo_env->insert_test_data( i_data = lt_sales_orders ).
 ```
 
 The framework substitutes the base table; the CDS view evaluates on top of the substituted data.
@@ -167,9 +167,9 @@ The framework substitutes the base table; the CDS view evaluates on top of the s
 When you cannot easily construct an interface-based double (e.g. the collaborator is a concrete SAP-delivered class), the ABAP OO Test Double Framework constructs a dynamic double:
 
 ```abap
-DATA(double) = CAST zif_other( cl_abap_testdouble=>create( 'ZIF_OTHER' ) ).
-cl_abap_testdouble=>configure_call( double )->returning( '42' ).
-double->some_method( ).   " records the configuration for this method
+DATA(lo_double) = CAST zif_other( cl_abap_testdouble=>create( 'ZIF_OTHER' ) ).
+cl_abap_testdouble=>configure_call( lo_double )->returning( '42' ).
+lo_double->some_method( ).   " records the configuration for this method
 ```
 
 This is more setup than a manual stub but useful for legacy code that can't be retrofitted with interfaces immediately. Limitations: `cl_abap_testdouble` does not support local classes/interfaces, or classes declared `FINAL`, `FOR TESTING`, `CREATE PRIVATE`, or with constructors that have mandatory parameters.
@@ -179,7 +179,7 @@ This is more setup than a manual stub but useful for legacy code that can't be r
 ```abap
 CLASS ltcl_customer_create DEFINITION FOR TESTING DURATION SHORT RISK LEVEL HARMLESS FINAL.
   PRIVATE SECTION.
-    CLASS-DATA cds_env TYPE REF TO if_cds_test_environment.
+    CLASS-DATA mo_cds_env TYPE REF TO if_cds_test_environment.
     CLASS-METHODS:
       class_setup,
       class_teardown.
@@ -192,16 +192,16 @@ ENDCLASS.
 CLASS ltcl_customer_create IMPLEMENTATION.
 
   METHOD class_setup.
-    cds_env = cl_cds_test_environment=>create(
+    mo_cds_env = cl_cds_test_environment=>create(
                 i_for_entity = 'Z_C_CUSTOMER' ).
   ENDMETHOD.
 
   METHOD class_teardown.
-    cds_env->destroy( ).
+    mo_cds_env->destroy( ).
   ENDMETHOD.
 
   METHOD setup.
-    cds_env->clear_doubles( ).
+    mo_cds_env->clear_doubles( ).
   ENDMETHOD.
 
   METHOD teardown.
@@ -213,11 +213,11 @@ CLASS ltcl_customer_create IMPLEMENTATION.
       ENTITY Customer
       CREATE FIELDS ( Name City Country )
       WITH VALUE #( ( %cid = 'C1' Name = 'AB' City = 'X' Country = 'DE' ) )
-      FAILED   DATA(failed)
-      REPORTED DATA(reported).
+      FAILED   DATA(lt_failed)
+      REPORTED DATA(lt_reported).
 
     cl_abap_unit_assert=>assert_not_initial(
-      act = failed-customer
+      act = lt_failed-customer
       msg = 'Validation should reject 2-char name' ).
   ENDMETHOD.
 
@@ -230,16 +230,16 @@ When the cut *consumes* another RAP BO via EML, replace that BO's transactional 
 double (the cut's EML statements then run for real against fake data):
 
 ```abap
-CLASS-DATA environment TYPE REF TO if_botd_txbufdbl_bo_test_env.
+CLASS-DATA mo_environment TYPE REF TO if_botd_txbufdbl_bo_test_env.
 
 " class_setup:
-environment = cl_botd_txbufdbl_bo_test_env=>create(
+mo_environment = cl_botd_txbufdbl_bo_test_env=>create(
   environment_config = cl_botd_txbufdbl_bo_test_env=>prepare_environment_config(
   )->set_bdef_dependencies( VALUE #( ( 'Z_C_CUSTOMER' ) ) ) ).
 
-" setup:          environment->clear_doubles( ).
+" setup:          mo_environment->clear_doubles( ).
 " test method:    run MODIFY, assert on failed/reported, COMMIT, assert end state.
-" class_teardown: environment->destroy( ).
+" class_teardown: mo_environment->destroy( ).
 ```
 
 `cl_botd_mockemlapi_bo_test_env` follows the same lifecycle but mocks the EML API itself —

@@ -34,47 +34,47 @@ A field symbol is a placeholder for a data object (or part of one). It reserves 
 
 ```abap
 "Declaration with complete or generic type
-FIELD-SYMBOLS <fs_i>    TYPE i.
-FIELD-SYMBOLS <fs_data> TYPE data.        "Any data type
-FIELD-SYMBOLS <fs_tab>  TYPE ANY TABLE.   "Any internal table
+FIELD-SYMBOLS <fv_i>    TYPE i.
+FIELD-SYMBOLS <fv_data> TYPE data.        "Any data type
+FIELD-SYMBOLS <ft_tab>  TYPE ANY TABLE.   "Any internal table
 
 "ASSIGN binds the field symbol to a data object's memory
-DATA num TYPE i VALUE 1.
-ASSIGN num TO <fs_i>.
-<fs_i> = 2.            "num now has value 2 — the field symbol IS the object
+DATA lv_num TYPE i VALUE 1.
+ASSIGN lv_num TO <fv_i>.
+<fv_i> = 2.            "lv_num now has value 2 — the field symbol IS the object
 
 "Inline declaration (implicitly typed with generic type data)
-LOOP AT itab ASSIGNING FIELD-SYMBOL(<line>).
-  <line>-carrid = 'LH'.   "Modifies the table line in place — no copy
+LOOP AT lt_itab ASSIGNING FIELD-SYMBOL(<fs_line>).
+  <fs_line>-carrid = 'LH'.   "Modifies the table line in place — no copy
 ENDLOOP.
 
-READ TABLE itab INDEX 1 ASSIGNING FIELD-SYMBOL(<rt>).
+READ TABLE lt_itab INDEX 1 ASSIGNING FIELD-SYMBOL(<fs_rt>).
 ```
 
-**Why field symbols matter for performance:** `LOOP AT itab ASSIGNING <fs>` modifies the line *in place* — no work-area copy. The same applies to `READ TABLE ... ASSIGNING`.
+**Why field symbols matter for performance:** `LOOP AT lt_itab ASSIGNING <fs_line>` modifies the line *in place* — no work-area copy. The same applies to `READ TABLE ... ASSIGNING`.
 
 ### Checking assignment and unassigning
 
 An unassigned field symbol raises a runtime error if used. Guard with `IS ASSIGNED`; remove the binding with `UNASSIGN`.
 
 ```abap
-FIELD-SYMBOLS <fs> TYPE string.
-DATA(some_string) = `hello`.
-ASSIGN some_string TO <fs>.
+FIELD-SYMBOLS <fv_string> TYPE string.
+DATA(lv_some_string) = `hello`.
+ASSIGN lv_some_string TO <fv_string>.
 
-IF <fs> IS ASSIGNED.
+IF <fv_string> IS ASSIGNED.
   ...
 ENDIF.
 
-UNASSIGN <fs>.
-ASSERT <fs> IS NOT ASSIGNED.
+UNASSIGN <fv_string>.
+ASSERT <fv_string> IS NOT ASSIGNED.
 
 "CLEAR only initializes the value; it does NOT remove the assignment
-DATA num TYPE i VALUE 1.
-FIELD-SYMBOLS <num_fs> TYPE i.
-ASSIGN num TO <num_fs>.
-CLEAR <num_fs>.                 "<num_fs> still assigned; num is now 0
-ASSERT <num_fs> IS ASSIGNED.
+DATA lv_num TYPE i VALUE 1.
+FIELD-SYMBOLS <fv_num> TYPE i.
+ASSIGN lv_num TO <fv_num>.
+CLEAR <fv_num>.                 "<fv_num> still assigned; lv_num is now 0
+ASSERT <fv_num> IS ASSIGNED.
 ```
 
 > **Pitfall — `IS ASSIGNED` after a failed dynamic assignment:** in a *dynamic* `ASSIGN`, a failure sets `sy-subrc = 4` but leaves the field symbol assigned to whatever it pointed to before. `IS ASSIGNED` then returns true even though the new assignment failed. Use `ELSE UNASSIGN` (dynamic only) to force unassignment on failure, and check `sy-subrc`, not `IS ASSIGNED`, to test the *current* statement. See [references/dynamic-tokens.md](references/dynamic-tokens.md).
@@ -85,24 +85,24 @@ A data reference variable holds a reference to a data object. It is "opaque": yo
 
 ```abap
 "Reference to an existing object with the REF operator (replaces GET REFERENCE)
-DATA num TYPE i VALUE 5.
-DATA(ref) = REF #( num ).
+DATA lv_num TYPE i VALUE 5.
+DATA(lr_num) = REF #( lv_num ).
 
 "Anonymous data objects — created at runtime, addressed only via the reference
-DATA(ref_i)    = NEW i( 1 ).
-DATA(ref_carr) = NEW zdemo_abap_carr( carrid = 'LH' carrname = 'Lufthansa' ).
+DATA(lr_i)    = NEW i( 1 ).
+DATA(lr_carr) = NEW zdemo_abap_carr( carrid = 'LH' carrname = 'Lufthansa' ).
 
 "Dereferencing with ->*
-DATA(number) = ref_i->*.       "read
-ref_i->* = 10.                 "write
+DATA(lv_number) = lr_i->*.       "read
+lr_i->* = 10.                 "write
 
 "Structured reference: component selector -> reaches a component directly
-DATA(carrid) = ref_carr->carrid.
-ref_carr->carrid = 'UA'.
-ref_carr->*-carrname = 'United Airlines'.   "longer form also works
+DATA(lv_carrid) = lr_carr->carrid.
+lr_carr->carrid = 'UA'.
+lr_carr->*-carrname = 'United Airlines'.   "longer form also works
 
 "Check before dereferencing
-IF ref_carr IS BOUND.
+IF lr_carr IS BOUND.
   ...
 ENDIF.
 ```
@@ -112,26 +112,26 @@ ENDIF.
 `CREATE DATA` (or the `NEW` operator) creates an anonymous data object. The type can be static or, crucially, **dynamic** — supplied as a name in parentheses or a type description object via `TYPE HANDLE`.
 
 ```abap
-DATA dref TYPE REF TO data.
+DATA lr_dref TYPE REF TO data.
 
 "Static type
-CREATE DATA dref TYPE p LENGTH 8 DECIMALS 3.
-CREATE DATA dref TYPE HASHED TABLE OF zdemo_abap_carr WITH UNIQUE KEY carrid.
+CREATE DATA lr_dref TYPE p LENGTH 8 DECIMALS 3.
+CREATE DATA lr_dref TYPE HASHED TABLE OF zdemo_abap_carr WITH UNIQUE KEY carrid.
 
 "NEW operator (modern; cannot be used for dynamic type names)
-DATA(dref_5) = NEW i( 789 ).
+DATA(lr_dref_5) = NEW i( 789 ).
 
 "Dynamic type name in parentheses
-CREATE DATA dref TYPE ('T_FLI_STRUC').
-CREATE DATA dref TYPE TABLE OF ('ZDEMO_ABAP_FLI') WITH EMPTY KEY.
-CREATE DATA dref TYPE REF TO ('STRING').
+CREATE DATA lr_dref TYPE ('T_FLI_STRUC').
+CREATE DATA lr_dref TYPE TABLE OF ('ZDEMO_ABAP_FLI') WITH EMPTY KEY.
+CREATE DATA lr_dref TYPE REF TO ('STRING').
 
 "From a type description object (RTTC) — see below
-DATA(tdo) = cl_abap_elemdescr=>get_c( 4 ).
-CREATE DATA dref TYPE HANDLE tdo.
+DATA(lo_tdo) = cl_abap_elemdescr=>get_c( 4 ).
+CREATE DATA lr_dref TYPE HANDLE lo_tdo.
 ```
 
-> In modern ABAP you can use `dref->*` directly in `LOOP`, `READ TABLE`, table expressions, and even `SELECT ... INTO TABLE @dref->*`. In older releases the only way to access an anonymous object was via a field symbol (`ASSIGN dref->* TO <fs>`).
+> In modern ABAP you can use `lr_dref->*` directly in `LOOP`, `READ TABLE`, table expressions, and even `SELECT ... INTO TABLE @lr_dref->*`. In older releases the only way to access an anonymous object was via a field symbol (`ASSIGN lr_dref->* TO <fv_...>`).
 
 ### Field symbol vs data reference
 
@@ -159,37 +159,37 @@ Three entry methods on `cl_abap_typedescr` return a general `ref to cl_abap_type
 
 ```abap
 "From a data object
-DATA(tdo) = cl_abap_typedescr=>describe_by_data( some_dobj ).
+DATA(lo_tdo) = cl_abap_typedescr=>describe_by_data( some_dobj ).
 
 "From a type name (relative or absolute)
-DATA(tdo2) = cl_abap_typedescr=>describe_by_name( 'ZDEMO_ABAP_CARR' ).
+DATA(lo_tdo2) = cl_abap_typedescr=>describe_by_name( 'ZDEMO_ABAP_CARR' ).
 
 "From an object reference (for classes)
-DATA(tdo3) = cl_abap_typedescr=>describe_by_object_ref( oref ).
+DATA(lo_tdo3) = cl_abap_typedescr=>describe_by_object_ref( lo_oref ).
 
 "General info available without a cast
-DATA(kind)          = tdo->kind.            "kind_elem / kind_struct / kind_table / ...
-DATA(type_kind)     = tdo->type_kind.
-DATA(absolute_name) = tdo->absolute_name.
-DATA(relative_name) = tdo->get_relative_name( ).
+DATA(lv_kind)          = lo_tdo->kind.            "kind_elem / kind_struct / kind_table / ...
+DATA(lv_type_kind)     = lo_tdo->type_kind.
+DATA(lv_absolute_name) = lo_tdo->absolute_name.
+DATA(lv_relative_name) = lo_tdo->get_relative_name( ).
 
 "Cast down for specifics — e.g. a structure's components
-DATA(comps) = CAST cl_abap_structdescr(
-  cl_abap_typedescr=>describe_by_data( some_struc ) )->components.
+DATA(lt_comps) = CAST cl_abap_structdescr(
+  cl_abap_typedescr=>describe_by_data( ls_some_struc ) )->components.
 
 "A table's line type and keys
-DATA(tdo_tab)  = CAST cl_abap_tabledescr( cl_abap_typedescr=>describe_by_data( itab ) ).
-DATA(line_tdo) = tdo_tab->get_table_line_type( ).
-DATA(keys)     = tdo_tab->get_keys( ).
+DATA(lo_tdo_tab)  = CAST cl_abap_tabledescr( cl_abap_typedescr=>describe_by_data( lt_itab ) ).
+DATA(lo_line_tdo) = lo_tdo_tab->get_table_line_type( ).
+DATA(lt_keys)     = lo_tdo_tab->get_keys( ).
 ```
 
 Guard downcasts with `IS INSTANCE OF` or `CASE TYPE OF` to avoid `CX_SY_MOVE_CAST_ERROR`:
 
 ```abap
-CASE TYPE OF some_tdo.
-  WHEN TYPE cl_abap_elemdescr.   DATA(elem_descr) = CAST cl_abap_elemdescr( some_tdo ).
-  WHEN TYPE cl_abap_structdescr. DATA(struct_descr) = CAST cl_abap_structdescr( some_tdo ).
-  WHEN TYPE cl_abap_tabledescr.  DATA(table_descr) = CAST cl_abap_tabledescr( some_tdo ).
+CASE TYPE OF lo_some_tdo.
+  WHEN TYPE cl_abap_elemdescr.   DATA(lo_elem_descr) = CAST cl_abap_elemdescr( lo_some_tdo ).
+  WHEN TYPE cl_abap_structdescr. DATA(lo_struct_descr) = CAST cl_abap_structdescr( lo_some_tdo ).
+  WHEN TYPE cl_abap_tabledescr.  DATA(lo_table_descr) = CAST cl_abap_tabledescr( lo_some_tdo ).
   WHEN OTHERS. ...
 ENDCASE.
 ```
@@ -201,34 +201,34 @@ Full class/method/attribute catalog: [references/rtti-rttc.md](references/rtti-r
 RTTC is the *create* half: build a brand-new type as a type description object, then materialize a data object with `CREATE DATA ... TYPE HANDLE`.
 
 ```abap
-DATA dref TYPE REF TO data.
+DATA lr_dref TYPE REF TO data.
 
 "Elementary — get_* methods (all built-in types are already "created")
-DATA(tdo_c5)  = cl_abap_elemdescr=>get_c( 5 ).
-DATA(tdo_p)   = cl_abap_elemdescr=>get_p( p_length = 16 p_decimals = 14 ).
-CREATE DATA dref TYPE HANDLE tdo_c5.
+DATA(lo_tdo_c5)  = cl_abap_elemdescr=>get_c( 5 ).
+DATA(lo_tdo_p)   = cl_abap_elemdescr=>get_p( p_length = 16 p_decimals = 14 ).
+CREATE DATA lr_dref TYPE HANDLE lo_tdo_c5.
 
 "Structure — from a component table (type abap_component_tab)
-DATA(tdo_struc) = cl_abap_structdescr=>get(
+DATA(lo_tdo_struc) = cl_abap_structdescr=>get(
   VALUE #(
     ( name = 'NUM'  type = cl_abap_elemdescr=>get_i( ) )
     ( name = 'TEXT' type = cl_abap_elemdescr=>get_c( 20 ) )
     ( name = 'LAND' type = CAST cl_abap_datadescr(
                               cl_abap_typedescr=>describe_by_name( 'LAND1' ) ) ) ) ).
-CREATE DATA dref TYPE HANDLE tdo_struc.
+CREATE DATA lr_dref TYPE HANDLE lo_tdo_struc.
 
 "Table — cl_abap_tabledescr=>get( ) (line type mandatory; rest optional)
-DATA(tdo_tab) = cl_abap_tabledescr=>get(
+DATA(lo_tdo_tab) = cl_abap_tabledescr=>get(
   p_line_type  = CAST cl_abap_structdescr(
                    cl_abap_tabledescr=>describe_by_name( 'ZDEMO_ABAP_FLSCH' ) )
   p_table_kind = cl_abap_tabledescr=>tablekind_sorted
   p_key        = VALUE #( ( name = 'CARRID' ) ( name = 'CONNID' ) )
   p_unique     = cl_abap_typedescr=>true ).
-CREATE DATA dref TYPE HANDLE tdo_tab.
+CREATE DATA lr_dref TYPE HANDLE lo_tdo_tab.
 
 "Reference type
-DATA(tdo_ref) = cl_abap_refdescr=>get( cl_abap_elemdescr=>get_string( ) ).
-CREATE DATA dref TYPE HANDLE tdo_ref.
+DATA(lo_tdo_ref) = cl_abap_refdescr=>get( cl_abap_elemdescr=>get_string( ) ).
+CREATE DATA lr_dref TYPE HANDLE lo_tdo_ref.
 ```
 
 `CREATE DATA ... TYPE (typename)` cannot specify secondary table keys; RTTC with `get_with_keys( )` can. See [references/rtti-rttc.md](references/rtti-rttc.md).
@@ -240,30 +240,30 @@ Many statements accept a character-like operand in parentheses where a name woul
 ### Dynamic ASSIGN and component access
 
 ```abap
-ASSIGN ('DOBJ') TO FIELD-SYMBOL(<fs>).        "data object by name
-ASSIGN st-('COL1') TO <fs>.                    "component by name
-ASSIGN st-(3)      TO <fs>.                     "component by position
-ASSIGN dref->('COL1') TO <fs>.                  "reference component
-ASSIGN ('NOPE') TO <fs> ELSE UNASSIGN.          "unassign on failure
+ASSIGN ('DOBJ') TO FIELD-SYMBOL(<fv_dobj>).        "data object by name
+ASSIGN ls_st-('COL1') TO <fv_dobj>.                    "component by name
+ASSIGN ls_st-(3)      TO <fv_dobj>.                     "component by position
+ASSIGN lr_dref->('COL1') TO <fv_dobj>.                  "reference component
+ASSIGN ('NOPE') TO <fv_dobj> ELSE UNASSIGN.          "unassign on failure
 "Write/read structure components directly
-st-('COL1') = 123.
-DATA(col2_value) = CONV string( st-('COL2') ).
+ls_st-('COL1') = 123.
+DATA(lv_col2_value) = CONV string( ls_st-('COL2') ).
 "Older equivalent (superseded):
-ASSIGN COMPONENT 'COL1' OF STRUCTURE st TO <fs>.
+ASSIGN COMPONENT 'COL1' OF STRUCTURE ls_st TO <fv_dobj>.
 ```
 
 ### Dynamic ABAP SQL
 
 ```abap
-DATA(select_list) = `CARRID, CONNID, FLDATE`.
-DATA(table)       = 'ZDEMO_ABAP_FLI'.
-DATA(where)       = VALUE string_table( ( `CARRID = 'LH'` ) ( `OR` ) ( `CARRID = 'AA'` ) ).
+DATA(lv_select_list) = `CARRID, CONNID, FLDATE`.
+DATA(lv_table)       = 'ZDEMO_ABAP_FLI'.
+DATA(lt_where)       = VALUE string_table( ( `CARRID = 'LH'` ) ( `OR` ) ( `CARRID = 'AA'` ) ).
 
-SELECT (select_list)
-  FROM (table)
-  WHERE (where)
+SELECT (lv_select_list)
+  FROM (lv_table)
+  WHERE (lt_where)
   ORDER BY (`FLDATE`)
-  INTO TABLE NEW @DATA(result).     "NEW builds a fitting anonymous itab in place
+  INTO TABLE NEW @DATA(lt_result).     "NEW builds a fitting anonymous itab in place
 ```
 
 `INSERT`, `UPDATE`, `MODIFY`, `DELETE`, `UPDATE ... SET`, `MERGE`, and `WITH` (CTE) all have dynamic forms. Erroneous content raises `CX_SY_DYNAMIC_OSQL_*` — always wrap in `TRY`.
@@ -272,17 +272,17 @@ SELECT (select_list)
 
 ```abap
 "Method — dynamic requires CALL METHOD (NEW/functional form can't be dynamic)
-CALL METHOD oref->(meth).
-CALL METHOD (class)=>(meth).
+CALL METHOD lo_oref->(lv_meth).
+CALL METHOD (lv_class)=>(lv_meth).
 
 "With a parameter table (type abap_parmbind_tab)
-DATA(ptab) = VALUE abap_parmbind_tab(
+DATA(lt_ptab) = VALUE abap_parmbind_tab(
   ( name = 'NUM1'   kind = cl_abap_objectdescr=>exporting value = NEW i( 1 ) )
   ( name = 'RESULT' kind = cl_abap_objectdescr=>importing value = NEW i( ) ) ).
-CALL METHOD oref->('IN_METH4') PARAMETER-TABLE ptab.
+CALL METHOD lo_oref->('IN_METH4') PARAMETER-TABLE lt_ptab.
 
 "Function module (type abap_func_parmbind_tab)
-CALL FUNCTION func_name PARAMETER-TABLE ptab.
+CALL FUNCTION lv_func_name PARAMETER-TABLE lt_ptab.
 ```
 
 Dynamic calls fail at runtime with `CX_SY_DYN_CALL_*` (illegal method, param missing, illegal type). **Names are case-sensitive** — `('in_meth2')` fails; `('IN_METH2')` works.
@@ -290,8 +290,8 @@ Dynamic calls fail at runtime with `CX_SY_DYN_CALL_*` (illegal method, param mis
 ### Dynamic CREATE OBJECT
 
 ```abap
-DATA oref TYPE REF TO object.
-CREATE OBJECT oref TYPE ('ZCL_DEMO_ABAP_OBJECTS').
+DATA lo_oref TYPE REF TO object.
+CREATE OBJECT lo_oref TYPE ('ZCL_DEMO_ABAP_OBJECTS').
 "NEW cannot specify a dynamic type name — CREATE OBJECT is required here.
 ```
 

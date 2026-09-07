@@ -81,8 +81,8 @@ Use when construction has variants, dependencies to wire, or invariants to enfor
 ```abap
 INTERFACE if_pricing_strategy PUBLIC.
   METHODS compute
-    IMPORTING order         TYPE order_data
-    RETURNING VALUE(result) TYPE decfloat34.
+    IMPORTING is_order         TYPE order_data
+    RETURNING VALUE(rv_result) TYPE decfloat34.
 ENDINTERFACE.
 
 CLASS cl_pricing_strategy DEFINITION
@@ -92,13 +92,13 @@ CLASS cl_pricing_strategy DEFINITION
   PUBLIC SECTION.
     CLASS-METHODS:
       for_country
-        IMPORTING country       TYPE land1
-        RETURNING VALUE(result) TYPE REF TO if_pricing_strategy
+        IMPORTING iv_country      TYPE land1
+        RETURNING VALUE(ro_result) TYPE REF TO if_pricing_strategy
         RAISING   cx_unknown_country.
 
   PRIVATE SECTION.
-    METHODS constructor IMPORTING country TYPE land1.
-    DATA country TYPE land1.
+    METHODS constructor IMPORTING iv_country TYPE land1.
+    DATA mv_country TYPE land1.
 
 ENDCLASS.
 
@@ -122,11 +122,11 @@ ENDCLASS.
 CLASS cl_pricing_strategy IMPLEMENTATION.
 
   METHOD for_country.
-    CASE country.
-      WHEN 'TR'. result = NEW cl_pricing_strategy_tr( ).
-      WHEN 'DE'. result = NEW cl_pricing_strategy_de( ).
+    CASE iv_country.
+      WHEN 'TR'. ro_result = NEW cl_pricing_strategy_tr( ).
+      WHEN 'DE'. ro_result = NEW cl_pricing_strategy_de( ).
       WHEN OTHERS.
-        RAISE EXCEPTION TYPE cx_unknown_country EXPORTING country = country.
+        RAISE EXCEPTION TYPE cx_unknown_country EXPORTING country = iv_country.
     ENDCASE.
   ENDMETHOD.
 
@@ -134,13 +134,13 @@ ENDCLASS.
 
 CLASS cl_pricing_strategy_tr IMPLEMENTATION.
   METHOD if_pricing_strategy~compute.
-    result = order-amount * '1.20'.   " illustrative country-specific rate
+    rv_result = is_order-amount * '1.20'.   " illustrative country-specific rate
   ENDMETHOD.
 ENDCLASS.
 
 CLASS cl_pricing_strategy_de IMPLEMENTATION.
   METHOD if_pricing_strategy~compute.
-    result = order-amount * '1.19'.   " illustrative country-specific rate
+    rv_result = is_order-amount * '1.19'.   " illustrative country-specific rate
   ENDMETHOD.
 ENDCLASS.
 ```
@@ -154,30 +154,30 @@ The canonical ABAP test-double pattern. Every collaborator is an interface; ever
 ```abap
 INTERFACE if_rate_provider PUBLIC.
   METHODS rate
-    IMPORTING currency      TYPE waers
-    RETURNING VALUE(result) TYPE decfloat34
+    IMPORTING iv_currency      TYPE waers
+    RETURNING VALUE(rv_result) TYPE decfloat34
     RAISING   cx_rate_unavailable.
 ENDINTERFACE.
 
 CLASS cl_order_pricing DEFINITION PUBLIC FINAL.
   PUBLIC SECTION.
     METHODS:
-      constructor IMPORTING rate_provider TYPE REF TO if_rate_provider,
+      constructor IMPORTING io_rate_provider TYPE REF TO if_rate_provider,
       total_in_eur
-        IMPORTING order         TYPE order_data
-        RETURNING VALUE(result) TYPE decfloat34
+        IMPORTING is_order         TYPE order_data
+        RETURNING VALUE(rv_result) TYPE decfloat34
         RAISING   cx_rate_unavailable.
   PRIVATE SECTION.
-    DATA rate_provider TYPE REF TO if_rate_provider.
+    DATA mo_rate_provider TYPE REF TO if_rate_provider.
 ENDCLASS.
 
 CLASS cl_order_pricing IMPLEMENTATION.
   METHOD constructor.
-    me->rate_provider = rate_provider.
+    me->mo_rate_provider = io_rate_provider.
   ENDMETHOD.
   METHOD total_in_eur.
-    DATA(rate) = rate_provider->rate( order-currency ).
-    result = order-amount * rate.
+    DATA(lv_rate) = mo_rate_provider->rate( is_order-currency ).
+    rv_result = is_order-amount * lv_rate.
   ENDMETHOD.
 ENDCLASS.
 ```
@@ -221,27 +221,27 @@ When state changes need to notify multiple unrelated listeners.
 
 ```abap
 INTERFACE if_order_change_listener PUBLIC.
-  METHODS on_order_changed IMPORTING order TYPE order_data.
+  METHODS on_order_changed IMPORTING is_order TYPE order_data.
 ENDINTERFACE.
 
 CLASS cl_order DEFINITION PUBLIC FINAL.
   PUBLIC SECTION.
     METHODS:
-      register IMPORTING listener TYPE REF TO if_order_change_listener,
-      change   IMPORTING new_amount TYPE decfloat34.
+      register IMPORTING io_listener TYPE REF TO if_order_change_listener,
+      change   IMPORTING iv_new_amount TYPE decfloat34.
   PRIVATE SECTION.
-    DATA: data      TYPE order_data,
-          listeners TYPE TABLE OF REF TO if_order_change_listener.
+    DATA: ms_data      TYPE order_data,
+          mt_listeners TYPE TABLE OF REF TO if_order_change_listener.
 ENDCLASS.
 
 CLASS cl_order IMPLEMENTATION.
   METHOD register.
-    APPEND listener TO listeners.
+    APPEND io_listener TO mt_listeners.
   ENDMETHOD.
   METHOD change.
-    data-amount = new_amount.
-    LOOP AT listeners INTO DATA(listener).
-      listener->on_order_changed( data ).
+    ms_data-amount = iv_new_amount.
+    LOOP AT mt_listeners INTO DATA(lo_listener).
+      lo_listener->on_order_changed( ms_data ).
     ENDLOOP.
   ENDMETHOD.
 ENDCLASS.
@@ -257,24 +257,24 @@ Add a cross-cutting concern without modifying the wrapped class.
 CLASS cl_logging_pricing DEFINITION PUBLIC FINAL.
   PUBLIC SECTION.
     INTERFACES if_pricing.
-    METHODS constructor IMPORTING inner TYPE REF TO if_pricing.
+    METHODS constructor IMPORTING io_inner TYPE REF TO if_pricing.
   PRIVATE SECTION.
-    DATA inner TYPE REF TO if_pricing.
+    DATA mo_inner TYPE REF TO if_pricing.
 ENDCLASS.
 
 CLASS cl_logging_pricing IMPLEMENTATION.
   METHOD constructor.
-    me->inner = inner.
+    me->mo_inner = io_inner.
   ENDMETHOD.
   METHOD if_pricing~compute.
-    log( |compute called with { order-id }| ).
-    result = inner->compute( order ).
-    log( |result = { result }| ).
+    log( |compute called with { is_order-id }| ).
+    rv_result = mo_inner->compute( is_order ).
+    log( |result = { rv_result }| ).
   ENDMETHOD.
 ENDCLASS.
 
 " usage
-DATA(pricing) = CAST if_pricing(
+DATA(lo_pricing) = CAST if_pricing(
   NEW cl_logging_pricing( NEW cl_real_pricing( ) ) ).
 ```
 
@@ -296,10 +296,10 @@ ENDCLASS.
 
 " factory returns null object when no auditor configured
 METHOD get_auditor.
-  IF audit_disabled = abap_true.
-    result = NEW cl_null_audit( ).
+  IF mv_audit_disabled = abap_true.
+    ro_result = NEW cl_null_audit( ).
   ELSE.
-    result = NEW cl_real_audit( ).
+    ro_result = NEW cl_real_audit( ).
   ENDIF.
 ENDMETHOD.
 ```
@@ -311,33 +311,33 @@ Ensure one instance per application lifetime. Use `CREATE PRIVATE` to block exte
 ```abap
 CLASS cl_request_log DEFINITION PUBLIC CREATE PRIVATE.
   PUBLIC SECTION.
-    CLASS-METHODS get_instance RETURNING VALUE(result) TYPE REF TO cl_request_log.
-    METHODS add IMPORTING text TYPE string.
-    METHODS entries RETURNING VALUE(result) TYPE string_table.
+    CLASS-METHODS get_instance RETURNING VALUE(ro_result) TYPE REF TO cl_request_log.
+    METHODS add IMPORTING iv_text TYPE string.
+    METHODS entries RETURNING VALUE(rt_result) TYPE string_table.
   PRIVATE SECTION.
-    CLASS-DATA instance TYPE REF TO cl_request_log.
-    DATA log TYPE string_table.
+    CLASS-DATA mo_instance TYPE REF TO cl_request_log.
+    DATA mt_log TYPE string_table.
 ENDCLASS.
 
 CLASS cl_request_log IMPLEMENTATION.
   METHOD get_instance.
-    IF instance IS NOT BOUND.
-      instance = NEW cl_request_log( ).
+    IF mo_instance IS NOT BOUND.
+      mo_instance = NEW cl_request_log( ).
     ENDIF.
-    result = instance.
+    ro_result = mo_instance.
   ENDMETHOD.
   METHOD add.
-    APPEND text TO log.
+    APPEND iv_text TO mt_log.
   ENDMETHOD.
   METHOD entries.
-    result = log.
+    rt_result = mt_log.
   ENDMETHOD.
 ENDCLASS.
 
 " Usage — always the same object
-DATA(log) = cl_request_log=>get_instance( ).
-log->add( `Request 1` ).
-DATA(same_log) = cl_request_log=>get_instance( ).  " same instance
+DATA(lo_log) = cl_request_log=>get_instance( ).
+lo_log->add( `Request 1` ).
+DATA(lo_same_log) = cl_request_log=>get_instance( ).  " same instance
 ```
 
 **Anti-pattern warning:** Singletons hold static state that survives between test runs, making tests order-dependent. Prefer constructor injection for collaborators — only use singleton for truly global, process-lifetime concerns (application logging, read-only configuration caches). Never use singleton for business objects.
@@ -352,37 +352,37 @@ Wrap a legacy or third-party class behind an interface your code expects. The ad
 " Legacy class — incompatible signature
 CLASS cl_legacy_printer DEFINITION PUBLIC.
   PUBLIC SECTION.
-    METHODS print_raw IMPORTING xstr TYPE xstring.
+    METHODS print_raw IMPORTING iv_xstr TYPE xstring.
 ENDCLASS.
 
 " Desired interface
 INTERFACE if_printer PUBLIC.
-  METHODS print IMPORTING text TYPE string.
+  METHODS print IMPORTING iv_text TYPE string.
 ENDINTERFACE.
 
 " Adapter: implements the desired interface, wraps the legacy class
 CLASS cl_legacy_printer_adapter DEFINITION PUBLIC FINAL.
   PUBLIC SECTION.
     INTERFACES if_printer.
-    METHODS constructor IMPORTING legacy TYPE REF TO cl_legacy_printer.
+    METHODS constructor IMPORTING io_legacy TYPE REF TO cl_legacy_printer.
   PRIVATE SECTION.
-    DATA legacy TYPE REF TO cl_legacy_printer.
+    DATA mo_legacy TYPE REF TO cl_legacy_printer.
 ENDCLASS.
 
 CLASS cl_legacy_printer_adapter IMPLEMENTATION.
   METHOD constructor.
-    me->legacy = legacy.
+    me->mo_legacy = io_legacy.
   ENDMETHOD.
   METHOD if_printer~print.
-    DATA(xstr) = cl_abap_conv_codepage=>create_out( )->convert( text ).
-    legacy->print_raw( xstr ).
+    DATA(lv_xstr) = cl_abap_conv_codepage=>create_out( )->convert( iv_text ).
+    mo_legacy->print_raw( lv_xstr ).
   ENDMETHOD.
 ENDCLASS.
 
 " Usage — caller only knows if_printer
-DATA(printer) = CAST if_printer(
+DATA(lo_printer) = CAST if_printer(
   NEW cl_legacy_printer_adapter( NEW cl_legacy_printer( ) ) ).
-printer->print( `Hello` ).
+lo_printer->print( `Hello` ).
 ```
 
 **When to use:** Integrating legacy code, third-party classes, or external APIs without modifying them. The adapter keeps incompatible code out of your domain layer. Prefer adapter over modifying the legacy class when you cannot or must not change it.

@@ -36,18 +36,18 @@ Returns an `if_rap_query_paging` instance:
 Standard handling:
 
 ```abap
-DATA(paging)    = io_request->get_paging( ).
-DATA(offset)    = paging->get_offset( ).
-DATA(page_size) = paging->get_page_size( ).
+DATA(lo_paging)    = io_request->get_paging( ).
+DATA(lv_offset)    = lo_paging->get_offset( ).
+DATA(lv_page_size) = lo_paging->get_page_size( ).
 
-DATA(max_rows) = COND #( WHEN page_size = if_rap_query_paging=>page_size_unlimited
-                         THEN 0            " 0 = no restriction in the API call
-                         ELSE page_size ).
+DATA(lv_max_rows) = COND #( WHEN lv_page_size = if_rap_query_paging=>page_size_unlimited
+                           THEN 0            " 0 = no restriction in the API call
+                           ELSE lv_page_size ).
 ```
 
 The application-log sample computes `max_index = top + skip`, selects `UP TO
 max_index ROWS` from the in-memory table, and then removes the first `skip` rows
-with `DELETE business_data TO skip.` — a workable pattern when the backing API
+with `DELETE lt_business_data TO skip.` — a workable pattern when the backing API
 cannot page natively.
 
 **Contract:** return *exactly* the requested page, not the full result. The
@@ -68,19 +68,19 @@ parameters) and the **SQL string** to post-filter in-memory data:
 
 ```abap
 TRY.
-    DATA(filter_ranges) = io_request->get_filter( )->get_as_ranges( ).
-  CATCH cx_rap_query_filter_no_range INTO DATA(no_range_error).
+    DATA(lt_filter_ranges) = io_request->get_filter( )->get_as_ranges( ).
+  CATCH cx_rap_query_filter_no_range INTO DATA(lo_no_range_error).
     " Fall back: fetch a superset and rely on the SQL string below,
     " or raise cx_rap_query_provider if the filter is mandatory.
 ENDTRY.
 
-DATA(filter_sql) = io_request->get_filter( )->get_as_sql_string( ).
+DATA(lv_filter_sql) = io_request->get_filter( )->get_as_sql_string( ).
 
 " The itab-SELECT trick: apply the OData filter to in-memory data
 " (fields vary by sample: application-log uses log_handle/log_item_number; change-documents use OBJECTID/CHNGCNTR; value-help varies)
-SELECT key_field, field1, field2 FROM @business_data AS data_source
-  WHERE (filter_sql)
-  INTO TABLE @business_data.
+SELECT key_field, field1, field2 FROM @lt_business_data AS data_source
+  WHERE (lv_filter_sql)
+  INTO TABLE @lt_business_data.
 ```
 
 Both reuse-services samples use exactly this `SELECT ... FROM @itab WHERE
@@ -94,11 +94,11 @@ this by checking whether the filter contains, for every key element, exactly one
 range line with `sign = 'I'`, `option = 'EQ'`, and a non-initial `low`:
 
 ```abap
-READ TABLE filter_ranges WITH KEY name = 'LOG_HANDLE' INTO DATA(handle_filter).
-IF sy-subrc = 0 AND lines( handle_filter-range ) = 1
-   AND handle_filter-range[ 1 ]-sign = 'I'
-   AND handle_filter-range[ 1 ]-option = 'EQ'
-   AND handle_filter-range[ 1 ]-low IS NOT INITIAL.
+READ TABLE lt_filter_ranges WITH KEY name = 'LOG_HANDLE' INTO DATA(ls_handle_filter).
+IF sy-subrc = 0 AND lines( ls_handle_filter-range ) = 1
+   AND ls_handle_filter-range[ 1 ]-sign = 'I'
+   AND ls_handle_filter-range[ 1 ]-option = 'EQ'
+   AND ls_handle_filter-range[ 1 ]-low IS NOT INITIAL.
   " single read for this key element
 ENDIF.
 ```
@@ -112,17 +112,17 @@ Returns the requested `$orderby` as a list of element name + descending flag.
 The application-log sample turns it into a dynamic `ORDER BY`:
 
 ```abap
-DATA order_by_clause TYPE string.
-LOOP AT io_request->get_sort_elements( ) INTO DATA(sort_element).
-  order_by_clause = |{ order_by_clause } { sort_element-element_name }| &&
-                    COND #( WHEN sort_element-descending = abap_true
+DATA lv_order_by_clause TYPE string.
+LOOP AT io_request->get_sort_elements( ) INTO DATA(ls_sort_element).
+  lv_order_by_clause = |{ lv_order_by_clause } { ls_sort_element-element_name }| &&
+                    COND #( WHEN ls_sort_element-descending = abap_true
                             THEN ` DESCENDING` ELSE ` ASCENDING` ).
 ENDLOOP.
 
-SELECT key_field, field1, field2 FROM @business_data AS data_source
-  WHERE (filter_sql)
-  ORDER BY (order_by_clause)
-  INTO TABLE @business_data.
+SELECT key_field, field1, field2 FROM @lt_business_data AS data_source
+  WHERE (lv_filter_sql)
+  ORDER BY (lv_order_by_clause)
+  INTO TABLE @lt_business_data.
 ```
 
 ### Requested elements — get_requested_elements( )
@@ -157,10 +157,10 @@ Per the IF_RAP_QUERY_RESPONSE documentation, `set_data` provides the response fo
 
 ```abap
 IF io_request->is_total_numb_of_rec_requested( ).
-  io_response->set_total_number_of_records( total_count ).
+  io_response->set_total_number_of_records( lv_total_count ).
 ENDIF.
 IF io_request->is_data_requested( ).
-  io_response->set_data( business_data ).
+  io_response->set_data( lt_business_data ).
 ENDIF.
 ```
 
@@ -170,7 +170,7 @@ a pure `$count` request should not pay for full data retrieval.)
 Common bug: computing the total *after* slicing the page — the UI then shows
 "20 items" for every page. Capture `lines( result )` before applying
 offset/page-size, as the application-log sample does
-(`total_number_of_records = lines( business_data ).` before the paging cuts).
+(`lv_total_number_of_records = lines( lt_business_data ).` before the paging cuts).
 
 ## Error handling
 

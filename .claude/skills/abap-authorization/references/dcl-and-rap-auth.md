@@ -206,14 +206,14 @@ METHOD get_instance_authorizations.
   READ ENTITIES OF some_bdef IN LOCAL MODE
     ENTITY some_entity
     ALL FIELDS WITH CORRESPONDING #( keys )
-    RESULT DATA(res)
+    RESULT DATA(lt_res)
     ...
 
-  IF res IS INITIAL.
+  IF lt_res IS INITIAL.
     RETURN.
   ENDIF.
 
-  LOOP AT res INTO DATA(instance).
+  LOOP AT lt_res INTO DATA(ls_instance).
 
     ...
 
@@ -221,16 +221,16 @@ METHOD get_instance_authorizations.
     IF requested_authorizations-%delete = if_abap_behv=>mk-on.
 
       AUTHORITY-CHECK OBJECT 'ZAUTH_OBJ'
-         ID 'ZAUTH_FIELD' FIELD instance-some_field
+         ID 'ZAUTH_FIELD' FIELD ls_instance-some_field
          ID 'ACTVT'       FIELD '06'.
 
-      DATA(is_delete_allowed) = COND #( WHEN sy-subrc = 0 THEN if_abap_behv=>auth-allowed ELSE if_abap_behv=>auth-unauthorized ).
+      DATA(lv_is_delete_allowed) = COND #( WHEN sy-subrc = 0 THEN if_abap_behv=>auth-allowed ELSE if_abap_behv=>auth-unauthorized ).
     ENDIF.
 
     ...
 
     APPEND VALUE #( ...
-                    %delete = is_delete_allowed
+                    %delete = lv_is_delete_allowed
                     ...
                   ) TO result.
   ENDLOOP.

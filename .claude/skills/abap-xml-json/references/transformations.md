@@ -43,8 +43,8 @@ CALL TRANSFORMATION ... SOURCE XML src RESULT ...
 ```abap
 CALL TRANSFORMATION ... SOURCE z1 = abap1 ... RESULT ...
 
-DATA(srctab) = VALUE abap_trans_srcbind_tab( ( name = 'A' value = REF #( b ) ) ( ... ) ).
-CALL TRANSFORMATION ... SOURCE (srctab) RESULT ...
+DATA(lt_srctab) = VALUE abap_trans_srcbind_tab( ( name = 'A' value = REF #( lv_b ) ) ( ... ) ).
+CALL TRANSFORMATION ... SOURCE (lt_srctab) RESULT ...
 ```
 
 ### Result side
@@ -66,8 +66,8 @@ CALL TRANSFORMATION ... SOURCE ... RESULT XML res.
 ```abap
 CALL TRANSFORMATION ... SOURCE ... RESULT y1 = abap1 ...
 
-DATA(restab) = VALUE abap_trans_resbind_tab( ( name = 'A' value = REF #( b ) ) ( ... ) ).
-CALL TRANSFORMATION ... SOURCE ... RESULT (restab).
+DATA(lt_restab) = VALUE abap_trans_resbind_tab( ( name = 'A' value = REF #( lv_b ) ) ( ... ) ).
+CALL TRANSFORMATION ... SOURCE ... RESULT (lt_restab).
 ```
 
 ### JSON additions
@@ -76,26 +76,26 @@ CALL TRANSFORMATION ... SOURCE ... RESULT (restab).
 
 ```abap
 "ABAP (elementary) -> JSON
-DATA num TYPE i VALUE 123.
-CALL TRANSFORMATION id SOURCE var = num RESULT JSON DATA(json).
+DATA lv_num TYPE i VALUE 123.
+CALL TRANSFORMATION id SOURCE var = lv_num RESULT JSON DATA(lv_json).
 
 "JSON -> ABAP (elementary)
-DATA int TYPE i.
-CALL TRANSFORMATION id SOURCE JSON json RESULT var = int.
+DATA lv_int TYPE i.
+CALL TRANSFORMATION id SOURCE JSON lv_json RESULT var = lv_int.
 
 "ABAP (structure) -> JSON / back
-CALL TRANSFORMATION id SOURCE structure = struct RESULT JSON json.
-CALL TRANSFORMATION id SOURCE JSON json RESULT structure = struct2.
+CALL TRANSFORMATION id SOURCE structure = ls_struct RESULT JSON lv_json.
+CALL TRANSFORMATION id SOURCE JSON lv_json RESULT structure = ls_struct2.
 
 "ABAP (internal table) -> JSON / back
-CALL TRANSFORMATION id SOURCE table = itab RESULT JSON json.
-CALL TRANSFORMATION id SOURCE JSON json RESULT table = itab2.
+CALL TRANSFORMATION id SOURCE table = lt_itab RESULT JSON lv_json.
+CALL TRANSFORMATION id SOURCE JSON lv_json RESULT table = lt_itab2.
 
 "ABAP (data reference) -> JSON / back
-DATA dref TYPE REF TO string.
-dref = NEW #( `ABAP` ).
-CALL TRANSFORMATION id SOURCE ref = dref RESULT JSON json.
-CALL TRANSFORMATION id SOURCE JSON json RESULT ref = dref2.
+DATA lr_dref TYPE REF TO string.
+lr_dref = NEW #( `ABAP` ).
+CALL TRANSFORMATION id SOURCE ref = lr_dref RESULT JSON lv_json.
+CALL TRANSFORMATION id SOURCE JSON lv_json RESULT ref = lr_dref2.
 ```
 
 ### Further additions
@@ -105,7 +105,7 @@ CALL TRANSFORMATION id SOURCE JSON json RESULT ref = dref2.
 - Catchable exceptions: see the *Catchable Exceptions* section of the `CALL TRANSFORMATION` doc (e.g. `cx_invalid_transformation`, `cx_transformation_error`, `cx_st_*`, `cx_xslt_*`).
 
 ```abap
-CALL TRANSFORMATION id SOURCE itab = tab RESULT XML chartab OPTIONS xml_header = 'NO'.
+CALL TRANSFORMATION id SOURCE itab = lt_tab RESULT XML lt_chartab OPTIONS xml_header = 'NO'.
 ```
 
 ---

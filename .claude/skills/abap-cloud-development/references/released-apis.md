@@ -17,12 +17,12 @@ SELECT ReleasedObjectType, ReleasedObjectName, ReleaseState
   FROM i_apisforclouddevelopment
   WHERE releasestate = 'RELEASED' AND ReleasedObjectType = 'CLAS'
   ORDER BY ReleasedObjectName
-  INTO TABLE @DATA(released_classes).
+  INTO TABLE @DATA(lt_released_classes).
 
 " Objects that should no longer be used + their cloud successors
 SELECT PredecessorObjectType, PredecessorObjectName, SuccessorObjectType, SuccessorObjectName FROM I_APIsWithCloudDevSuccessor
   WHERE PredecessorObjectType = 'TABL'
-  INTO TABLE @DATA(successors_tables).
+  INTO TABLE @DATA(lt_successors_tables).
 ```
 
 ## Running a class & console output

@@ -10,10 +10,10 @@ Modifying operations must be enabled in the BDEF (`create; update; delete; actio
 
 ```abap
 MODIFY ENTITY zdemo_abap_rap_ro_m
-  CREATE FIELDS ( key_field field1 field2 ) WITH create_tab
-  MAPPED   mapped_response
-  FAILED   failed_response
-  REPORTED reported_response.
+  CREATE FIELDS ( key_field field1 field2 ) WITH lt_create_tab
+  MAPPED   lt_mapped_response
+  FAILED   lt_failed_response
+  REPORTED lt_reported_response.
 ```
 
 ### Long form — several operations, several entities of one BO
@@ -29,9 +29,9 @@ MODIFY ENTITIES OF zdemo_abap_rap_ro_m    "root entity name (= BDEF name)
     DELETE FROM
     VALUE #( ( %cid_ref = 'cid5' )   "reference via content id
              ( key_field = 9 ) )     "reference via key
-  MAPPED   DATA(mapped_response)
-  FAILED   DATA(failed_response)
-  REPORTED DATA(reported_response).
+  MAPPED   DATA(lt_mapped_response)
+  FAILED   DATA(lt_failed_response)
+  REPORTED DATA(lt_reported_response).
 ```
 
 ### Field selection variants
@@ -58,9 +58,9 @@ MODIFY ENTITIES OF zdemo_abap_rap_ro_m
       VALUE #( ( %cid_ref = 'cid_parent'
                  %target  = VALUE #( ( %cid = 'cid_ch1' key_ch = 9  field_ch1 = 'a' field_ch2 = 99 )
                                      ( %cid = 'cid_ch2' key_ch = 10 field_ch1 = 'b' field_ch2 = 100 ) ) ) )
-  MAPPED   DATA(mapped_response)
-  FAILED   DATA(failed_response)
-  REPORTED DATA(reported_response).
+  MAPPED   DATA(lt_mapped_response)
+  FAILED   DATA(lt_failed_response)
+  REPORTED DATA(lt_reported_response).
 ```
 
 `%cid_ref` may also be replaced by the parent's key when the parent already exists.
@@ -72,20 +72,20 @@ MODIFY ENTITIES OF zdemo_abap_rap_ro_m
   ENTITY root
     EXECUTE multiply_by_2 FROM VALUE #( ( %cid_ref = 'cid_x2' )   "just-created instance
                                         ( key_field = 1 ) )       "existing instance
-  MAPPED   DATA(mapped_response)
-  FAILED   DATA(failed_response)
-  REPORTED DATA(reported_response).
+  MAPPED   DATA(lt_mapped_response)
+  FAILED   DATA(lt_failed_response)
+  REPORTED DATA(lt_reported_response).
 ```
 
 - Parameterized action: input rows carry keys plus `%param`.
-- Action with declared result: add `RESULT DATA(action_result)` directly after the `EXECUTE ... FROM ...` clause; result rows carry keys plus `%param`.
+- Action with declared result: add `RESULT DATA(lt_action_result)` directly after the `EXECUTE ... FROM ...` clause; result rows carry keys plus `%param`.
 
 ### Dynamic form — several BOs in one statement
 
 ```abap
-DATA operations TYPE abp_behv_changes_tab.
+DATA lt_operations TYPE abp_behv_changes_tab.
 
-operations = VALUE #(
+lt_operations = VALUE #(
   ( op          = if_abap_behv=>op-m-create
     entity_name = 'ZDEMO_ABAP_RAP_RO_M'
     instances   = REF #( create_root_tab ) )
@@ -97,10 +97,10 @@ operations = VALUE #(
     entity_name = 'ZDEMO_ABAP_RAP_CH_M'
     instances   = REF #( update_child_tab ) ) ).
 
-MODIFY ENTITIES OPERATIONS operations
-  MAPPED   DATA(mapped_response)
-  FAILED   DATA(failed_response)
-  REPORTED DATA(reported_response).
+MODIFY ENTITIES OPERATIONS lt_operations
+  MAPPED   DATA(lt_mapped_response)
+  FAILED   DATA(lt_failed_response)
+  REPORTED DATA(lt_reported_response).
 ```
 
 ## READ
@@ -113,17 +113,17 @@ MODIFY ENTITIES OPERATIONS operations
 READ ENTITIES OF zdemo_abap_rap_ro_m
   ENTITY root
   ALL FIELDS WITH VALUE #( ( key_field = 1 ) ( key_field = 2 ) )
-  RESULT   DATA(instances)
-  FAILED   DATA(failed_read)
-  REPORTED DATA(reported_read).
+  RESULT   DATA(lt_instances)
+  FAILED   DATA(lt_failed_read)
+  REPORTED DATA(lt_reported_read).
 
 "Read by association, parent → child, with key-pair links
 READ ENTITIES OF zdemo_abap_rap_ro_m
   ENTITY root
   BY \_child
   ALL FIELDS WITH VALUE #( ( key_field = 1 ) )
-  RESULT DATA(children)
-  LINK   DATA(links).
+  RESULT DATA(lt_children)
+  LINK   DATA(lt_links).
 
 "Child → parent works the same way via \_parent
 ```
@@ -131,9 +131,9 @@ READ ENTITIES OF zdemo_abap_rap_ro_m
 ### Dynamic READ
 
 ```abap
-DATA retrievals TYPE abp_behv_retrievals_tab.
+DATA lt_retrievals TYPE abp_behv_retrievals_tab.
 
-retrievals = VALUE #(
+lt_retrievals = VALUE #(
   ( op          = if_abap_behv=>op-r-read
     entity_name = 'ZDEMO_ABAP_RAP_RO_M'
     instances   = REF #( read_import_tab )      "TYPE TABLE FOR READ IMPORT
@@ -146,7 +146,7 @@ retrievals = VALUE #(
     results     = REF #( rba_result_tab )
     links       = REF #( rba_link_tab ) ) ).    "TYPE TABLE FOR READ LINK
 
-READ ENTITIES OPERATIONS retrievals.
+READ ENTITIES OPERATIONS lt_retrievals.
 ```
 
 ### READ ... WITH CHANGES (change information)
@@ -159,7 +159,7 @@ READ ENTITIES OPERATIONS retrievals.
 READ ENTITY IN LOCAL MODE demo_rap_entity
   WITH CHANGES
   ALL FIELDS WITH CORRESPONDING #( keys )
-  RESULT read_changes
+  RESULT lt_read_changes
   FAILED failed.
 ```
 
@@ -171,7 +171,7 @@ Triggers the RAP save sequence (early save phase → late save phase); implicitl
 |---|---|---|
 | Short | `COMMIT ENTITIES.` | Always check `sy-subrc` afterwards |
 | Short + responses | `COMMIT ENTITIES RESPONSES FAILED f REPORTED r.` | `f`/`r` of type `abp_behv_response_tab` |
-| Long | `COMMIT ENTITIES RESPONSE OF root1 FAILED DATA(f1) REPORTED DATA(r1) RESPONSE OF root2 FAILED DATA(f2) REPORTED DATA(r2).` | Per-BO derived-type responses; root entities only |
+| Long | `COMMIT ENTITIES RESPONSE OF root1 FAILED DATA(lt_failed_1) REPORTED DATA(lt_reported_1) RESPONSE OF root2 FAILED DATA(lt_failed_2) REPORTED DATA(lt_reported_2).` | Per-BO derived-type responses; root entities only |
 | Dynamic | `COMMIT ENTITIES RESPONSES OF name_tab FAILED f REPORTED r.` | `name_tab` of type `abp_entity_name_tab` |
 | Commit scope | `COMMIT ENTITIES BEGIN. ... CONVERT KEY OF bo FROM ... TO ... COMMIT ENTITIES END.` | Late numbering: convert preliminary to final keys |
 | Simulation | `COMMIT ENTITIES IN SIMULATION MODE.` | Runs only the early save phase; no `COMMIT WORK`; nothing persisted — consistency dry run. Clear the buffer afterwards with `ROLLBACK ENTITIES` if needed |
@@ -205,9 +205,9 @@ Rolls back all changes of the current RAP transaction: clears the transactional 
 Retrieves global/instance authorization and global/instance/static feature-control information.
 
 ```abap
-DATA permission_request TYPE STRUCTURE FOR PERMISSIONS REQUEST zdemo_abap_rap_ro_m.
+DATA ls_permission_request TYPE STRUCTURE FOR PERMISSIONS REQUEST zdemo_abap_rap_ro_m.
 
-permission_request = VALUE #(
+ls_permission_request = VALUE #(
   %create          = if_abap_behv=>mk-on
   %update          = if_abap_behv=>mk-on
   %delete          = if_abap_behv=>mk-on
@@ -215,10 +215,10 @@ permission_request = VALUE #(
   %field-field1    = if_abap_behv=>mk-on ).
 
 GET PERMISSIONS ONLY GLOBAL ENTITY zdemo_abap_rap_ro_m
-  REQUEST permission_request
-  RESULT   DATA(permission_result)
-  FAILED   DATA(failed_permissions)
-  REPORTED DATA(reported_permissions).
+  REQUEST ls_permission_request
+  RESULT   DATA(ls_permission_result)
+  FAILED   DATA(lt_failed_permissions)
+  REPORTED DATA(lt_reported_permissions).
 ```
 
 - `REQUEST` takes a *structure*, not a table.
@@ -230,29 +230,29 @@ GET PERMISSIONS ONLY GLOBAL ENTITY zdemo_abap_rap_ro_m
 Exclusively locks RAP BO instances (enqueue) ahead of modification; the lock lasts until the RAP transaction ends.
 
 ```abap
-DATA lock_keys TYPE TABLE FOR KEY OF zdemo_abap_rap_ro_u.
-lock_keys = VALUE #( ( key_field = 1 ) ( key_field = 2 ) ).
+DATA lt_lock_keys TYPE TABLE FOR KEY OF zdemo_abap_rap_ro_u.
+lt_lock_keys = VALUE #( ( key_field = 1 ) ( key_field = 2 ) ).
 
 "Short form — one entity
 SET LOCKS ENTITY zdemo_abap_rap_ro_u
-  FROM lock_keys
-  FAILED DATA(failed_locks).
+  FROM lt_lock_keys
+  FAILED DATA(lt_failed_locks).
 
 "Long form — multiple entities of one composition tree
 SET LOCKS OF zdemo_abap_rap_ro_u
   ENTITY root  FROM VALUE #( ( key_field = 1 ) )
   ENTITY child FROM VALUE #( ( key_field = 2 ) )
-  FAILED   DATA(failed_tree_locks)
-  REPORTED DATA(reported_tree_locks).
+  FAILED   DATA(lt_failed_tree_locks)
+  REPORTED DATA(lt_reported_tree_locks).
 
 "Dynamic form — multiple BOs
-DATA(lock_requests) = VALUE abp_behv_locks_tab(
+DATA(lt_lock_requests) = VALUE abp_behv_locks_tab(
   ( entity_name = 'ZDEMO_ABAP_RAP_RO_U' instances = REF #( root_keys ) )
   ( entity_name = 'ZDEMO_ABAP_RAP_CH_U' instances = REF #( child_keys ) ) ).
 
-SET LOCKS lock_requests
-  FAILED   DATA(failed_dynamic_locks)
-  REPORTED DATA(reported_dynamic_locks).
+SET LOCKS lt_lock_requests
+  FAILED   DATA(lt_failed_dynamic_locks)
+  REPORTED DATA(lt_reported_dynamic_locks).
 ```
 
 Instances already locked by another user appear in `FAILED` with `%fail-cause = if_abap_behv=>cause-locked`.

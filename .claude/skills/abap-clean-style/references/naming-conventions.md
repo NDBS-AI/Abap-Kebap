@@ -59,6 +59,19 @@ Example: `mt_items`, `lv_count`, `iv_key`, `rt_messages`.
 > **scope prefix** (returning). Context disambiguates: a returning object ref is
 > `ro_...`, a returning table is `rt_...`, a returning scalar is `rv_...`.
 
+> **No bare `result` exception.** `RETURNING VALUE(result)` is common ABAP idiom
+> elsewhere, but it does **not** get a pass here — a `RETURNING` parameter follows the
+> grid like any other: `rv_result`, `rs_result`, `rt_result`, `ro_result` (or a more
+> specific business name with the same prefix, e.g. `rv_total`, `rt_invoices`).
+>
+> **RAP handler signatures are a separate case.** The conventional bare names in RAP
+> behavior-pool handler methods (`keys`, `entities`, `failed`, `reported`, `mapped`,
+> `requested_authorizations`, and the `RESULT result` of action/read/authorization
+> handlers) are SAP's own near-universal convention for parameters the framework
+> populates by contract, not ordinary method locals — leave them as found rather than
+> applying the grid, since it is not established whether the framework binds these by
+> declared name.
+
 ---
 
 ## 4. Combined prefixes (the full grid)

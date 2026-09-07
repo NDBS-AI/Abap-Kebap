@@ -33,13 +33,13 @@ JSON is processed via **JSON-XML** (an SAP-specific JSON representation in XML f
 
 ```abap
 "XML writer
-DATA(writer) = CAST if_sxml_writer( cl_sxml_string_writer=>create(
+DATA(lo_writer) = CAST if_sxml_writer( cl_sxml_string_writer=>create(
                        type = if_sxml=>co_xt_xml10 encoding = 'UTF-8' ) ).
 "JSON writer
-DATA(json_writer) = CAST if_sxml_writer( cl_sxml_string_writer=>create(
+DATA(lo_json_writer) = CAST if_sxml_writer( cl_sxml_string_writer=>create(
                        type = if_sxml=>co_xt_json ) ).
 "Reader (over an xstring)
-DATA(reader) = cl_sxml_string_reader=>create( some_xstring ).
+DATA(lo_reader) = cl_sxml_string_reader=>create( some_xstring ).
 ```
 
 ### Node-type constants (`if_sxml_node`)
@@ -71,35 +71,35 @@ One method call per node. Order matters.
 
 ```abap
 TRY.
-    writer->open_element( name = 'flights' ).
-    writer->open_element( name = 'flight' ).
-    writer->open_element( name = 'carrier' ).
-    writer->write_value( 'LH' ).
-    writer->close_element( ).
-    writer->open_element( name = 'flightnumber' ).
-    writer->write_value( '400' ).
-    writer->close_element( ).
-    writer->close_element( ).
-    writer->close_element( ).
+    lo_writer->open_element( name = 'flights' ).
+    lo_writer->open_element( name = 'flight' ).
+    lo_writer->open_element( name = 'carrier' ).
+    lo_writer->write_value( 'LH' ).
+    lo_writer->close_element( ).
+    lo_writer->open_element( name = 'flightnumber' ).
+    lo_writer->write_value( '400' ).
+    lo_writer->close_element( ).
+    lo_writer->close_element( ).
+    lo_writer->close_element( ).
   CATCH cx_sxml_state_error.
 ENDTRY.
 
 "Retrieve the rendered xstring (cast back to the concrete class)
-DATA(xml) = CAST cl_sxml_string_writer( writer )->get_output( ).
+DATA(lv_xml) = CAST cl_sxml_string_writer( lo_writer )->get_output( ).
 ```
 
 For JSON, a `str` element with a `name` attribute maps to a JSON member; nested `object` / `array` elements form the JSON structure:
 
 ```abap
-DATA(json_writer) = CAST if_sxml_writer( cl_sxml_string_writer=>create( type = if_sxml=>co_xt_json ) ).
-json_writer->open_element( name = 'array' ).
-json_writer->open_element( name = 'object' ).
-json_writer->open_element( name = 'str' ).
-json_writer->write_attribute( name = 'name' value = 'carrier_id' ).
-json_writer->write_value( value = 'LH' ).
-json_writer->close_element( ).
-json_writer->close_element( ).
-json_writer->close_element( ).
+DATA(lo_json_writer) = CAST if_sxml_writer( cl_sxml_string_writer=>create( type = if_sxml=>co_xt_json ) ).
+lo_json_writer->open_element( name = 'array' ).
+lo_json_writer->open_element( name = 'object' ).
+lo_json_writer->open_element( name = 'str' ).
+lo_json_writer->write_attribute( name = 'name' value = 'carrier_id' ).
+lo_json_writer->write_value( value = 'LH' ).
+lo_json_writer->close_element( ).
+lo_json_writer->close_element( ).
+lo_json_writer->close_element( ).
 "-> [{"carrier_id":"LH"}]
 ```
 
@@ -111,8 +111,8 @@ json_writer->close_element( ).
 | `co_opt_indent` | Indent nested nodes |
 
 ```abap
-json_wr->set_option( option = if_sxml_writer=>co_opt_linebreaks ).
-json_wr->set_option( option = if_sxml_writer=>co_opt_indent ).
+lo_json_wr->set_option( option = if_sxml_writer=>co_opt_linebreaks ).
+lo_json_wr->set_option( option = if_sxml_writer=>co_opt_indent ).
 ```
 
 ### Object-oriented writing
@@ -127,11 +127,11 @@ Build node objects and feed them to `write_node`.
 | `write_node( node )` | Write a node object |
 
 ```abap
-writer_oo->write_node( writer_oo->new_open_element( name = 'flights' ) ).
-DATA(val) = writer_oo->new_value( ).
-val->set_value( 'AZ' ).
-writer_oo->write_node( val ).
-writer_oo->write_node( writer_oo->new_close_element( ) ).
+lo_writer_oo->write_node( lo_writer_oo->new_open_element( name = 'flights' ) ).
+DATA(lo_val) = lo_writer_oo->new_value( ).
+lo_val->set_value( 'AZ' ).
+lo_writer_oo->write_node( lo_val ).
+lo_writer_oo->write_node( lo_writer_oo->new_close_element( ) ).
 ```
 
 ---
@@ -149,17 +149,17 @@ writer_oo->write_node( writer_oo->new_close_element( ) ).
 | `next_attribute( )` | Advance to the next attribute of an open element |
 
 ```abap
-DATA(reader) = cl_sxml_string_reader=>create( xml_to_parse ).
+DATA(lo_reader) = cl_sxml_string_reader=>create( xml_to_parse ).
 TRY.
     DO.
-      reader->next_node( ).
-      IF reader->node_type = if_sxml_node=>co_nt_final.
+      lo_reader->next_node( ).
+      IF lo_reader->node_type = if_sxml_node=>co_nt_final.
         EXIT.
       ENDIF.
 
-      "reader->node_type / reader->name / reader->value are directly readable
+      "lo_reader->node_type / lo_reader->name / lo_reader->value are directly readable
       "Map the node type for display
-      DATA(nt) = SWITCH string( reader->node_type
+      DATA(lv_nt) = SWITCH string( lo_reader->node_type
         WHEN if_sxml_node=>co_nt_element_open  THEN `CO_NT_ELEMENT_OPEN`
         WHEN if_sxml_node=>co_nt_element_close THEN `CO_NT_ELEMENT_CLOSE`
         WHEN if_sxml_node=>co_nt_value         THEN `CO_NT_VALUE`
@@ -167,17 +167,17 @@ TRY.
         ELSE `Error` ).
 
       "When on an opening element, walk its attributes
-      IF reader->node_type = if_sxml_node=>co_nt_element_open.
+      IF lo_reader->node_type = if_sxml_node=>co_nt_element_open.
         DO.
-          reader->next_attribute( ).
-          IF reader->node_type <> if_sxml_node=>co_nt_attribute.
+          lo_reader->next_attribute( ).
+          IF lo_reader->node_type <> if_sxml_node=>co_nt_attribute.
             EXIT.
           ENDIF.
-          "reader->name / reader->value hold the attribute
+          "lo_reader->name / lo_reader->value hold the attribute
         ENDDO.
       ENDIF.
     ENDDO.
-  CATCH cx_sxml_state_error INTO DATA(err).
+  CATCH cx_sxml_state_error INTO DATA(lo_err).
 ENDTRY.
 ```
 
@@ -196,35 +196,35 @@ The same reader works for JSON — just create it over JSON `xstring`. JSON memb
 Attribute objects expose `qname-name`, `value_type`, and `get_value( )`. Value type constants live in `if_sxml_value` (e.g. `co_vt_text`).
 
 ```abap
-DATA(reader_oo) = cl_sxml_string_reader=>create( xml_to_parse ).
+DATA(lo_reader_oo) = cl_sxml_string_reader=>create( xml_to_parse ).
 TRY.
     DO.
-      DATA(node_oo) = reader_oo->read_next_node( ).
-      IF node_oo IS INITIAL.
+      DATA(lo_node_oo) = lo_reader_oo->read_next_node( ).
+      IF lo_node_oo IS INITIAL.
         EXIT.
       ENDIF.
 
-      CASE node_oo->type.
+      CASE lo_node_oo->type.
         WHEN if_sxml_node=>co_nt_element_open.
-          DATA(open_element) = CAST if_sxml_open_element( node_oo ).
-          DATA(name)         = open_element->qname-name.
-          DATA(attributes)   = open_element->get_attributes( ).
-          LOOP AT attributes INTO DATA(attribute).
-            DATA(attr_name) = attribute->qname-name.
-            DATA(attr_val)  = SWITCH #( attribute->value_type
-              WHEN if_sxml_value=>co_vt_text THEN attribute->get_value( ) ).
+          DATA(lo_open_element) = CAST if_sxml_open_element( lo_node_oo ).
+          DATA(lv_name)          = lo_open_element->qname-name.
+          DATA(lt_attributes)    = lo_open_element->get_attributes( ).
+          LOOP AT lt_attributes INTO DATA(lo_attribute).
+            DATA(lv_attr_name) = lo_attribute->qname-name.
+            DATA(lv_attr_val)  = SWITCH #( lo_attribute->value_type
+              WHEN if_sxml_value=>co_vt_text THEN lo_attribute->get_value( ) ).
           ENDLOOP.
 
         WHEN if_sxml_node=>co_nt_element_close.
-          DATA(close_element) = CAST if_sxml_close_element( node_oo ).
+          DATA(lo_close_element) = CAST if_sxml_close_element( lo_node_oo ).
 
         WHEN if_sxml_node=>co_nt_value.
-          DATA(value_node) = CAST if_sxml_value_node( node_oo ).
-          DATA(text) = SWITCH #( value_node->value_type
-            WHEN if_sxml_value=>co_vt_text THEN value_node->get_value( ) ).
+          DATA(lo_value_node) = CAST if_sxml_value_node( lo_node_oo ).
+          DATA(lv_text) = SWITCH #( lo_value_node->value_type
+            WHEN if_sxml_value=>co_vt_text THEN lo_value_node->get_value( ) ).
       ENDCASE.
     ENDDO.
-  CATCH cx_sxml_state_error INTO DATA(err).
+  CATCH cx_sxml_state_error INTO DATA(lo_err).
 ENDTRY.
 ```
 
@@ -236,14 +236,14 @@ An sXML reader can be the source and an sXML writer the result of `CALL TRANSFOR
 
 ```abap
 "sXML reader as transformation source
-DATA(sxml_reader) = cl_sxml_string_reader=>create( xml_xstr ).
-CALL TRANSFORMATION id SOURCE XML sxml_reader RESULT XML DATA(out).
+DATA(lo_sxml_reader) = cl_sxml_string_reader=>create( lv_xml_xstr ).
+CALL TRANSFORMATION id SOURCE XML lo_sxml_reader RESULT XML DATA(lv_out).
 
 "sXML writer as transformation target
-DATA(sxml) = CAST if_sxml_writer( cl_sxml_string_writer=>create(
+DATA(lo_sxml) = CAST if_sxml_writer( cl_sxml_string_writer=>create(
                      type = if_sxml=>co_xt_xml10 encoding = 'UTF-8' ) ).
-CALL TRANSFORMATION id SOURCE itab = tab RESULT XML sxml.
-DATA(xml_xstr) = CAST cl_sxml_string_writer( sxml )->get_output( ).
+CALL TRANSFORMATION id SOURCE itab = lt_tab RESULT XML lo_sxml.
+DATA(lv_xml_xstr) = CAST cl_sxml_string_writer( lo_sxml )->get_output( ).
 ```
 
 ---

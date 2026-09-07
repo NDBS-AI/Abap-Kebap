@@ -40,11 +40,11 @@ METHODS upload_flat_file FOR MODIFY
   IMPORTING keys FOR ACTION SalesOrder~uploadFlatFile.
 
 METHOD upload_flat_file.
-  LOOP AT keys INTO DATA(key).
-    DATA(file_content) = xco_cp=>xstring( key-%param-_files-attachment
+  LOOP AT keys INTO DATA(ls_key).
+    DATA(lv_file_content) = xco_cp=>xstring( ls_key-%param-_files-attachment
       )->as_string( xco_cp_character=>code_page->utf_8 ).
 
-    " ... parse/validate/persist file_content ...
+    " ... parse/validate/persist lv_file_content ...
   ENDLOOP.
 ENDMETHOD.
 ```

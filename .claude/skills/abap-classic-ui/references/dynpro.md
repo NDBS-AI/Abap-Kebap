@@ -206,10 +206,10 @@ Override element attributes during **PBO**. The work area is of type `SCREEN`; d
 
 ```abap
 MODULE pbo_9000 OUTPUT.
-  LOOP AT SCREEN INTO DATA(scr).
-    IF scr-name = 'SOME_INPUT_FIELD'.
-      scr-required = '1'.        "common components: active, input, invisible, intensified, required, group1..group4
-      MODIFY SCREEN FROM scr.
+  LOOP AT SCREEN INTO DATA(gs_scr).
+    IF gs_scr-name = 'SOME_INPUT_FIELD'.
+      gs_scr-required = '1'.        "common components: active, input, invisible, intensified, required, group1..group4
+      MODIFY SCREEN FROM gs_scr.
     ENDIF.
   ENDLOOP.
 ENDMODULE.
@@ -222,7 +222,7 @@ The **GUI status** (Menu Painter) groups menu bar, standard toolbar, application
 ```abap
 SET PF-STATUS 'STATUS'.
 SET PF-STATUS 'STATUS' EXCLUDING fcode.   "fcode: char field or itab of codes to deactivate
-GET PF-STATUS status EXCLUDING fcode.     "read current status / inactive codes
+GET PF-STATUS gv_status EXCLUDING fcode.  "read current status / inactive codes
 "sy-pfkey = current status
 
 SET TITLEBAR 'TITLE'.

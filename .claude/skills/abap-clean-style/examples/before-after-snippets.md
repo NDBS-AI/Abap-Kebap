@@ -28,10 +28,10 @@ CONCATENATE 'Customer'
 **After**
 ```abap
 SELECT SINGLE name1 FROM kna1
-  INTO @DATA(customer_name)
-  WHERE kunnr = @customer_id.
+  INTO @DATA(lv_customer_name)
+  WHERE kunnr = @lv_customer_id.
 
-DATA(message) = |Customer { customer_id } - { customer_name }|.
+DATA(lv_message) = |Customer { lv_customer_id } - { lv_customer_name }|.
 ```
 
 **Why:** type prefixes carry no information the DDIC reference doesn't already imply; the template makes the output shape readable in one line.
@@ -43,13 +43,13 @@ DATA(message) = |Customer { customer_id } - { customer_name }|.
 **Before**
 ```abap
 METHOD calculate_price.
-  CASE TYPE OF product.
+  CASE TYPE OF io_product.
     WHEN TYPE cl_book.
-      result = product->base_price * '0.92'.   " book discount 8%
+      rv_result = io_product->mv_base_price * '0.92'.   " book discount 8%
     WHEN TYPE cl_ebook.
-      result = product->base_price * '0.70'.   " ebook discount 30%
+      rv_result = io_product->mv_base_price * '0.70'.   " ebook discount 30%
     WHEN TYPE cl_audiobook.
-      result = product->base_price * '0.80'.
+      rv_result = io_product->mv_base_price * '0.80'.
   ENDCASE.
 ENDMETHOD.
 ```
@@ -57,17 +57,17 @@ ENDMETHOD.
 **After**
 ```abap
 INTERFACE if_priced_product.
-  METHODS price RETURNING VALUE(result) TYPE decfloat34.
+  METHODS price RETURNING VALUE(rv_result) TYPE decfloat34.
 ENDINTERFACE.
 
 CLASS cl_book IMPLEMENTATION.
   METHOD if_priced_product~price.
-    result = base_price * '0.92'.
+    rv_result = mv_base_price * '0.92'.
   ENDMETHOD.
 ENDCLASS.
 
 " callsite:
-result = product->price( ).
+rv_result = io_product->price( ).
 ```
 
 **Why:** adding a fourth product type now means one new class, not one more `WHEN` in every pricing routine. Polymorphism captures the *open* set of product types; `CASE TYPE OF` assumes a closed set.
@@ -91,9 +91,9 @@ ENDLOOP.
 
 **After**
 ```abap
-LOOP AT invoices ASSIGNING FIELD-SYMBOL(<inv>)
+LOOP AT lt_invoices ASSIGNING FIELD-SYMBOL(<fs_inv>)
      WHERE status = 'O' AND amount > 0.
-  process( <inv> ).
+  process( <fs_inv> ).
 ENDLOOP.
 ```
 
@@ -114,7 +114,7 @@ APPEND VALUE #( code = 'C' text = 'Cancelled' ) TO lt_statuses.
 
 **After**
 ```abap
-DATA(statuses) = VALUE status_text_t(
+DATA(lt_statuses) = VALUE status_text_t(
   ( code = 'O' text = 'Open'      )
   ( code = 'P' text = 'Paid'      )
   ( code = 'C' text = 'Cancelled' )
@@ -147,10 +147,10 @@ CALL METHOD lo_pricing->compute
 
 **After**
 ```abap
-DATA(total) = NEW cl_pricing_strategy_country(
+DATA(lv_total) = NEW cl_pricing_strategy_country(
                 country = 'TR'
                 region  = '34'
-              )->compute( order ).
+              )->compute( ls_order ).
 ```
 
 **Why:** one statement, intent on top (we want a `total`), construction details inline. The variable `lo_pricing` had no second use — extract it only when reused.
@@ -163,33 +163,33 @@ DATA(total) = NEW cl_pricing_strategy_country(
 ```abap
 METHODS get_overdue
   IMPORTING
-    customer_id   TYPE kunnr
+    iv_customer_id TYPE kunnr
   EXPORTING
-    et_invoices   TYPE invoice_t
-    ev_total      TYPE decfloat34.
+    et_invoices    TYPE invoice_t
+    ev_total       TYPE decfloat34.
 
 " caller
-DATA: lt_inv TYPE invoice_t,
+DATA: lt_inv   TYPE invoice_t,
       lv_total TYPE decfloat34.
 me->get_overdue(
-  EXPORTING customer_id = lv_cust
-  IMPORTING et_invoices = lt_inv
-            ev_total    = lv_total ).
+  EXPORTING iv_customer_id = lv_customer_id
+  IMPORTING et_invoices    = lt_inv
+            ev_total       = lv_total ).
 ```
 
 **After**
 ```abap
-TYPES: BEGIN OF overdue_result,
+TYPES: BEGIN OF ty_overdue_result,
          invoices TYPE invoice_t,
          total    TYPE decfloat34,
-       END OF overdue_result.
+       END OF ty_overdue_result.
 
 METHODS find_overdue
-  IMPORTING customer_id   TYPE kunnr
-  RETURNING VALUE(result) TYPE overdue_result.
+  IMPORTING iv_customer_id  TYPE kunnr
+  RETURNING VALUE(rs_result) TYPE ty_overdue_result.
 
 " caller
-DATA(overdue) = me->find_overdue( customer_id ).
+DATA(ls_overdue) = me->find_overdue( lv_customer_id ).
 ```
 
 **Why:** one returning value, one caller line. The method also got renamed (`get_*` was a query; `find_*` reads better for "may return nothing").
@@ -201,34 +201,34 @@ DATA(overdue) = me->find_overdue( customer_id ).
 **Before**
 ```abap
 TRY.
-    DATA(rates) = me->fetch_rates( ).
+    DATA(lt_rates) = me->fetch_rates( ).
   CATCH cx_root.
     " ignore
 ENDTRY.
 
-" caller assumes rates is populated
-me->apply( rates ).
+" caller assumes lt_rates is populated
+me->apply( lt_rates ).
 ```
 
 **After (option A — recover with default)**
 ```abap
 TRY.
-    DATA(rates) = me->fetch_rates( ).
-  CATCH cx_rate_service_unavailable INTO DATA(ex).
-    log( |Rate service down ({ ex->get_text( ) }) — using fallback rates| ).
-    rates = me->fallback_rates( ).
+    DATA(lt_rates) = me->fetch_rates( ).
+  CATCH cx_rate_service_unavailable INTO DATA(lo_ex).
+    log( |Rate service down ({ lo_ex->get_text( ) }) — using fallback rates| ).
+    lt_rates = me->fallback_rates( ).
 ENDTRY.
 
-me->apply( rates ).
+me->apply( lt_rates ).
 ```
 
 **After (option B — re-raise with context)**
 ```abap
 TRY.
-    DATA(rates) = me->fetch_rates( ).
-  CATCH cx_rate_service_unavailable INTO DATA(ex).
+    DATA(lt_rates) = me->fetch_rates( ).
+  CATCH cx_rate_service_unavailable INTO DATA(lo_ex).
     RAISE EXCEPTION TYPE cx_pricing_input_missing
-      EXPORTING previous = ex.
+      EXPORTING previous = lo_ex.
 ENDTRY.
 ```
 
@@ -240,17 +240,17 @@ ENDTRY.
 
 **Before**
 ```abap
-IF invoice-status = 'O'.
-  process_open( invoice ).
-ELSEIF invoice-status = 'P'.
-  process_paid( invoice ).
-ELSEIF invoice-status = 'C'.
-  process_cancelled( invoice ).
+IF ls_invoice-status = 'O'.
+  process_open( ls_invoice ).
+ELSEIF ls_invoice-status = 'P'.
+  process_paid( ls_invoice ).
+ELSEIF ls_invoice-status = 'C'.
+  process_cancelled( ls_invoice ).
 ENDIF.
 
 " elsewhere
-IF doc-status = 'O'.
-  archive( doc ).
+IF ls_doc-status = 'O'.
+  archive( ls_doc ).
 ENDIF.
 ```
 
@@ -265,13 +265,13 @@ INTERFACE if_invoice_status PUBLIC.
     END OF status.
 ENDINTERFACE.
 
-CASE invoice-status.
-  WHEN if_invoice_status=>status-open.      process_open( invoice ).
-  WHEN if_invoice_status=>status-paid.      process_paid( invoice ).
-  WHEN if_invoice_status=>status-cancelled. process_cancelled( invoice ).
+CASE ls_invoice-status.
+  WHEN if_invoice_status=>status-open.      process_open( ls_invoice ).
+  WHEN if_invoice_status=>status-paid.      process_paid( ls_invoice ).
+  WHEN if_invoice_status=>status-cancelled. process_cancelled( ls_invoice ).
   WHEN OTHERS.
     RAISE EXCEPTION TYPE cx_unknown_invoice_status
-      EXPORTING status = invoice-status.
+      EXPORTING status = ls_invoice-status.
 ENDCASE.
 ```
 

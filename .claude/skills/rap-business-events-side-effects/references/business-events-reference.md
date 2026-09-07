@@ -73,25 +73,25 @@ contains the key components (via `%key`) and — if the event declares a paramet
 ```abap
 " Key only
 RAISE ENTITY EVENT zr_inventory~StockCounted
-  FROM VALUE #( FOR <created_inventory> IN create-inventory
-                ( %key = <created_inventory>-%key ) ).
+  FROM VALUE #( FOR <fs_created_inventory> IN create-inventory
+                ( %key = <fs_created_inventory>-%key ) ).
 
 " With payload
 RAISE ENTITY EVENT zr_inventory~OutOfStock
-  FROM VALUE #( ( %key   = updated_inventory-%key
-                  %param = VALUE #( product_id = updated_inventory-ProductID
-                                    quantity   = updated_inventory-Quantity
+  FROM VALUE #( ( %key   = ls_updated_inventory-%key
+                  %param = VALUE #( product_id = ls_updated_inventory-ProductID
+                                    quantity   = ls_updated_inventory-Quantity
                                     plant      = 'WERK' ) ) ).
 ```
 
 Or with an explicitly typed table (pattern from SAP's bgPF sample):
 
 ```abap
-DATA events_to_be_raised TYPE TABLE FOR EVENT zr_inventory~QuantityUpdated.
+DATA lt_events_to_be_raised TYPE TABLE FOR EVENT zr_inventory~QuantityUpdated.
 
-IF updated_inventory-%control-Quantity = if_abap_behv=>mk-on.
-  events_to_be_raised = VALUE #( ( CORRESPONDING #( updated_inventory ) ) ).
-  RAISE ENTITY EVENT zr_inventory~QuantityUpdated FROM events_to_be_raised.
+IF ls_updated_inventory-%control-Quantity = if_abap_behv=>mk-on.
+  lt_events_to_be_raised = VALUE #( ( CORRESPONDING #( ls_updated_inventory ) ) ).
+  RAISE ENTITY EVENT zr_inventory~QuantityUpdated FROM lt_events_to_be_raised.
 ENDIF.
 ```
 
@@ -155,9 +155,9 @@ ENDCLASS.
 CLASS lhe_inventory IMPLEMENTATION.
 
   METHOD on_out_of_stock.
-    LOOP AT out_of_stock_events INTO DATA(out_of_stock_event).
-      " Instance key: out_of_stock_event-%key components
-      " Payload:      out_of_stock_event-%param (abstract entity fields)
+    LOOP AT out_of_stock_events INTO DATA(ls_out_of_stock_event).
+      " Instance key: ls_out_of_stock_event-%key components
+      " Payload:      ls_out_of_stock_event-%param (abstract entity fields)
     ENDLOOP.
   ENDMETHOD.
 

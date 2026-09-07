@@ -50,14 +50,14 @@ The builder chain, exactly as the sample uses it:
 
 ```abap
 TRY.
-    DATA(process_monitor) = cl_bgmc_process_factory=>get_default(
+    DATA(lo_process_monitor) = cl_bgmc_process_factory=>get_default(
         )->create(
         )->set_name( |Recalculate inventory|            " appears in monitoring
         )->set_operation( NEW zcl_recalculate_inventory( entity_key )
         )->save_for_execution( ).
 
-    DATA(process_monitor_string) = process_monitor->to_string( ).
-  CATCH cx_bgmc INTO DATA(background_error).
+    DATA(lv_process_monitor_string) = lo_process_monitor->to_string( ).
+  CATCH cx_bgmc INTO DATA(lo_background_error).
     " report; never swallow silently
 ENDTRY.
 ```
@@ -71,7 +71,7 @@ ENDTRY.
 For operations that must execute in order, obtain the factory for a queue:
 
 ```abap
-DATA(process_factory) = cl_bgmc_process_factory=>get_for_queue(
+DATA(lo_process_factory) = cl_bgmc_process_factory=>get_for_queue(
     iv_bg_processing_context = 'ZMY_CONTEXT'
     iv_queue                 = 'INVENTORY_QUEUE' ).
 ```

@@ -23,19 +23,19 @@ Worker skeleton (SAP's own example uses a local class; keys/state via constructo
 CLASS lcl_parallel_task DEFINITION.
   PUBLIC SECTION.
     INTERFACES if_abap_parallel.
-    METHODS constructor IMPORTING input_value TYPE i.
+    METHODS constructor IMPORTING iv_input_value TYPE i.
   PRIVATE SECTION.
-    DATA input_value  TYPE i.
-    DATA result_value TYPE i.
+    DATA mv_input_value  TYPE i.
+    DATA mv_result_value TYPE i.
 ENDCLASS.
 
 CLASS lcl_parallel_task IMPLEMENTATION.
   METHOD constructor.
-    me->input_value = input_value.
+    me->mv_input_value = iv_input_value.
   ENDMETHOD.
 
   METHOD if_abap_parallel~do.
-    result_value = input_value * input_value.
+    mv_result_value = mv_input_value * mv_input_value.
   ENDMETHOD.
 ENDCLASS.
 ```
@@ -82,10 +82,10 @@ Hard system floor regardless of settings: *"two of the free dialog processes on 
 ### run_inst — instance-based fan-out/fan-in
 
 ```abap
-parallel_runner->run_inst(
-  EXPORTING p_in_tab  = worker_instances      " t_in_inst_tab
+lo_parallel_runner->run_inst(
+  EXPORTING p_in_tab  = lt_worker_instances      " t_in_inst_tab
             p_debug   = abap_false            " optional
-  IMPORTING p_out_tab = DATA(task_results) ). " t_out_inst_tab
+  IMPORTING p_out_tab = DATA(lt_task_results) ). " t_out_inst_tab
 ```
 
 - Serializes each input instance, executes `if_abap_parallel~do( )` in an aRFC task on a free dialog work process, returns the processed instances. **[SAP doc]**
@@ -95,11 +95,11 @@ parallel_runner->run_inst(
 ### run — xstring-based fan-out/fan-in
 
 ```abap
-parallel_runner->run(
-  EXPORTING p_in_tab  = serialized_inputs     " t_in_tab (xstrings)
-            p_in_all  = shared_payload        " optional xstring, sent to EVERY task
+lo_parallel_runner->run(
+  EXPORTING p_in_tab  = lt_serialized_inputs     " t_in_tab (xstrings)
+            p_in_all  = lv_shared_payload        " optional xstring, sent to EVERY task
             p_debug   = abap_false            " optional
-  IMPORTING p_out_tab = DATA(task_outputs) ). " t_out_tab
+  IMPORTING p_out_tab = DATA(lt_task_outputs) ). " t_out_tab
 ```
 
 Requires a **subclass of `CL_ABAP_PARALLEL`** with `METHODS do REDEFINITION`:

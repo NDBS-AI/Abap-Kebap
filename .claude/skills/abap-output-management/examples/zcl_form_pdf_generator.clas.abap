@@ -22,7 +22,7 @@ CLASS zcl_form_pdf_generator DEFINITION
   CREATE PUBLIC.
 
   PUBLIC SECTION.
-    TYPES sales_order_id TYPE c LENGTH 10.
+    TYPES ty_sales_order_id TYPE c LENGTH 10.
 
     METHODS constructor
       RAISING cx_fp_fdp_error.
@@ -30,39 +30,39 @@ CLASS zcl_form_pdf_generator DEFINITION
     "! Renders the sales-order form to a PDF xstring
     "! (for screen download, mail attachment, or archiving).
     METHODS render_order_pdf
-      IMPORTING sales_order        TYPE sales_order_id
-      RETURNING VALUE(rendered_pdf) TYPE xstring
+      IMPORTING iv_sales_order         TYPE ty_sales_order_id
+      RETURNING VALUE(rv_rendered_pdf) TYPE xstring
       RAISING   cx_fp_fdp_error
                 cx_fp_ads_util.
 
     "! Renders in the queue's print format and creates a queue item.
     "! The print queue must already exist (Maintain Print Queues app).
     METHODS print_order
-      IMPORTING sales_order          TYPE sales_order_id
-                print_queue_name     TYPE string
-      RETURNING VALUE(queue_item_id) TYPE string
+      IMPORTING iv_sales_order          TYPE ty_sales_order_id
+                iv_print_queue_name     TYPE string
+      RETURNING VALUE(rv_queue_item_id) TYPE string
       RAISING   cx_fp_fdp_error
                 cx_fp_ads_util.
 
     "! Prepends a cover sheet to the rendered order PDF.
     METHODS merge_with_cover_sheet
-      IMPORTING cover_sheet_pdf   TYPE xstring
-                order_pdf         TYPE xstring
-      RETURNING VALUE(merged_pdf) TYPE xstring
+      IMPORTING iv_cover_sheet_pdf   TYPE xstring
+                iv_order_pdf         TYPE xstring
+      RETURNING VALUE(rv_merged_pdf) TYPE xstring
       RAISING   cx_rspo_pdf_merger.
 
   PRIVATE SECTION.
-    CONSTANTS form_service_definition
+    CONSTANTS c_form_service_definition
       TYPE if_fp_fdp_api=>ty_service_definition VALUE 'ZOM_SALESORDER_FORM'.
-    CONSTANTS form_template_name TYPE string VALUE `ZOM_SALESORDER_FORM`.
-    CONSTANTS rendering_locale TYPE string VALUE `en_US`.
+    CONSTANTS c_form_template_name TYPE string VALUE `ZOM_SALESORDER_FORM`.
+    CONSTANTS c_rendering_locale TYPE string VALUE `en_US`.
 
-    DATA form_data_provider TYPE REF TO if_fp_fdp_api.
-    DATA xdp_layout TYPE xstring.
+    DATA mo_form_data_provider TYPE REF TO if_fp_fdp_api.
+    DATA mv_xdp_layout TYPE xstring.
 
     METHODS read_form_data_as_xml
-      IMPORTING sales_order          TYPE sales_order_id
-      RETURNING VALUE(form_xml_data) TYPE xstring
+      IMPORTING iv_sales_order          TYPE ty_sales_order_id
+      RETURNING VALUE(rv_form_xml_data) TYPE xstring
       RAISING   cx_fp_fdp_error.
 ENDCLASS.
 
@@ -72,79 +72,79 @@ CLASS zcl_form_pdf_generator IMPLEMENTATION.
   METHOD constructor.
     " Data side: the form data provider works on a RAP service
     " definition - no service binding is needed for FDP usage.
-    form_data_provider = cl_fp_fdp_services=>get_instance(
-        CONV #( form_service_definition ) ).
+    mo_form_data_provider = cl_fp_fdp_services=>get_instance(
+        CONV #( c_form_service_definition ) ).
 
     " Template side: XDP uploaded via ADT ("Working with Forms").
     " Alternative (reuse-services sample): fetch the XDP from the
     " SAP Forms Service template store via a custom HTTP client.
-    DATA(form_reader) = cl_fp_form_reader=>create_form_reader(
-        CONV #( form_template_name ) ).
-    xdp_layout = form_reader->get_layout( ).
+    DATA(lo_form_reader) = cl_fp_form_reader=>create_form_reader(
+        CONV #( c_form_template_name ) ).
+    mv_xdp_layout = lo_form_reader->get_layout( ).
   ENDMETHOD.
 
   METHOD read_form_data_as_xml.
     " get_keys returns every key field of the service definition;
     " fill the values that identify the document to output.
-    DATA(selection_keys) = form_data_provider->get_keys( ).
-    selection_keys[ name = 'SALESORDERID' ]-value = sales_order.
+    DATA(lt_selection_keys) = mo_form_data_provider->get_keys( ).
+    lt_selection_keys[ name = 'SALESORDERID' ]-value = iv_sales_order.
 
     " For draft-enabled services, IsActiveEntity defaults to false -
     " override it to read the ACTIVE data:
-    form_xml_data = form_data_provider->read_to_xml_v2(
-        it_select     = selection_keys
+    rv_form_xml_data = mo_form_data_provider->read_to_xml_v2(
+        it_select     = lt_selection_keys
         it_select_add = VALUE if_fp_fdp_api=>tt_select_keys(
             ( name = 'IsActiveEntity' value = 'X' data_type = 'ABAP_BOOL' ) ) ).
   ENDMETHOD.
 
   METHOD render_order_pdf.
-    DATA(form_xml_data) = read_form_data_as_xml( sales_order ).
+    DATA(lv_form_xml_data) = read_form_data_as_xml( iv_sales_order ).
 
     cl_fp_ads_util=>render_pdf(
-      EXPORTING iv_xml_data     = form_xml_data
-                iv_xdp_layout   = xdp_layout
-                iv_locale       = rendering_locale
+      EXPORTING iv_xml_data     = lv_form_xml_data
+                iv_xdp_layout   = mv_xdp_layout
+                iv_locale       = c_rendering_locale
                 " trace_level 0 in production (sample used 4 while debugging)
                 is_options      = VALUE #( trace_level = 0 )
-      IMPORTING ev_pdf          = rendered_pdf
-                ev_pages        = DATA(page_count)
-                ev_trace_string = DATA(ads_trace) ).
+      IMPORTING ev_pdf          = rv_rendered_pdf
+                ev_pages        = DATA(lv_page_count)
+                ev_trace_string = DATA(lv_ads_trace) ).
   ENDMETHOD.
 
   METHOD print_order.
-    DATA(form_xml_data) = read_form_data_as_xml( sales_order ).
+    DATA(lv_form_xml_data) = read_form_data_as_xml( iv_sales_order ).
 
     " render_4_pq returns the Print Definition Language (PDL) format
     " that the target queue expects, taken from the queue properties.
     cl_fp_ads_util=>render_4_pq(
-      EXPORTING iv_xml_data     = form_xml_data
-                iv_xdp_layout   = xdp_layout
-                iv_locale       = rendering_locale
-                iv_pq_name      = print_queue_name
+      EXPORTING iv_xml_data     = lv_form_xml_data
+                iv_xdp_layout   = mv_xdp_layout
+                iv_locale       = c_rendering_locale
+                iv_pq_name      = iv_print_queue_name
                 is_options      = VALUE #( )
-      IMPORTING ev_pdl          = DATA(print_document)
-                ev_pages        = DATA(page_count)
-                ev_trace_string = DATA(ads_trace) ).
+      IMPORTING ev_pdl          = DATA(lv_print_document)
+                ev_pages        = DATA(lv_page_count)
+                ev_trace_string = DATA(lv_ads_trace) ).
 
     " One queue item = one main document (+ optional attachments).
     " Check rv_itemid / ev_err_msg instead of assuming success.
-    queue_item_id = cl_print_queue_utils=>create_queue_item_by_data(
-        iv_qname            = print_queue_name
-        iv_print_data       = print_document
-        iv_name_of_main_doc = |Sales order { sales_order }|
+    rv_queue_item_id = cl_print_queue_utils=>create_queue_item_by_data(
+        iv_qname            = iv_print_queue_name
+        iv_print_data       = lv_print_document
+        iv_name_of_main_doc = |Sales order { iv_sales_order }|
         iv_number_of_copies = 1
-        iv_pages            = page_count ).
+        iv_pages            = lv_page_count ).
   ENDMETHOD.
 
   METHOD merge_with_cover_sheet.
     " Restrictions: PDFs only, no encrypted and no damaged files -
     " never run PDF bytes through a codepage conversion.
-    DATA(pdf_merger) = cl_rspo_pdf_merger=>create_instance( ).
-    pdf_merger->add_document( cover_sheet_pdf ).
-    pdf_merger->add_document( order_pdf ).
+    DATA(lo_pdf_merger) = cl_rspo_pdf_merger=>create_instance( ).
+    lo_pdf_merger->add_document( iv_cover_sheet_pdf ).
+    lo_pdf_merger->add_document( iv_order_pdf ).
 
     " cx_rspo_pdf_merger carries document_index, error_code, error_text.
-    merged_pdf = pdf_merger->merge_documents( ).
+    rv_merged_pdf = lo_pdf_merger->merge_documents( ).
   ENDMETHOD.
 
 ENDCLASS.

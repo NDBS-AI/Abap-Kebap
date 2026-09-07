@@ -67,34 +67,34 @@ CLASS zcl_recalculate_inventory DEFINITION PUBLIC FINAL CREATE PUBLIC.
     INTERFACES if_bgmc_op_single.             " controlled: framework owns the LUW
     INTERFACES if_bgmc_op_single_tx_uncontr.  " uncontrolled: own COMMIT WORK allowed
 
-    TYPES: BEGIN OF inventory_key,
+    TYPES: BEGIN OF ty_inventory_key,
              uuid TYPE sysuuid_x16,
-           END OF inventory_key.
+           END OF ty_inventory_key.
 
     CLASS-METHODS start_in_background
-      IMPORTING entity_key                    TYPE inventory_key
-      RETURNING VALUE(process_monitor_string) TYPE string
+      IMPORTING is_entity_key                    TYPE ty_inventory_key
+      RETURNING VALUE(rv_process_monitor_string) TYPE string
       RAISING   cx_bgmc.
 
-    METHODS constructor IMPORTING entity_key TYPE inventory_key.
+    METHODS constructor IMPORTING is_entity_key TYPE ty_inventory_key.
 
   PRIVATE SECTION.
-    DATA inventory_uuid TYPE sysuuid_x16.
+    DATA mv_inventory_uuid TYPE sysuuid_x16.
 ENDCLASS.
 
 CLASS zcl_recalculate_inventory IMPLEMENTATION.
   METHOD constructor.
-    inventory_uuid = entity_key-uuid.
+    mv_inventory_uuid = is_entity_key-uuid.
   ENDMETHOD.
 
   METHOD start_in_background.
-    DATA(process_monitor) = cl_bgmc_process_factory=>get_default(
+    DATA(lo_process_monitor) = cl_bgmc_process_factory=>get_default(
         )->create(
         )->set_name( |Recalculate inventory|
         )->set_operation( NEW zcl_recalculate_inventory(
-                              entity_key = VALUE #( uuid = entity_key-uuid ) )
+                              is_entity_key = VALUE #( uuid = is_entity_key-uuid ) )
         )->save_for_execution( ).
-    process_monitor_string = process_monitor->to_string( ).
+    rv_process_monitor_string = lo_process_monitor->to_string( ).
   ENDMETHOD.
 
   METHOD if_bgmc_op_single~execute.
@@ -103,19 +103,19 @@ CLASS zcl_recalculate_inventory IMPLEMENTATION.
     READ ENTITIES OF zr_inventorytp
       ENTITY Inventory
         ALL FIELDS WITH VALUE #( ( %is_draft = if_abap_behv=>mk-off
-                                   %key-uuid = inventory_uuid ) )
-      RESULT DATA(inventories)
-      FAILED DATA(read_failed).
+                                   %key-uuid = mv_inventory_uuid ) )
+      RESULT DATA(lt_inventories)
+      FAILED DATA(lt_read_failed).
 
     MODIFY ENTITIES OF zr_inventorytp
       ENTITY Inventory
         UPDATE FIELDS ( Quantity )
-        WITH VALUE #( FOR inventory IN inventories
+        WITH VALUE #( FOR ls_inventory IN lt_inventories
                       ( %is_draft = if_abap_behv=>mk-off
-                        uuid      = inventory-uuid
-                        Quantity  = inventory-Quantity + 10 ) )
-      REPORTED DATA(update_reported)
-      FAILED   DATA(update_failed).
+                        uuid      = ls_inventory-uuid
+                        Quantity  = ls_inventory-Quantity + 10 ) )
+      REPORTED DATA(lt_update_reported)
+      FAILED   DATA(lt_update_failed).
   ENDMETHOD.
 
   METHOD if_bgmc_op_single_tx_uncontr~execute.
@@ -133,14 +133,14 @@ The sample triggers bgPF from `save_modified` of the saver class (`lsc_*`, see [
 
 ```abap
 METHOD save_modified.
-  LOOP AT update-inventory ASSIGNING FIELD-SYMBOL(<updated_inventory>)
+  LOOP AT update-inventory ASSIGNING FIELD-SYMBOL(<fs_updated_inventory>)
        WHERE %control-BgpfStatus = if_abap_behv=>mk-on.
 
     TRY.
-        DATA(process_monitor_string) = zcl_recalculate_inventory=>start_in_background(
-            entity_key = VALUE #( uuid = <updated_inventory>-uuid ) ).
-        " persist process_monitor_string on the entity's table for later state checks
-      CATCH cx_bgmc INTO DATA(background_error).
+        DATA(lv_process_monitor_string) = zcl_recalculate_inventory=>start_in_background(
+            is_entity_key = VALUE #( uuid = <fs_updated_inventory>-uuid ) ).
+        " persist lv_process_monitor_string on the entity's table for later state checks
+      CATCH cx_bgmc INTO DATA(lo_background_error).
         " report via reported-inventory; do not swallow silently
     ENDTRY.
   ENDLOOP.
@@ -163,10 +163,10 @@ side effects
 
 ```abap
 " saver class, second save cycle (triggered by the bgPF operation's EML update)
-IF <updated_inventory>-%control-Quantity = if_abap_behv=>mk-on.
-  DATA(events_to_be_raised) = VALUE tt_quantity_updated_events(
-      ( CORRESPONDING #( <updated_inventory> ) ) ).
-  RAISE ENTITY EVENT zr_inventorytp~QuantityUpdated FROM events_to_be_raised.
+IF <fs_updated_inventory>-%control-Quantity = if_abap_behv=>mk-on.
+  DATA(lt_events_to_be_raised) = VALUE tt_quantity_updated_events(
+      ( CORRESPONDING #( <fs_updated_inventory> ) ) ).
+  RAISE ENTITY EVENT zr_inventorytp~QuantityUpdated FROM lt_events_to_be_raised.
 ENDIF.
 ```
 
@@ -214,9 +214,9 @@ Two design-time artifacts sit between the class and a schedulable job:
 Create them in ADT, or programmatically with the released design-time API `cl_apj_dt_create_content` — the sample's setup class does exactly this:
 
 ```abap
-DATA(design_time_api) = cl_apj_dt_create_content=>get_instance( ).
+DATA(lo_design_time_api) = cl_apj_dt_create_content=>get_instance( ).
 
-design_time_api->create_job_cat_entry(
+lo_design_time_api->create_job_cat_entry(
     iv_catalog_name       = 'ZINVENTORY_CATALOG'
     iv_class_name         = 'ZCL_INVENTORY_JOB'
     iv_text               = 'Inventory calculation'
@@ -224,7 +224,7 @@ design_time_api->create_job_cat_entry(
     iv_transport_request  = transport_request
     iv_package            = package_name ).
 
-design_time_api->create_job_template_entry(
+lo_design_time_api->create_job_template_entry(
     iv_template_name     = 'ZINVENTORY_TEMPLATE'
     iv_catalog_name      = 'ZINVENTORY_CATALOG'
     iv_text              = 'Inventory calculation'
@@ -240,8 +240,8 @@ Errors raise `cx_apj_dt_content`. Creating catalog entry + template generates an
 Runtime API `cl_apj_rt_api` (all types come from the class itself: `ty_start_info`, `tt_job_parameter_value`, `ty_jobname`, `ty_jobcount`, ...):
 
 ```abap
-DATA(job_start_info) = VALUE cl_apj_rt_api=>ty_start_info( start_immediately = abap_true ).
-DATA(job_parameters) = VALUE cl_apj_rt_api=>tt_job_parameter_value(
+DATA(ls_job_start_info) = VALUE cl_apj_rt_api=>ty_start_info( start_immediately = abap_true ).
+DATA(lt_job_parameters) = VALUE cl_apj_rt_api=>tt_job_parameter_value(
     ( name    = 'INVENT'
       t_value = VALUE #( ( sign = 'I' option = 'EQ' low = inventory_uuid ) ) ) ).
 
@@ -249,18 +249,18 @@ TRY.
     cl_apj_rt_api=>schedule_job(
       EXPORTING iv_job_template_name   = 'ZINVENTORY_TEMPLATE'
                 iv_job_text            = |Calculate inventory { product_id }|
-                is_start_info          = job_start_info
-                it_job_parameter_value = job_parameters
-      IMPORTING ev_jobname             = DATA(job_name)
-                ev_jobcount            = DATA(job_count) ).
-  CATCH cx_apj_rt INTO DATA(job_scheduling_error).
+                is_start_info          = ls_job_start_info
+                it_job_parameter_value = lt_job_parameters
+      IMPORTING ev_jobname             = DATA(lv_job_name)
+                ev_jobcount            = DATA(lv_job_count) ).
+  CATCH cx_apj_rt INTO DATA(lo_job_scheduling_error).
     " handle / report
 ENDTRY.
 ```
 
 Caveats, all straight from the SAP sample:
 
-- **On-premise systems: never set `start_immediately`** — it performs a `COMMIT WORK` internally and dumps inside the save sequence. Set `job_start_info-timestamp` instead.
+- **On-premise systems: never set `start_immediately`** — it performs a `COMMIT WORK` internally and dumps inside the save sequence. Set `ls_job_start_info-timestamp` instead.
 - **From a RAP BO, schedule only in the additional save phase** (`save_modified`). `jobname`/`jobcount` exist only there, and business data can no longer be changed via EML at that point — persist them with a direct `UPDATE` on the BO's database table.
 - Scheduling in the interaction phase risks implicit database commits (remote calls, draft saves) while a later validation can still fail — leaving a job scheduled for a business object that was never saved.
 
@@ -272,32 +272,32 @@ Create the log object + subobject once (ADT object type `APLO`, or `cl_bali_obje
 
 ```abap
 " 1. Create a log with a header: log object, subobject, free external ID
-DATA(application_log) = cl_bali_log=>create_with_header(
+DATA(lo_application_log) = cl_bali_log=>create_with_header(
     header = cl_bali_header_setter=>create( object      = 'ZINVENTORY_LOG'
                                             subobject   = 'ZINVENTORY_SUB'
                                             external_id = CONV #( inventory_uuid ) ) ).
 
 " 2. Add items — free text up to 200 characters, with severity and detail level
-DATA(log_item) = cl_bali_free_text_setter=>create(
+DATA(lo_log_item) = cl_bali_free_text_setter=>create(
     severity = if_bali_constants=>c_severity_status
     text     = |Job started for inventory { inventory_uuid }| ).
-log_item->set_detail_level( '1' ).
-application_log->add_item( item = log_item ).
+lo_log_item->set_detail_level( '1' ).
+lo_application_log->add_item( item = lo_log_item ).
 
 " 3. Persist; assign_to_current_appl_job links it to the running job's log
 cl_bali_log_db=>get_instance( )->save_log(
-    log                         = application_log
+    log                         = lo_application_log
     assign_to_current_appl_job = abap_true ).
 ```
 
 Read a log back via its handle (`if_bali_log=>ty_handle`), e.g. to show it on a Fiori object page:
 
 ```abap
-DATA(log) = cl_bali_log_db=>get_instance( )->load_log( handle           = log_handle
+DATA(lo_log) = cl_bali_log_db=>get_instance( )->load_log( handle           = log_handle
                                                        read_only_header = abap_true ).
-LOOP AT log->get_all_items( ) INTO DATA(loaded_item).
-  " loaded_item-log_item_number, loaded_item-item->severity,
-  " loaded_item-item->timestamp, loaded_item-item->get_message_text( )
+LOOP AT lo_log->get_all_items( ) INTO DATA(ls_loaded_item).
+  " ls_loaded_item-log_item_number, ls_loaded_item-item->severity,
+  " ls_loaded_item-item->timestamp, ls_loaded_item-item->get_message_text( )
 ENDLOOP.
 ```
 
@@ -352,7 +352,7 @@ Always confirm the API state in ADT's *Released Objects* view for your release �
 | Wrong | Right |
 |---|---|
 | Calling `cl_apj_rt_api=>schedule_job` in the interaction phase (action/determination) | Set a marker field in the action; schedule in `save_modified` (additional/unmanaged save) |
-| `job_start_info-start_immediately = abap_true` on an on-premise system | Use `job_start_info-timestamp` — `start_immediately` commits internally and dumps in the save sequence |
+| `ls_job_start_info-start_immediately = abap_true` on an on-premise system | Use `ls_job_start_info-timestamp` — `start_immediately` commits internally and dumps in the save sequence |
 | Persisting `jobname`/`jobcount` via EML `MODIFY` in `save_modified` | Direct `UPDATE` on the BO's own database table — business data is frozen in the save phase |
 | `COMMIT WORK` inside `if_bgmc_op_single~execute` | Controlled operations never commit; if commits are unavoidable, switch to `if_bgmc_op_single_tx_uncontr` + `set_operation_tx_uncontrolled` |
 | bgPF operation class without `if_serializable_object` | Implement it — the operation instance (with its constructor-injected keys) is serialized for the background task |

@@ -72,7 +72,7 @@ DATA(lo_unix_timestamp) = xco_cp=>sy->unix_timestamp( ).
 If you omit the time zone, **the active user's time zone is taken**. Formats (`abap`, `iso_8601_basic`, `iso_8601_extended`) convert to and from strings:
 
 ```abap
-DATA(today) = xco_cp=>sy->date( xco_cp_time=>time_zone->user
+DATA(lv_today) = xco_cp=>sy->date( xco_cp_time=>time_zone->user
   )->as( xco_cp_time=>format->iso_8601_extended )->value.
 
 " Parse back: string -> moment object.
@@ -253,23 +253,23 @@ Query transports with filters (`xco_cp_transport=>filter->kind/owner/request_tar
 
 ```abap
 " Current date (user TZ, ISO 8601 extended) — the ABAP Cloud sy-datum substitute:
-DATA(today) = xco_cp=>sy->date( xco_cp_time=>time_zone->user
+DATA(lv_today) = xco_cp=>sy->date( xco_cp_time=>time_zone->user
   )->as( xco_cp_time=>format->iso_8601_extended )->value.
 
 " Current user / language:
-DATA(user) = xco_cp=>sy->user( )->name.
-DATA(lang_iso_639) = xco_cp=>sy->language( )->as( xco_cp_language=>format->iso_639 ).
+DATA(lv_user) = xco_cp=>sy->user( )->name.
+DATA(lv_lang_iso_639) = xco_cp=>sy->language( )->as( xco_cp_language=>format->iso_639 ).
 
 " New UUID as 32-char text:
-DATA(c32_string) = xco_cp=>uuid( )->as( xco_cp_uuid=>format->c32 )->value.
+DATA(lv_c32_string) = xco_cp=>uuid( )->as( xco_cp_uuid=>format->c32 )->value.
 
 " Split + join:
-DATA(str_table) = xco_cp=>string( `Hello.World.ABAP` )->split( `.` )->value.
-DATA(conc_str1) = xco_cp=>strings( str_table )->join( `, ` )->value.
+DATA(lt_str_table) = xco_cp=>string( `Hello.World.ABAP` )->split( `.` )->value.
+DATA(lv_conc_str1) = xco_cp=>strings( lt_str_table )->join( `, ` )->value.
 
 " String -> xstring (UTF-8) and back:
-DATA(xstr) = xco_cp=>string( `Some string` )->as_xstring( xco_cp_character=>code_page->utf_8 )->value.
-DATA(str) = xco_cp=>xstring( xstr )->as_string( xco_cp_character=>code_page->utf_8 )->value.
+DATA(lv_xstr) = xco_cp=>string( `Some string` )->as_xstring( xco_cp_character=>code_page->utf_8 )->value.
+DATA(lv_str) = xco_cp=>xstring( lv_xstr )->as_string( xco_cp_character=>code_page->utf_8 )->value.
 
 " XLSX: xstring -> internal table (see references/xlsx.md for the full pattern):
 DATA(lo_read_access) = xco_cp_xlsx=>document->for_file_content( lv_file_content )->read_access( ).

@@ -69,7 +69,7 @@ CLASS ltcl_order_pricing DEFINITION
   FINAL.
 
   PRIVATE SECTION.
-    DATA cut TYPE REF TO zcl_order_pricing.   " "code under test" — convention
+    DATA mo_cut TYPE REF TO zcl_order_pricing.   " "code under test" — convention
 
     CLASS-METHODS:
       class_setup,                            " once before all tests in this class
@@ -86,13 +86,13 @@ ENDCLASS.
 CLASS ltcl_order_pricing IMPLEMENTATION.
 
   METHOD setup.
-    cut = NEW zcl_order_pricing( rate_provider = NEW ltcl_fake_rate( ) ).
+    mo_cut = NEW zcl_order_pricing( io_rate_provider = NEW ltcl_fake_rate( ) ).
   ENDMETHOD.
 
   METHOD given_zero_amount_returns_zero.
-    DATA(result) = cut->total_in_eur( VALUE #( amount = 0 currency = 'EUR' ) ).
+    DATA(lv_result) = mo_cut->total_in_eur( VALUE #( amount = 0 currency = 'EUR' ) ).
     cl_abap_unit_assert=>assert_equals(
-      act = result
+      act = lv_result
       exp = CONV decfloat34( '0' )
       msg = 'Zero amount must yield zero total' ).
   ENDMETHOD.
@@ -101,7 +101,7 @@ CLASS ltcl_order_pricing IMPLEMENTATION.
     " arrange — set up the cut with a blocked customer context
 
     TRY.
-        cut->total_in_eur( VALUE #( amount = 100 currency = 'EUR' customer_blocked = abap_true ) ).
+        mo_cut->total_in_eur( VALUE #( amount = 100 currency = 'EUR' customer_blocked = abap_true ) ).
         cl_abap_unit_assert=>fail( 'Expected blocked customer to raise' ).
       CATCH cx_blocked_customer.
         " expected
@@ -180,7 +180,7 @@ ENDCLASS.
 
 CLASS ltcl_fake_rate IMPLEMENTATION.
   METHOD if_rate_provider~rate.
-    result = SWITCH #( currency
+    rv_result = SWITCH #( iv_currency
                      WHEN 'EUR' THEN '1.00'
                      WHEN 'USD' THEN '1.10'
                      WHEN 'TRY' THEN '0.03'
@@ -191,7 +191,7 @@ ENDCLASS.
 
 Inject in `setup`:
 ```abap
-cut = NEW zcl_order_pricing( rate_provider = NEW ltcl_fake_rate( ) ).
+mo_cut = NEW zcl_order_pricing( io_rate_provider = NEW ltcl_fake_rate( ) ).
 ```
 
 ### `cl_osql_test_environment`
@@ -201,7 +201,7 @@ When the cut does `SELECT … FROM zinvoice`, you can put test data into a doubl
 ```abap
 CLASS ltcl_overdue_finder DEFINITION FOR TESTING RISK LEVEL HARMLESS DURATION SHORT FINAL.
   PRIVATE SECTION.
-    CLASS-DATA env TYPE REF TO if_osql_test_environment.
+    CLASS-DATA mo_env TYPE REF TO if_osql_test_environment.
     CLASS-METHODS:
       class_setup,
       class_teardown.
@@ -213,31 +213,31 @@ ENDCLASS.
 CLASS ltcl_overdue_finder IMPLEMENTATION.
 
   METHOD class_setup.
-    env = cl_osql_test_environment=>create(
+    mo_env = cl_osql_test_environment=>create(
             i_dependency_list = VALUE #( ( 'ZINVOICE' ) ) ).
   ENDMETHOD.
 
   METHOD class_teardown.
-    env->destroy( ).
+    mo_env->destroy( ).
   ENDMETHOD.
 
   METHOD setup.
-    env->clear_doubles( ).
+    mo_env->clear_doubles( ).
   ENDMETHOD.
 
   METHOD finds_only_overdue.
-    DATA invoices TYPE TABLE OF zinvoice.
-    invoices = VALUE #(
+    DATA lt_invoices TYPE TABLE OF zinvoice.
+    lt_invoices = VALUE #(
       ( id = '1' status = 'O' due_date = sy-datum - 10 amount = '100' )
       ( id = '2' status = 'O' due_date = sy-datum + 5  amount = '200' )
       ( id = '3' status = 'P' due_date = sy-datum - 10 amount = '300' )
     ).
-    env->insert_test_data( i_data = invoices ).
+    mo_env->insert_test_data( i_data = lt_invoices ).
 
-    DATA(result) = NEW zcl_overdue_finder( )->find( as_of = sy-datum ).
+    DATA(lt_result) = NEW zcl_overdue_finder( )->find( as_of = sy-datum ).
 
     cl_abap_unit_assert=>assert_equals(
-      act = lines( result )
+      act = lines( lt_result )
       exp = 1
       msg = 'Only the overdue open invoice should be returned' ).
   ENDMETHOD.
@@ -345,9 +345,9 @@ METHOD user_with_auth_gets_data FOR TESTING.
   TEST-INJECTION authority_check.
   END-TEST-INJECTION.
 
-  DATA(result) = cut->get_sensitive_data( ).
+  DATA(lv_result) = mo_cut->get_sensitive_data( ).
   cl_abap_unit_assert=>assert_not_initial(
-    act = result
+    act = lv_result
     msg = 'Authorized user should receive data' ).
 ENDMETHOD.
 ```

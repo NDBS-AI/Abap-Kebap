@@ -52,9 +52,9 @@ CLASS lsc_zr_salesorder IMPLEMENTATION.
               object            = 'ZSALESORD'
               quantity          = CONV #( lines( mapped-salesorder ) )
             IMPORTING
-              number            = DATA(number_range_key)
-              returned_quantity = DATA(returned_quantity) ).
-        CATCH cx_number_ranges INTO DATA(number_range_error).
+              number            = DATA(lv_number_range_key)
+              returned_quantity = DATA(lv_returned_quantity) ).
+        CATCH cx_number_ranges INTO DATA(lo_number_range_error).
           " The late save phase is the point of no return: under the
           " default saver base class CL_ABAP_BEHAVIOR_SAVER, adjust_numbers
           " has no "failed"/"reported" parameters, so a caught error here
@@ -80,19 +80,19 @@ CLASS lsc_zr_salesorder IMPLEMENTATION.
           " ordinary, foreseeable condition through that mechanism.
           RAISE SHORTDUMP TYPE cx_number_ranges
             EXPORTING
-              previous = number_range_error.
+              previous = lo_number_range_error.
       ENDTRY.
 
-      ASSERT returned_quantity = lines( mapped-salesorder ).
+      ASSERT lv_returned_quantity = lines( mapped-salesorder ).
 
       " number_get returns the LAST drawn number; walk up from the first.
-      DATA(next_sales_order_id) =
-        CONV zsalesorder_id( number_range_key - returned_quantity ).
+      DATA(lv_next_sales_order_id) =
+        CONV zsalesorder_id( lv_number_range_key - lv_returned_quantity ).
 
-      LOOP AT mapped-salesorder ASSIGNING FIELD-SYMBOL(<sales_order>).
-        next_sales_order_id += 1.
+      LOOP AT mapped-salesorder ASSIGNING FIELD-SYMBOL(<fs_sales_order>).
+        lv_next_sales_order_id += 1.
         " %pre (= %pid + %tmp) -> final key in %key
-        <sales_order>-SalesOrderId = next_sales_order_id.
+        <fs_sales_order>-SalesOrderId = lv_next_sales_order_id.
       ENDLOOP.
 
     ENDIF.
@@ -113,30 +113,30 @@ CLASS lsc_zr_salesorder IMPLEMENTATION.
                         WHERE ( %tmp-SalesOrderId IS INITIAL )
                         ( %pid = item-%pid
                           %key = item-%tmp ) )
-        LINK DATA(item_to_parent_links).
+        LINK DATA(lt_item_to_parent_links).
 
-      LOOP AT mapped-item ASSIGNING FIELD-SYMBOL(<item>).
-        <item>-SalesOrderId =
-          COND #( WHEN <item>-%tmp-SalesOrderId IS INITIAL
+      LOOP AT mapped-item ASSIGNING FIELD-SYMBOL(<fs_item>).
+        <fs_item>-SalesOrderId =
+          COND #( WHEN <fs_item>-%tmp-SalesOrderId IS INITIAL
                   THEN mapped-salesorder[
-                         %pid = item_to_parent_links[
-                                  source-%pid = <item>-%pid ]-target-%pid
+                         %pid = lt_item_to_parent_links[
+                                  source-%pid = <fs_item>-%pid ]-target-%pid
                        ]-SalesOrderId
-                  ELSE <item>-%tmp-SalesOrderId ).
+                  ELSE <fs_item>-%tmp-SalesOrderId ).
       ENDLOOP.
 
       " Item numbers continue per parent from the highest persisted one.
-      LOOP AT mapped-item INTO DATA(mapped_item)
-           GROUP BY mapped_item-SalesOrderId.
+      LOOP AT mapped-item INTO DATA(ls_mapped_item)
+           GROUP BY ls_mapped_item-SalesOrderId.
 
         SELECT MAX( item_id )
           FROM zsalesorderitem
-          WHERE salesorder_id = @mapped_item-SalesOrderId
-          INTO @DATA(highest_item_id).
+          WHERE salesorder_id = @ls_mapped_item-SalesOrderId
+          INTO @DATA(lv_highest_item_id).
 
-        LOOP AT GROUP mapped_item ASSIGNING <item>.
-          highest_item_id += 10.
-          <item>-ItemId = highest_item_id.
+        LOOP AT GROUP ls_mapped_item ASSIGNING <fs_item>.
+          lv_highest_item_id += 10.
+          <fs_item>-ItemId = lv_highest_item_id.
         ENDLOOP.
 
       ENDLOOP.
@@ -153,8 +153,8 @@ ENDCLASS.
 *& value itself is already a valid, unique final key.
 *&
 *&   METHOD adjust_numbers.
-*&     LOOP AT mapped-calc ASSIGNING FIELD-SYMBOL(<calculation>).
-*&       <calculation>-%key-id = <calculation>-%pid.
+*&     LOOP AT mapped-calc ASSIGNING FIELD-SYMBOL(<fs_calculation>).
+*&       <fs_calculation>-%key-id = <fs_calculation>-%pid.
 *&     ENDLOOP.
 *&   ENDMETHOD.
 *&---------------------------------------------------------------------*

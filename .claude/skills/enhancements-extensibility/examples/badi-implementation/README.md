@@ -22,10 +22,10 @@ For this example assume:
 - Method: `VALIDATE`
   ```abap
   METHODS validate
-    IMPORTING order        TYPE order_data
-              items        TYPE order_item_t
-    EXPORTING messages     TYPE bal_t_msg
-              cv_block     TYPE abap_bool.
+    IMPORTING is_order     TYPE order_data
+              it_items     TYPE order_item_t
+    EXPORTING et_messages  TYPE bal_t_msg
+              ev_block     TYPE abap_bool.
   ```
 - Filter: company code (`BUKRS`).
 
@@ -44,24 +44,24 @@ ENDCLASS.
 CLASS zcl_im_so_validate_credit IMPLEMENTATION.
 
   METHOD if_badi_sales_order_validation~validate.
-    " Inputs: order, items.
-    " Outputs: messages, cv_block.
+    " Inputs: is_order, it_items.
+    " Outputs: et_messages, ev_block.
 
     " Implementation rule:
     " If customer's open credit exceeds threshold, block the save.
 
-    DATA(open_credit) = zcl_credit_service=>open_for_customer( order-customer_id ).
-    DATA(threshold)   = zcl_credit_config=>threshold_for( order-company_code ).
+    DATA(lv_open_credit) = zcl_credit_service=>open_for_customer( is_order-customer_id ).
+    DATA(lv_threshold)   = zcl_credit_config=>threshold_for( is_order-company_code ).
 
-    IF open_credit > threshold.
+    IF lv_open_credit > lv_threshold.
       APPEND VALUE #(
         msgty = 'E'
         msgid = 'ZSO_VALIDATION'
         msgno = '001'
-        msgv1 = |{ open_credit NUMBER = USER }|
-        msgv2 = |{ threshold NUMBER = USER }|
-      ) TO messages.
-      cv_block = abap_true.
+        msgv1 = |{ lv_open_credit NUMBER = USER }|
+        msgv2 = |{ lv_threshold NUMBER = USER }|
+      ) TO et_messages.
+      ev_block = abap_true.
     ENDIF.
 
   ENDMETHOD.
@@ -98,7 +98,7 @@ In ADT:
 - Class naming: `ZCL_IM_*` convention for BAdI implementations (`IM_` = implementation).
 - Implementation method delegates to a domain service (`zcl_credit_service`) so unit tests can target the domain logic without the BAdI plumbing.
 - Don't compute the threshold in the BAdI body — it's customizing, not logic.
-- Don't add `MESSAGE 'X' TYPE 'E'` style calls; the BAdI's contract is the `messages` / `cv_block` channel. Adding `MESSAGE` is a contract violation that breaks the calling transaction.
+- Don't add `MESSAGE 'X' TYPE 'E'` style calls; the BAdI's contract is the `et_messages` / `ev_block` channel. Adding `MESSAGE` is a contract violation that breaks the calling transaction.
 
 ## What this BAdI implementation does NOT do
 
@@ -122,7 +122,7 @@ The class shape is identical.
 
 | Mistake | Fix |
 |---|---|
-| Implementation modifies `order` directly | BAdI's signature is `IMPORTING order` — that's a read contract. Don't mutate inputs. |
+| Implementation modifies `is_order` directly | BAdI's signature is `IMPORTING is_order` — that's a read contract. Don't mutate inputs. |
 | Implementation calls SAP standard transactions inside | Reentrance bug; the calling LUW will deadlock or recurse |
 | Implementation writes to DB outside the LUW | Side effects survive even when the parent transaction rolls back |
 | Implementation reads global program variables | Couples to the host program's internals; breaks at SAP refactor |

@@ -155,7 +155,7 @@ Place the check:
 
 ```abap
 " WRONG — data already read before the check; the SELECT leaked everything
-SELECT * FROM zsensitive INTO TABLE @DATA(rows).
+SELECT * FROM z_t_sensitive INTO TABLE @DATA(lt_rows).
 AUTHORITY-CHECK OBJECT 'ZAUTH_OBJ' ID 'ACTVT' FIELD '03'.
 IF sy-subrc <> 0.
   RETURN.   " too late — rows already in memory, and a logging side effect may have fired
@@ -166,7 +166,7 @@ AUTHORITY-CHECK OBJECT 'ZAUTH_OBJ' ID 'ACTVT' FIELD '03'.
 IF sy-subrc <> 0.
   RAISE EXCEPTION TYPE zcx_not_authorized.
 ENDIF.
-SELECT carrid, connid, amount FROM zsensitive INTO TABLE @DATA(rows).
+SELECT carrid, connid, amount FROM z_t_sensitive INTO TABLE @DATA(lt_rows).
 ```
 
 For finer-grained data filtering (per row, per country, per company code), prefer **CDS access control** so SADL/the CDS runtime layer returns only permitted rows when consumed through the CDS entity (ABAP SQL or RAP) — direct table access bypasses this entirely. See below.

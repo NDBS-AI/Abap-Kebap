@@ -5,8 +5,8 @@ For every FAE in a code review or in new code, verify:
 ## 1. Empty driver guard
 
 ```abap
-IF parents IS INITIAL.
-  CLEAR children.   " or RETURN, or whatever no-data behavior
+IF lt_parents IS INITIAL.
+  CLEAR lt_children.   " or RETURN, or whatever no-data behavior
   RETURN.
 ENDIF.
 ```
@@ -16,8 +16,8 @@ ENDIF.
 ## 2. Deduplicated driver
 
 ```abap
-SORT parents BY id.
-DELETE ADJACENT DUPLICATES FROM parents COMPARING id.
+SORT lt_parents BY id.
+DELETE ADJACENT DUPLICATES FROM lt_parents COMPARING id.
 ```
 
 Or declare the driver as `SORTED TABLE … WITH UNIQUE KEY id` from the start.
@@ -29,16 +29,16 @@ Or declare the driver as `SORTED TABLE … WITH UNIQUE KEY id` from the start.
 ```abap
 SELECT parent_id, child_id, amount   " include parent_id
   FROM child_table
-  FOR ALL ENTRIES IN @parents
-  WHERE parent_id = @parents-id
-  INTO TABLE @DATA(children).
+  FOR ALL ENTRIES IN @lt_parents
+  WHERE parent_id = @lt_parents-id
+  INTO TABLE @DATA(lt_children).
 ```
 
 **Why:** Without `parent_id` in the SELECT list, you cannot map child rows back to the right parent in the consuming code. Worse: FAE removes duplicate rows from the result set automatically ("the entire content of a row is respected") — if the SELECT list omits key fields, distinct child rows can collapse into one and silently disappear.
 
 ## 4. WHERE matches a useful index
 
-The condition `parent_id = @parents-id` should be a leading column of an index on `child_table`. If not:
+The condition `parent_id = @lt_parents-id` should be a leading column of an index on `child_table`. If not:
 - The DB will fall back to full-table scan per chunk → catastrophic slow.
 - Either add an index (consult DBA), or restructure (CDS view with proper joins, denormalize at write time, etc.).
 
@@ -61,17 +61,17 @@ Alternatively, use `PACKAGE SIZE n` in the outer SELECT to process the driver it
 ```abap
 SELECT id FROM ztransaction_header
   WHERE status = 'OPEN'
-  INTO TABLE @DATA(driver_chunk) PACKAGE SIZE 500.
+  INTO TABLE @DATA(lt_driver_chunk) PACKAGE SIZE 500.
 
-  IF driver_chunk IS INITIAL. CONTINUE. ENDIF.
-  SORT driver_chunk BY id.
-  DELETE ADJACENT DUPLICATES FROM driver_chunk COMPARING id.
+  IF lt_driver_chunk IS INITIAL. CONTINUE. ENDIF.
+  SORT lt_driver_chunk BY id.
+  DELETE ADJACENT DUPLICATES FROM lt_driver_chunk COMPARING id.
 
   SELECT header_id, line_no, amount
     FROM ztransaction_item
-    FOR ALL ENTRIES IN @driver_chunk
-    WHERE header_id = @driver_chunk-id
-    INTO TABLE @DATA(items).
+    FOR ALL ENTRIES IN @lt_driver_chunk
+    WHERE header_id = @lt_driver_chunk-id
+    INTO TABLE @DATA(lt_items).
 
   " process items ...
 
@@ -88,7 +88,7 @@ If `child_table` is **buffered** (SE11 → Technical Settings → Buffering = Si
 ## 7. Result sorting (if order matters)
 
 ```abap
-SORT children BY parent_id child_id.
+SORT lt_children BY parent_id child_id.
 ```
 
 FAE does **not** preserve order — even within a single driver. The DB optimizer is free to return rows in any order. If your consumer iterates assuming order, the bug is intermittent and platform-dependent.
@@ -99,7 +99,7 @@ If you sort, use the secondary sort key columns explicitly. Don't trust "it usua
 
 In Open SQL, NULL columns vs `IS INITIAL` ABAP semantics differ:
 - ABAP fills NULL with the type's initial value on read (`SPACE`, `'0'`, etc.).
-- A WHERE comparison with `@parents-id IS NULL` is not the same as `column IS NULL`.
+- A WHERE comparison with `@lt_parents-id IS NULL` is not the same as `column IS NULL`.
 
 For FAE this matters when the driver has rows where `id` itself is the initial value. Those rows still pass to the FAE WHERE — which then matches DB rows with the initial value. Decide whether that's what you want, and filter if not.
 

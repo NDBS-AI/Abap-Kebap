@@ -21,14 +21,14 @@ Back to [SKILL.md](../SKILL.md). Related: [numeric.md](numeric.md), [datetime.md
 | `line_exists` | truth value | a table expression `itab[ … ]` | Row membership in an internal table. |
 
 ```abap
-DATA(b1) = xsdbool( 3 > 1 ).                                   "abap_true
-DATA(c1) = xsdbool( contains( val = `abdefghijklmn` sub = `ghi` ) ). "abap_true
-DATA(c2) = xsdbool( contains( val = `ABCDE` start = `ab` case = abap_false ) ). "abap_true
-DATA(c3) = xsdbool( contains( val = `Hallo world` pcre = `\s` ) ).  "abap_true
-DATA(m1) = xsdbool( matches( val = `jon.doe@email.com`
+DATA(lv_b1) = xsdbool( 3 > 1 ).                                   "abap_true
+DATA(lv_c1) = xsdbool( contains( val = `abdefghijklmn` sub = `ghi` ) ). "abap_true
+DATA(lv_c2) = xsdbool( contains( val = `ABCDE` start = `ab` case = abap_false ) ). "abap_true
+DATA(lv_c3) = xsdbool( contains( val = `Hallo world` pcre = `\s` ) ).  "abap_true
+DATA(lv_m1) = xsdbool( matches( val = `jon.doe@email.com`
                              pcre = `\w+(\.\w+)*@(\w+\.)+(\w{2,4})` ) ). "abap_true
-DATA(l1) = xsdbool( line_exists( itab[ comp1 = 2 ] ) ).        "abap_true
-DATA(l2) = xsdbool( line_exists( str_tab[ table_line = `xxx` ] ) ). "abap_false
+DATA(lv_l1) = xsdbool( line_exists( lt_itab[ comp1 = 2 ] ) ).        "abap_true
+DATA(lv_l2) = xsdbool( line_exists( lt_str_tab[ table_line = `xxx` ] ) ). "abap_false
 ```
 
 `contains` parameter summary: `val` (string searched), `sub`/`start`/`end` (substring to find), `off`/`len` (search range), `case` (default `abap_true`), `occ` (false if more occurrences than `occ` exist), `pcre` (regex).
@@ -102,13 +102,13 @@ Detailed in [abap-strings-regex](../../abap-strings-regex/SKILL.md). Catalog:
 | `line_index` | int | table expression with key | Index of found row; 0 = not found; -1 = no primary index (hashed table) |
 
 ```abap
-DATA(row_count) = lines( strtab ).
-DATA(i1) = line_index( itab_em[ comp1 = 1 ] ).                 "1
-DATA(i2) = line_index( itab_em[ comp2 = 'd' ] ).               "2
-DATA(i3) = line_index( itab_sec[ KEY primary_key comp1 = 1 ] )."-1 (hashed: no primary index)
-DATA(i4) = line_index( itab_sec[ KEY sk comp2 = 'd' ] ).       "4 (secondary table key/index)
-DATA(i5) = line_index( itab_str[ table_line = `aaa` ] ).       "1
-DATA(i6) = line_index( itab_str[ table_line = `zzz` ] ).       "0
+DATA(lv_row_count) = lines( lt_strtab ).
+DATA(lv_i1) = line_index( lt_itab_em[ comp1 = 1 ] ).                 "1
+DATA(lv_i2) = line_index( lt_itab_em[ comp2 = 'd' ] ).               "2
+DATA(lv_i3) = line_index( lt_itab_sec[ KEY primary_key comp1 = 1 ] )."-1 (hashed: no primary index)
+DATA(lv_i4) = line_index( lt_itab_sec[ KEY sk comp2 = 'd' ] ).       "4 (secondary table key/index)
+DATA(lv_i5) = line_index( lt_itab_str[ table_line = `aaa` ] ).       "1
+DATA(lv_i6) = line_index( lt_itab_str[ table_line = `zzz` ] ).       "0
 ```
 
 `line_index` requires a key specification (explicit table key or free key).
@@ -152,7 +152,7 @@ SELECT SINGLE
   floor( decfloat34`1.333` ) AS floor, "1
   abs( int4`-2` ) AS abs,              "2
   round( decfloat34`1.337`, 2 ) AS round "1.34
-  FROM zdemo_abap_carr WHERE carrid = 'LH' INTO @DATA(num_fns).
+  FROM zdemo_abap_carr WHERE carrid = 'LH' INTO @DATA(ls_num_fns).
 ```
 
 ### 6b. Strings (SQL/CDS)
@@ -195,7 +195,7 @@ SELECT SINGLE
   rtrim( carrname, 'a' ) AS rtrim,                        "Lufthans
   substring( carrname, 3, 3 ) AS substring,               "fth
   upper( carrname ) AS upper                              "LUFTHANSA
-  FROM zdemo_abap_carr WHERE carrid = 'LH' INTO @DATA(str_fns).
+  FROM zdemo_abap_carr WHERE carrid = 'LH' INTO @DATA(ls_str_fns).
 ```
 
 ### 6c. Date, time, time stamp (SQL/CDS)
@@ -225,7 +225,7 @@ SELECT SINGLE FROM i_timezone FIELDS
   add_months( @utc, 3 ) AS add_months,
   dats_add_days( dats`20240812`, 4 ) AS dats_add,   "20240816
   tstmp_to_dats( tstmp = @tmst, tzone = CAST( char`EST` AS CHAR( 6 ) ) ) AS to_dats "20240808
-WHERE TimeZoneID = char`EST` INTO @DATA(dt_fns).
+WHERE TimeZoneID = char`EST` INTO @DATA(ls_dt_fns).
 ```
 
 ### 6d. More (special) functions (SQL/CDS)
@@ -247,7 +247,7 @@ SELECT SINGLE
   to_blob( raw`1234` ) AS blob,
   unit_conversion( quantity = d34n`1`, source_unit = unit`MI`, target_unit = unit`KM` ) AS miles_to_km,
   uuid( ) AS uuid
-  FROM zdemo_abap_carr WHERE carrid = char`LH` INTO @DATA(special_fns).
+  FROM zdemo_abap_carr WHERE carrid = char`LH` INTO @DATA(ls_special_fns).
 ```
 
 ### 6e. coalesce (SQL/CDS)
@@ -260,7 +260,7 @@ SELECT tab2~key_field,
        coalesce( tab1~char2, '#' ) AS coalesced2
     FROM zdemo_abap_tab2 AS tab2
     LEFT OUTER JOIN zdemo_abap_tab1 AS tab1 ON tab1~char1 = tab2~char1
-    INTO TABLE @DATA(join_w_null).
+    INTO TABLE @DATA(lt_join_w_null).
 "key_field 4 (no match) -> coalesced1 = '-', coalesced2 = '#'
 ```
 

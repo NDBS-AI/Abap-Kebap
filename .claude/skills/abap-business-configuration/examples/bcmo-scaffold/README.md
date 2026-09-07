@@ -106,11 +106,11 @@ ENDCLASS.
 
 CLASS zcl_register_status_bc IMPLEMENTATION.
   METHOD main.
-    DATA(business_configuration) =
+    DATA(lo_business_configuration) =
       mbc_cp_api=>business_configuration_api( 'ZSTATUS_CLASS' ).
 
     TRY.
-        business_configuration->create(
+        lo_business_configuration->create(
           iv_name            = 'Status Classes'
           iv_description     = 'Status class and status code customizing'
           iv_service_binding = 'ZUI_STATUSCLASS_O4'
@@ -119,9 +119,9 @@ CLASS zcl_register_status_bc IMPLEMENTATION.
           iv_root_entity_set = 'StatusClass'
           iv_transport       = 'X02K900025' ).   " Workbench request — SMBC entry
         out->write( 'BCMO registered.' ).
-      CATCH cx_mbc_api_exception INTO DATA(api_error).
-        LOOP AT api_error->if_xco_news~get_messages( ) INTO DATA(message).
-          out->write( message->get_text( ) ).
+      CATCH cx_mbc_api_exception INTO DATA(lo_api_error).
+        LOOP AT lo_api_error->if_xco_news~get_messages( ) INTO DATA(ls_message).
+          out->write( ls_message->get_text( ) ).
         ENDLOOP.
     ENDTRY.
   ENDMETHOD.
@@ -136,7 +136,7 @@ If wiring manually, replicate this documented pattern (deep dive: [../../referen
 
 ```abap
 " In the saver / validation implementations:
-DATA(transport_api) = mbc_cp_api=>rap_tdat_cts(
+DATA(lo_transport_api) = mbc_cp_api=>rap_tdat_cts(
   tdat_name              = 'ZSTATUS_TOBJ'    " Individual Transaction transport object
   table_entity_relations = VALUE #(
     ( entity = 'ZI_StatusClass'     table = '/DMO/STATUSCLASS' )

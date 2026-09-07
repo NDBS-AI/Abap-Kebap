@@ -26,7 +26,7 @@ Which assertion method for which check.
 | `assert_subrc` | After a `READ TABLE` / `SELECT` / `OPEN DATASET` — check sy-subrc |
 
 ```abap
-SELECT SINGLE name1 FROM kna1 INTO @DATA(name) WHERE kunnr = @cust.
+SELECT SINGLE name1 FROM kna1 INTO @DATA(lv_name) WHERE kunnr = @cust.
 cl_abap_unit_assert=>assert_subrc(
   exp = 0
   msg = |Customer { cust } should exist in test data| ).
@@ -55,7 +55,7 @@ For "should raise":
 
 ```abap
 TRY.
-    cut->do_something( invalid_input ).
+    mo_cut->do_something( invalid_input ).
     cl_abap_unit_assert=>fail( msg = 'Expected cx_invalid_input' ).
   CATCH cx_invalid_input.
     " expected
@@ -65,11 +65,11 @@ ENDTRY.
 Or, additionally asserting on the caught exception:
 ```abap
 TRY.
-    cut->do_something( invalid_input ).
+    mo_cut->do_something( invalid_input ).
     cl_abap_unit_assert=>fail( 'Expected cx_invalid_input' ).
-  CATCH cx_invalid_input INTO DATA(ex).
+  CATCH cx_invalid_input INTO DATA(lo_ex).
     cl_abap_unit_assert=>assert_equals(
-      act = ex->get_text( )
+      act = lo_ex->get_text( )
       exp = 'Invalid input X'
       msg = 'Wrong message text' ).
 ENDTRY.
@@ -79,12 +79,12 @@ For "should NOT raise":
 
 ```abap
 TRY.
-    DATA(result) = cut->do_something( valid_input ).
-  CATCH cx_root INTO DATA(ex).
+    DATA(lv_result) = mo_cut->do_something( valid_input ).
+  CATCH cx_root INTO DATA(lo_ex).
     cl_abap_unit_assert=>fail(
-      msg = |Did not expect exception: { ex->get_text( ) }| ).
+      msg = |Did not expect exception: { lo_ex->get_text( ) }| ).
 ENDTRY.
-" Now assert on result
+" Now assert on lv_result
 ```
 
 ## Less common but useful

@@ -25,76 +25,76 @@ CLASS zcl_parallel_package_demo DEFINITION
     INTERFACES if_oo_adt_classrun.
 
   PRIVATE SECTION.
-    CONSTANTS package_size          TYPE i VALUE 10000.
-    CONSTANTS number_of_work_items  TYPE i VALUE 100000.
-    CONSTANTS number_of_tasks       TYPE i VALUE 4.
+    CONSTANTS c_package_size          TYPE i VALUE 10000.
+    CONSTANTS c_number_of_work_items  TYPE i VALUE 100000.
+    CONSTANTS c_number_of_tasks       TYPE i VALUE 4.
 
     METHODS build_work_items
-      RETURNING VALUE(result) TYPE lcl_square_worker=>numbers.
+      RETURNING VALUE(rt_result) TYPE lcl_square_worker=>tt_numbers.
 
     METHODS build_worker_instances
-      IMPORTING work_items    TYPE lcl_square_worker=>numbers
-      RETURNING VALUE(result) TYPE cl_abap_parallel=>t_in_inst_tab.
+      IMPORTING it_work_items TYPE lcl_square_worker=>tt_numbers
+      RETURNING VALUE(rt_result) TYPE cl_abap_parallel=>t_in_inst_tab.
 
     METHODS run_in_parallel
-      IMPORTING worker_instances TYPE cl_abap_parallel=>t_in_inst_tab
-                console          TYPE REF TO if_oo_adt_classrun_out
-      RETURNING VALUE(result)    TYPE lcl_square_worker=>numbers.
+      IMPORTING it_worker_instances TYPE cl_abap_parallel=>t_in_inst_tab
+                io_console          TYPE REF TO if_oo_adt_classrun_out
+      RETURNING VALUE(rt_result)    TYPE lcl_square_worker=>tt_numbers.
 
     METHODS run_sequentially_for_compare
-      IMPORTING work_items    TYPE lcl_square_worker=>numbers
-      RETURNING VALUE(result) TYPE lcl_square_worker=>numbers.
+      IMPORTING it_work_items TYPE lcl_square_worker=>tt_numbers
+      RETURNING VALUE(rt_result) TYPE lcl_square_worker=>tt_numbers.
 ENDCLASS.
 
 
 CLASS zcl_parallel_package_demo IMPLEMENTATION.
   METHOD if_oo_adt_classrun~main.
-    DATA(work_items) = build_work_items( ).
+    DATA(lt_work_items) = build_work_items( ).
 
     " --- Parallel run -------------------------------------------------
-    DATA(parallel_started_at) = utclong_current( ).
-    DATA(parallel_results) = run_in_parallel(
-        worker_instances = build_worker_instances( work_items )
-        console          = out ).
-    DATA(parallel_seconds) = utclong_diff( high = utclong_current( )
-                                           low  = parallel_started_at ).
+    DATA(lv_parallel_started_at) = utclong_current( ).
+    DATA(lt_parallel_results) = run_in_parallel(
+        it_worker_instances = build_worker_instances( lt_work_items )
+        io_console          = out ).
+    DATA(lv_parallel_seconds) = utclong_diff( high = utclong_current( )
+                                           low  = lv_parallel_started_at ).
 
     " --- Sequential run for comparison (cheat sheet 32 pattern) -------
-    DATA(sequential_started_at) = utclong_current( ).
-    DATA(sequential_results) = run_sequentially_for_compare( work_items ).
-    DATA(sequential_seconds) = utclong_diff( high = utclong_current( )
-                                             low  = sequential_started_at ).
+    DATA(lv_sequential_started_at) = utclong_current( ).
+    DATA(lt_sequential_results) = run_sequentially_for_compare( lt_work_items ).
+    DATA(lv_sequential_seconds) = utclong_diff( high = utclong_current( )
+                                             low  = lv_sequential_started_at ).
 
-    out->write( |Work items processed:  { lines( work_items ) }| ).
-    out->write( |Parallel results:      { lines( parallel_results ) } | &&
-                |in { parallel_seconds STYLE = SIMPLE } s | &&
-                |({ number_of_tasks } tasks)| ).
-    out->write( |Sequential results:    { lines( sequential_results ) } | &&
-                |in { sequential_seconds STYLE = SIMPLE } s| ).
+    out->write( |Work items processed:  { lines( lt_work_items ) }| ).
+    out->write( |Parallel results:      { lines( lt_parallel_results ) } | &&
+                |in { lv_parallel_seconds STYLE = SIMPLE } s | &&
+                |({ c_number_of_tasks } tasks)| ).
+    out->write( |Sequential results:    { lines( lt_sequential_results ) } | &&
+                |in { lv_sequential_seconds STYLE = SIMPLE } s| ).
   ENDMETHOD.
 
   METHOD build_work_items.
     " Any independent workload; here: numbers to square.
-    result = VALUE #( FOR item_index = 1 UNTIL item_index > number_of_work_items
-                      ( item_index ) ).
+    rt_result = VALUE #( FOR lv_item_index = 1 UNTIL lv_item_index > c_number_of_work_items
+                      ( lv_item_index ) ).
   ENDMETHOD.
 
   METHOD build_worker_instances.
     " Packaging: one worker instance per package, NOT one per row.
     " SAP guidance: work units below ~200 ms are inefficient to
     " parallelize - bundle them (data-transport overhead dominates).
-    DATA current_package TYPE lcl_square_worker=>numbers.
+    DATA lt_current_package TYPE lcl_square_worker=>tt_numbers.
 
-    LOOP AT work_items INTO DATA(work_item).
-      APPEND work_item TO current_package.
-      IF lines( current_package ) = package_size.
-        APPEND NEW lcl_square_worker( current_package ) TO result.
-        CLEAR current_package.
+    LOOP AT it_work_items INTO DATA(lv_work_item).
+      APPEND lv_work_item TO lt_current_package.
+      IF lines( lt_current_package ) = c_package_size.
+        APPEND NEW lcl_square_worker( lt_current_package ) TO rt_result.
+        CLEAR lt_current_package.
       ENDIF.
     ENDLOOP.
 
-    IF current_package IS NOT INITIAL.
-      APPEND NEW lcl_square_worker( current_package ) TO result.
+    IF lt_current_package IS NOT INITIAL.
+      APPEND NEW lcl_square_worker( lt_current_package ) TO rt_result.
     ENDIF.
   ENDMETHOD.
 
@@ -102,7 +102,7 @@ CLASS zcl_parallel_package_demo IMPLEMENTATION.
     " Explicit, modest sizing. Defaults if omitted: 50 percent of the
     " free dialog work processes, across all servers; two free dialog
     " processes per server are always retained by the system.
-    DATA(parallel_runner) = NEW cl_abap_parallel( p_num_tasks = number_of_tasks ).
+    DATA(lo_parallel_runner) = NEW cl_abap_parallel( p_num_tasks = c_number_of_tasks ).
 
     " Synchronous fan-out/fan-in: run_inst returns when all tasks have
     " finished. The framework serializes each worker instance, executes
@@ -110,26 +110,26 @@ CLASS zcl_parallel_package_demo IMPLEMENTATION.
     " process, and returns the processed instances.
     " Tip: add p_debug = abap_true to run sequentially without RFC
     " (breakpoints inside do( ) work in that mode).
-    parallel_runner->run_inst( EXPORTING p_in_tab  = worker_instances
-                               IMPORTING p_out_tab = DATA(task_results) ).
+    lo_parallel_runner->run_inst( EXPORTING p_in_tab  = it_worker_instances
+                               IMPORTING p_out_tab = DATA(lt_task_results) ).
 
     " Fan-in: the result table has the SAME count and SAME order as the
     " input table, so sy-tabix maps a result row back to its package.
-    LOOP AT task_results INTO DATA(task_result).
-      IF task_result-inst IS INITIAL.
+    LOOP AT lt_task_results INTO DATA(ls_task_result).
+      IF ls_task_result-inst IS INITIAL.
         " Infrastructure failure for this package (documented example
         " message: "Time limit exceeded"). The original input instance
         " still holds the package - a real orchestrator could re-run it
         " sequentially, collect it for a retry, or raise.
-        console->write( |Package { sy-tabix } failed - check message info.| ).
+        io_console->write( |Package { sy-tabix } failed - check message info.| ).
         CONTINUE.
       ENDIF.
 
       " Results MUST be read from the returned instance: the work
       " happened on a deserialized copy in another session, not on the
       " reference the caller appended to p_in_tab.
-      DATA(finished_worker) = CAST lcl_square_worker( task_result-inst ).
-      APPEND LINES OF finished_worker->get_squared_numbers( ) TO result.
+      DATA(lo_finished_worker) = CAST lcl_square_worker( ls_task_result-inst ).
+      APPEND LINES OF lo_finished_worker->get_squared_numbers( ) TO rt_result.
     ENDLOOP.
   ENDMETHOD.
 
@@ -137,9 +137,9 @@ CLASS zcl_parallel_package_demo IMPLEMENTATION.
     " The same worker used sequentially (cheat sheet 32 contrasts the
     " parallel run with exactly such a sequential baseline). Always
     " measure both before deciding that parallelization pays.
-    DATA(sequential_worker) = NEW lcl_square_worker( work_items ).
-    sequential_worker->if_abap_parallel~do( ).
-    result = sequential_worker->get_squared_numbers( ).
+    DATA(lo_sequential_worker) = NEW lcl_square_worker( it_work_items ).
+    lo_sequential_worker->if_abap_parallel~do( ).
+    rt_result = lo_sequential_worker->get_squared_numbers( ).
   ENDMETHOD.
 ENDCLASS.
 
@@ -157,23 +157,23 @@ CLASS lcl_square_worker DEFINITION.
   PUBLIC SECTION.
     INTERFACES if_abap_parallel.
 
-    TYPES numbers TYPE STANDARD TABLE OF i WITH EMPTY KEY.
+    TYPES tt_numbers TYPE STANDARD TABLE OF i WITH EMPTY KEY.
 
     METHODS constructor
-      IMPORTING numbers_to_square TYPE numbers.
+      IMPORTING it_numbers_to_square TYPE tt_numbers.
 
     METHODS get_squared_numbers
-      RETURNING VALUE(result) TYPE numbers.
+      RETURNING VALUE(rt_result) TYPE tt_numbers.
 
   PRIVATE SECTION.
-    DATA numbers_to_square TYPE numbers.
-    DATA squared_numbers   TYPE numbers.
+    DATA mt_numbers_to_square TYPE tt_numbers.
+    DATA mt_squared_numbers   TYPE tt_numbers.
 ENDCLASS.
 
 
 CLASS lcl_square_worker IMPLEMENTATION.
   METHOD constructor.
-    me->numbers_to_square = numbers_to_square.
+    me->mt_numbers_to_square = it_numbers_to_square.
   ENDMETHOD.
 
   METHOD if_abap_parallel~do.
@@ -182,11 +182,11 @@ CLASS lcl_square_worker IMPLEMENTATION.
     " - any database change here commits independently of the caller
     " - catch expected errors HERE and store them in instance state;
     "   an exception escaping do( ) cannot be caught by the caller.
-    squared_numbers = VALUE #( FOR current_number IN numbers_to_square
-                               ( current_number * current_number ) ).
+    mt_squared_numbers = VALUE #( FOR lv_current_number IN mt_numbers_to_square
+                               ( lv_current_number * lv_current_number ) ).
   ENDMETHOD.
 
   METHOD get_squared_numbers.
-    result = squared_numbers.
+    rt_result = mt_squared_numbers.
   ENDMETHOD.
 ENDCLASS.

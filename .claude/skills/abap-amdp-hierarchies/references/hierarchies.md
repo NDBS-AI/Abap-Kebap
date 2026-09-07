@@ -67,9 +67,9 @@ Behavior: all lines satisfying `START WHERE` become the root node set; for each 
 ### Accessing a CDS hierarchy in ABAP SQL
 
 ```abap
-DATA root_id type demo_cds_simple_tree_view-id.
+DATA lv_root_id type demo_cds_simple_tree_view-id.
 
-SELECT FROM demo_cds_simple_tree( p_id = @root_id )
+SELECT FROM demo_cds_simple_tree( p_id = @lv_root_id )
   FIELDS id,
          parent,
          name,
@@ -81,7 +81,7 @@ SELECT FROM demo_cds_simple_tree( p_id = @root_id )
          hierarchy_is_orphan,
          node_id,
          parent_id
-  INTO TABLE @FINAL(cds_result).
+  INTO TABLE @FINAL(lt_cds_result).
 ```
 
 All hierarchy columns can be added to the `SELECT` list even if not in the CDS element list — this is always possible when a SQL hierarchy is accessed in ABAP SQL.
@@ -91,11 +91,11 @@ All hierarchy columns can be added to the `SELECT` list even if not in the CDS e
 Defines a SQL hierarchy **inside the program** (one program only, like an ABAP SQL join vs a CDS join). Same syntax as `define hierarchy`, same result.
 
 ```abap
-DATA root_id TYPE demo_cds_simple_tree_view-id.
+DATA lv_root_id TYPE demo_cds_simple_tree_view-id.
 
 SELECT FROM HIERARCHY( SOURCE demo_cds_simple_tree_view
                        CHILD TO PARENT ASSOCIATION _tree
-                       START WHERE id = @root_id
+                       START WHERE id = @lv_root_id
                        SIBLINGS ORDER BY id
                        MULTIPLE PARENTS NOT ALLOWED ) "hierarchy
        FIELDS id,
@@ -109,9 +109,9 @@ SELECT FROM HIERARCHY( SOURCE demo_cds_simple_tree_view
               hierarchy_is_orphan,
               node_id,
               parent_id
-       INTO TABLE @FINAL(asql_cds_result).
+       INTO TABLE @FINAL(lt_asql_cds_result).
 
-ASSERT asql_cds_result = cds_result.
+ASSERT lt_asql_cds_result = lt_cds_result.
 ```
 
 `HIERARCHY( ... )` additions:
@@ -126,7 +126,7 @@ ASSERT asql_cds_result = cds_result.
 A CTE can act as the hierarchy source by exposing an association with `WITH ASSOCIATIONS`:
 
 ```abap
-DATA root_id type demo_cds_simple_tree_view-id.
+DATA lv_root_id type demo_cds_simple_tree_view-id.
 
 WITH
   +cte_simple_tree_source AS
@@ -139,16 +139,16 @@ WITH
             ON +cte_simple_tree_source~parent = _tree~id )
   SELECT FROM HIERARCHY( SOURCE +cte_simple_tree_source
                          CHILD TO PARENT ASSOCIATION _tree
-                         START WHERE id = @root_id
+                         START WHERE id = @lv_root_id
                          SIBLINGS ORDER BY id
                          MULTIPLE PARENTS NOT ALLOWED ) "hierarchy
          FIELDS id, parent, name,
                 hierarchy_rank, hierarchy_tree_size, hierarchy_parent_rank,
                 hierarchy_level, hierarchy_is_cycle, hierarchy_is_orphan,
                 node_id, parent_id
-         INTO TABLE @FINAL(asql_cte_result).
+         INTO TABLE @FINAL(lt_asql_cte_result).
 
-ASSERT asql_cte_result = cds_result.
+ASSERT lt_asql_cte_result = lt_cds_result.
 ```
 
 ## 4. CTE hierarchies — `WITH HIERARCHY`
@@ -158,7 +158,7 @@ A CTE producing hierarchical data can declare itself a SQL hierarchy of a freely
 ```abap
 WITH
   +tree AS
-    ( SELECT FROM demo_cds_simple_tree( p_id = @root_id )
+    ( SELECT FROM demo_cds_simple_tree( p_id = @lv_root_id )
              FIELDS * )
       WITH HIERARCHY demo_cds_simple_tree
   SELECT FROM +tree "hierarchy
@@ -166,7 +166,7 @@ WITH
                 hierarchy_rank, hierarchy_tree_size, hierarchy_parent_rank,
                 hierarchy_level, hierarchy_is_cycle, hierarchy_is_orphan,
                 node_id, parent_id
-         INTO TABLE @FINAL(cte_cds_result).
+         INTO TABLE @FINAL(lt_cte_cds_result).
 ```
 
 The CTE source can equally be the `HIERARCHY` generator over a CDS view or over another CTE (`WITH HIERARCHY asql_hierarchy` / `WITH HIERARCHY cte_hierarchy`). All forms yield the same result.
@@ -197,17 +197,17 @@ Hierarchy navigators are hierarchy functions that work on an **existing** SQL hi
 Fetches all descendants of the start node(s). Adds `HIERARCHY_DISTANCE` (positive). Optional `DISTANCE` parameter restricts the distance to the start node.
 
 ```abap
-DATA root_id TYPE demo_cds_simple_tree_view-id.
-DATA sub_id  TYPE demo_cds_simple_tree_view-id.
+DATA lv_root_id TYPE demo_cds_simple_tree_view-id.
+DATA lv_sub_id  TYPE demo_cds_simple_tree_view-id.
 
 SELECT FROM HIERARCHY_DESCENDANTS(
-              SOURCE demo_cds_simple_tree( p_id = @root_id )
-              START WHERE id = @sub_id  )
+              SOURCE demo_cds_simple_tree( p_id = @lv_root_id )
+              START WHERE id = @lv_sub_id  )
   FIELDS id,
          parent_id,
          name,
          hierarchy_distance
-  INTO TABLE @FINAL(descendants).
+  INTO TABLE @FINAL(lt_descendants).
 ```
 
 ### HIERARCHY_ANCESTORS
@@ -215,17 +215,17 @@ SELECT FROM HIERARCHY_DESCENDANTS(
 Returns the ancestors of a given node. `HIERARCHY_DISTANCE` is **negative**.
 
 ```abap
-DATA root_id TYPE demo_cds_simple_tree_view-id.
-DATA max_id  TYPE demo_cds_simple_tree_view-id.
+DATA lv_root_id TYPE demo_cds_simple_tree_view-id.
+DATA lv_max_id  TYPE demo_cds_simple_tree_view-id.
 
 SELECT FROM HIERARCHY_ANCESTORS(
-              SOURCE demo_cds_simple_tree( p_id = @root_id )
-              START WHERE id = @max_id )
+              SOURCE demo_cds_simple_tree( p_id = @lv_root_id )
+              START WHERE id = @lv_max_id )
   FIELDS id,
           parent_id,
           name,
           hierarchy_distance
-  INTO TABLE @FINAL(ancestors).
+  INTO TABLE @FINAL(lt_ancestors).
 ```
 
 ### HIERARCHY_SIBLINGS
@@ -233,17 +233,17 @@ SELECT FROM HIERARCHY_ANCESTORS(
 Returns siblings (nodes sharing a parent — same `HIERARCHY_PARENT_RANK`). Adds `HIERARCHY_SIBLING_DISTANCE`.
 
 ```abap
-DATA root_id TYPE demo_cds_simple_tree_view-id.
-DATA sibl_id TYPE demo_cds_simple_tree_view-id.
+DATA lv_root_id TYPE demo_cds_simple_tree_view-id.
+DATA lv_sibl_id TYPE demo_cds_simple_tree_view-id.
 
 SELECT FROM HIERARCHY_SIBLINGS(
-              SOURCE demo_cds_simple_tree( p_id = @root_id )
-              START WHERE id = @sibl_id )
+              SOURCE demo_cds_simple_tree( p_id = @lv_root_id )
+              START WHERE id = @lv_sibl_id )
   FIELDS id,
           parent_id,
           name,
           hierarchy_sibling_distance
-  INTO TABLE @FINAL(siblings).
+  INTO TABLE @FINAL(lt_siblings).
 ```
 
 ### Hierarchy aggregate navigators
@@ -254,18 +254,18 @@ Apply aggregate functions to descendants/ancestors of a node:
 
 ```abap
 TYPES:
-  BEGIN OF value,
+  BEGIN OF ty_value,
     id     TYPE i,
     amount TYPE p LENGTH 16 DECIMALS 2,
-  END OF value.
+  END OF ty_value.
 
-DATA value_tab TYPE SORTED TABLE OF value WITH UNIQUE KEY id.
-DATA root_id   TYPE demo_cds_simple_tree_view-id.
-DATA sub_id    TYPE demo_cds_simple_tree_view-id.
+DATA lt_value_tab TYPE SORTED TABLE OF ty_value WITH UNIQUE KEY id.
+DATA lv_root_id   TYPE demo_cds_simple_tree_view-id.
+DATA lv_sub_id    TYPE demo_cds_simple_tree_view-id.
 
 SELECT FROM HIERARCHY_DESCENDANTS_AGGREGATE(
-              SOURCE demo_cds_simple_tree( p_id = @sub_id  ) AS h
-              JOIN @value_tab AS v
+              SOURCE demo_cds_simple_tree( p_id = @lv_sub_id  ) AS h
+              JOIN @lt_value_tab AS v
                 ON  v~id = h~id
               MEASURES SUM( v~amount ) AS amount_sum
               WHERE hierarchy_rank > 1
@@ -275,7 +275,7 @@ SELECT FROM HIERARCHY_DESCENDANTS_AGGREGATE(
          amount_sum,
          hierarchy_rank,
          hierarchy_aggregate_type
-  INTO TABLE @FINAL(descendants_aggregate).
+  INTO TABLE @FINAL(lt_descendants_aggregate).
 ```
 
 - `MEASURES SUM( v~amount ) AS amount_sum` — the aggregate over each node's descendants.

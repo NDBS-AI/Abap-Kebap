@@ -20,12 +20,12 @@ TYPES: BEGIN OF ty_struc,
          comp3 TYPE i,
          comp4 TYPE n LENGTH 4,
        END OF ty_struc.
-DATA(struct) = VALUE ty_struc( comp1 = 'abc' comp2 = `ABAP` comp3 = 123 comp4 = '9876' ).
-DATA looped_struc TYPE string.
+DATA(ls_struct) = VALUE ty_struc( comp1 = 'abc' comp2 = `ABAP` comp3 = 123 comp4 = '9876' ).
+DATA lv_looped_struc TYPE string.
 
 DO.
   TRY.
-      looped_struc = |{ looped_struc }{ COND #( WHEN sy-index <> 1 THEN `, ` ) }"{ struct-(sy-index) }"|.
+      lv_looped_struc = |{ lv_looped_struc }{ COND #( WHEN sy-index <> 1 THEN `, ` ) }"{ ls_struct-(sy-index) }"|.
     CATCH cx_sy_assign_illegal_component.
       EXIT.
   ENDTRY.
@@ -39,56 +39,56 @@ ENDDO.
 Use RTTI to retrieve the **component names** too. Assign the structure to a generic field symbol, cast its description to `cl_abap_structdescr`, and read `components`. Then pair each name with its value via `<struc>-(sy-index)`.
 
 ```abap
-DATA struc2string TYPE string.
-FIELD-SYMBOLS <strco> TYPE data.
-ASSIGN st TO <strco>.                 "st is any structure; <strco> is generic
+DATA lv_struc2string TYPE string.
+FIELD-SYMBOLS <fs_strco> TYPE data.
+ASSIGN ls_st TO <fs_strco>.                 "ls_st is any structure; <fs_strco> is generic
 
 TRY.
     "RTTI: get the component descriptors (name, type_kind, length, decimals)
-    DATA(comps) = CAST cl_abap_structdescr(
-      cl_abap_typedescr=>describe_by_data( <strco> ) )->components.
+    DATA(lt_comps) = CAST cl_abap_structdescr(
+      cl_abap_typedescr=>describe_by_data( <fs_strco> ) )->components.
 
     DO.
       TRY.
           "Name from RTTI by position; value by dynamic component access
-          DATA(comp_name) = comps[ sy-index ]-name.
-          struc2string = struc2string &&
+          DATA(lv_comp_name) = lt_comps[ sy-index ]-name.
+          lv_struc2string = lv_struc2string &&
                          COND #( WHEN sy-index <> 1 THEN `, ` ) &&
-                         comp_name && `: "` && <strco>-(sy-index) && `"`.
+                         lv_comp_name && `: "` && <fs_strco>-(sy-index) && `"`.
         CATCH cx_sy_assign_illegal_component cx_sy_itab_line_not_found.
           EXIT.
       ENDTRY.
     ENDDO.
-  CATCH cx_sy_move_cast_error.        "<strco> was not a structure
+  CATCH cx_sy_move_cast_error.        "<fs_strco> was not a structure
 ENDTRY.
 
-"struc2string: COL1: "123", COL2: "ABAP", COL3: "Z"
+"lv_struc2string: COL1: "123", COL2: "ABAP", COL3: "Z"
 ```
 
 Key points:
-- `<strco>` is typed `TYPE data` so any structure can be assigned — RTTI supplies the shape.
+- `<fs_strco>` is typed `TYPE data` so any structure can be assigned — RTTI supplies the shape.
 - The outer `TRY` guards the `CAST` (`CX_SY_MOVE_CAST_ERROR` if the input is not a structure).
 - The inner `TRY` ends the loop when the position runs past the last component.
-- `comps[ sy-index ]-name` is the RTTI name; `<strco>-(sy-index)` is the live value.
+- `lt_comps[ sy-index ]-name` is the RTTI name; `<fs_strco>-(sy-index)` is the live value.
 
 ## Pattern 3 — generic for a table's line type (RTTI on a table)
 
 When you have an internal table (e.g. from a dynamic `SELECT`) and need its column names, describe the table, get its line type, cast that to a structure descriptor, and read `get_components( )`.
 
 ```abap
-"itab is REF TO data filled by a dynamic SELECT — field list MUST come from a fixed allowlist, never unvalidated caller input
-"Example: SELECT (`CARRID, CONNID`) FROM (dbtab) INTO TABLE NEW @DATA(itab)
+"lr_itab is REF TO data filled by a dynamic SELECT — field list MUST come from a fixed allowlist, never unvalidated caller input
+"Example: SELECT (`CARRID, CONNID`) FROM (lv_dbtab) INTO TABLE NEW @DATA(lr_itab)
 TRY.
-    DATA(type_descr_obj_tab) = CAST cl_abap_tabledescr(
-      cl_abap_typedescr=>describe_by_data( itab->* ) ).
-    DATA(tab_comps) = CAST cl_abap_structdescr(
-      type_descr_obj_tab->get_table_line_type( ) )->get_components( ).
+    DATA(lo_type_descr_obj_tab) = CAST cl_abap_tabledescr(
+      cl_abap_typedescr=>describe_by_data( lr_itab->* ) ).
+    DATA(lt_tab_comps) = CAST cl_abap_structdescr(
+      lo_type_descr_obj_tab->get_table_line_type( ) )->get_components( ).
 
-    LOOP AT tab_comps ASSIGNING FIELD-SYMBOL(<comp>).
-      DATA(name) = <comp>-name.        "column name
-      "<comp>-type is the component's own type description object (handles nesting)
+    LOOP AT lt_tab_comps ASSIGNING FIELD-SYMBOL(<fs_comp>).
+      DATA(lv_name) = <fs_comp>-name.        "column name
+      "<fs_comp>-type is the component's own type description object (handles nesting)
     ENDLOOP.
-  CATCH cx_sy_move_cast_error INTO DATA(error).
+  CATCH cx_sy_move_cast_error INTO DATA(lo_error).
     ...
 ENDTRY.
 ```
@@ -96,10 +96,10 @@ ENDTRY.
 Then iterate the rows and read each cell dynamically:
 
 ```abap
-LOOP AT itab->* ASSIGNING FIELD-SYMBOL(<wa>).
+LOOP AT lr_itab->* ASSIGNING FIELD-SYMBOL(<fs_wa>).
   DO.
     TRY.
-        DATA(cell) = |{ <wa>-(sy-index) }|.   "value of column sy-index in this row
+        DATA(lv_cell) = |{ <fs_wa>-(sy-index) }|.   "value of column sy-index in this row
       CATCH cx_sy_assign_illegal_component.
         EXIT.
     ENDTRY.
@@ -113,8 +113,8 @@ This is exactly how a generic "display any database table" routine works: a dyna
 
 Because the structure's shape is unknown at compile time, **every** access can fail at runtime:
 - `CAST cl_abap_structdescr( ... )` → `CX_SY_MOVE_CAST_ERROR` if the input is not a structure/table.
-- `<struc>-(name)` / `<struc>-(pos)` → `CX_SY_ASSIGN_ILLEGAL_COMPONENT` for a bad name or out-of-range position.
-- `comps[ sy-index ]` → `CX_SY_ITAB_LINE_NOT_FOUND` past the last component.
+- `<fs_strco>-(name)` / `<fs_strco>-(pos)` → `CX_SY_ASSIGN_ILLEGAL_COMPONENT` for a bad name or out-of-range position.
+- `lt_comps[ sy-index ]` → `CX_SY_ITAB_LINE_NOT_FOUND` past the last component.
 
 The compiler checks none of these — that is the price of going generic, and the reason the loops above are wrapped in `TRY ... CATCH`.
 
@@ -124,10 +124,10 @@ If the structure or table name comes from outside, allowlist-check it before the
 
 ```abap
 TRY.
-    DATA(checked) = cl_abap_dyn_prg=>check_allowlist(
-      val           = dbtab
+    DATA(lv_checked) = cl_abap_dyn_prg=>check_allowlist(
+      val           = lv_dbtab
       allowlist_str = `ZDEMO_ABAP_CARR,ZDEMO_ABAP_FLI,ZDEMO_ABAP_FLSCH` ).
-  CATCH cx_abap_not_in_allowlist INTO DATA(not_allowed).
+  CATCH cx_abap_not_in_allowlist INTO DATA(lo_not_allowed).
     "reject the input
 ENDTRY.
 ```

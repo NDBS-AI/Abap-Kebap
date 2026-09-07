@@ -52,26 +52,26 @@ METHOD block.
   READ ENTITIES OF Z_C_Customer IN LOCAL MODE
     ENTITY Customer
     ALL FIELDS WITH CORRESPONDING #( keys )
-    RESULT DATA(targets).
+    RESULT DATA(lt_targets).
 
   MODIFY ENTITIES OF Z_C_Customer IN LOCAL MODE
     ENTITY Customer
     UPDATE FIELDS ( Blocked )
     WITH VALUE #(
-      FOR <target> IN targets
-      ( %tky    = <target>-%tky        " <- includes is_draft flag
+      FOR <fs_target> IN lt_targets
+      ( %tky    = <fs_target>-%tky        " <- includes is_draft flag
         Blocked = abap_true ) )
-    FAILED   DATA(failed_modify)
-    REPORTED DATA(reported_modify).
+    FAILED   DATA(lt_failed_modify)
+    REPORTED DATA(lt_reported_modify).
 
   READ ENTITIES OF Z_C_Customer IN LOCAL MODE
     ENTITY Customer
     ALL FIELDS WITH CORRESPONDING #( keys )
-    RESULT DATA(blocked_after).
+    RESULT DATA(lt_blocked_after).
 
   result = VALUE #(
-    FOR <blocked_customer> IN blocked_after
-    ( %tky = <blocked_customer>-%tky %param = <blocked_customer> ) ).
+    FOR <fs_blocked_customer> IN lt_blocked_after
+    ( %tky = <fs_blocked_customer>-%tky %param = <fs_blocked_customer> ) ).
 ENDMETHOD.
 ```
 
@@ -81,16 +81,16 @@ If you want to update both active AND draft regardless of which the caller passe
 
 ```abap
 " Build two key sets — one for active, one for draft — both pointing to the same logical record.
-DATA active_keys TYPE TABLE FOR ACTION IMPORT Z_C_Customer~block.
-DATA draft_keys  LIKE active_keys.
+DATA lt_active_keys TYPE TABLE FOR ACTION IMPORT Z_C_Customer~block.
+DATA lt_draft_keys  LIKE lt_active_keys.
 
-LOOP AT keys ASSIGNING FIELD-SYMBOL(<key>).
-  APPEND VALUE #( %tky = VALUE #( CustomerId = <key>-CustomerId
+LOOP AT keys ASSIGNING FIELD-SYMBOL(<fs_key>).
+  APPEND VALUE #( %tky = VALUE #( CustomerId = <fs_key>-CustomerId
                                   %is_draft  = if_abap_behv=>mk-off ) )
-    TO active_keys.
-  APPEND VALUE #( %tky = VALUE #( CustomerId = <key>-CustomerId
+    TO lt_active_keys.
+  APPEND VALUE #( %tky = VALUE #( CustomerId = <fs_key>-CustomerId
                                   %is_draft  = if_abap_behv=>mk-on ) )
-    TO draft_keys.
+    TO lt_draft_keys.
 ENDLOOP.
 
 " then issue two MODIFY ENTITIES … one per key set
@@ -126,8 +126,8 @@ MODIFY ENTITIES OF Z_C_Customer
   ENTITY Customer
   EXECUTE Edit
   FROM VALUE #( ( CustomerId = '0000000001' ) )
-  RESULT DATA(after_edit)
-  FAILED DATA(failed_edit).
+  RESULT DATA(lt_after_edit)
+  FAILED DATA(lt_failed_edit).
 
 " 2. Update the draft
 MODIFY ENTITIES OF Z_C_Customer
@@ -144,12 +144,12 @@ MODIFY ENTITIES OF Z_C_Customer
   EXECUTE Activate
   FROM VALUE #( ( CustomerId = '0000000001'
                   %is_draft  = if_abap_behv=>mk-on ) )
-  RESULT DATA(after_activate)
-  FAILED DATA(failed_activate).
+  RESULT DATA(lt_after_activate)
+  FAILED DATA(lt_failed_activate).
 
 " 4. Commit
 COMMIT ENTITIES RESPONSE OF Z_C_Customer
-  FAILED DATA(failed_commit).
+  FAILED DATA(lt_failed_commit).
 ```
 
 In Fiori this whole sequence happens via clicks; in a test or batch script you spell it out.

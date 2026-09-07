@@ -46,32 +46,32 @@ The complete documented surface, from the SAP BTP "Sending Mails Using SMTP" pag
 
 ```abap
 TRY.
-    DATA(mail) = cl_bcs_mail_message=>create_instance( ).
-    mail->set_sender( 'noreply@yourcompany.com' ).
-    mail->add_recipient( 'recipient1@yourcompany.com' ).
-    mail->add_recipient( iv_address = 'recipient2@yourcompany.com'
-                         iv_copy    = cl_bcs_mail_message=>cc ).
-    mail->set_subject( 'Order confirmation' ).
-    mail->set_importance( cl_bcs_mail_message=>importance-low ).
-    mail->set_sensitivity( cl_bcs_mail_message=>sensitivity-confidential ).
-    mail->set_main( cl_bcs_mail_textpart=>create_text_html(
+    DATA(lo_mail) = cl_bcs_mail_message=>create_instance( ).
+    lo_mail->set_sender( 'noreply@yourcompany.com' ).
+    lo_mail->add_recipient( 'recipient1@yourcompany.com' ).
+    lo_mail->add_recipient( iv_address = 'recipient2@yourcompany.com'
+                            iv_copy    = cl_bcs_mail_message=>cc ).
+    lo_mail->set_subject( 'Order confirmation' ).
+    lo_mail->set_importance( cl_bcs_mail_message=>importance-low ).
+    lo_mail->set_sensitivity( cl_bcs_mail_message=>sensitivity-confidential ).
+    lo_mail->set_main( cl_bcs_mail_textpart=>create_text_html(
         '<h1>Hello</h1><p>Your order was created.</p>' ) ).
-    mail->add_attachment( cl_bcs_mail_textpart=>create_text_plain(
+    lo_mail->add_attachment( cl_bcs_mail_textpart=>create_text_plain(
         iv_content  = 'Plain text attachment'
         iv_filename = 'info.txt' ) ).
 
-    DATA(status_monitor) = mail->send( ).
-    status_monitor->get_email_status(
-      IMPORTING es_mail_status         = DATA(mail_status)
-                et_recipients_statuses = DATA(recipient_statuses) ).
-  CATCH cx_bcs_mail INTO DATA(mail_error).
+    DATA(lo_status_monitor) = lo_mail->send( ).
+    lo_status_monitor->get_email_status(
+      IMPORTING es_mail_status         = DATA(ls_mail_status)
+                et_recipients_statuses = DATA(lt_recipient_statuses) ).
+  CATCH cx_bcs_mail INTO DATA(lo_mail_error).
     " handle / report — never swallow silently
 ENDTRY.
 ```
 
 Key points:
 
-- `send( )` transmits **synchronously** through the mail server configured in the destination (via cloud connector where applicable). It returns an `if_bcs_mail_status_monitor` instance; the same statuses are also available as exporting parameters. The ABAP cheat sheets show the variant `mail->send( IMPORTING et_status = DATA(status_table) )` with status values `E` (error), `S` (sent), `W` (waiting) — both forms appear in SAP material, so check the released signature in your system.
+- `send( )` transmits **synchronously** through the mail server configured in the destination (via cloud connector where applicable). It returns an `if_bcs_mail_status_monitor` instance; the same statuses are also available as exporting parameters. The ABAP cheat sheets show the variant `mail->send( IMPORTING et_status = DATA(lt_status_table) )` with status values `E` (error), `S` (sent), `W` (waiting) — both forms appear in SAP material, so check the released signature in your system.
 - Typed constants live on the class: `cl_bcs_mail_message=>ty_address`, `tyt_recipient`, `cc`, `importance-*`, `sensitivity-*`.
 - `set_additional_mime_headers( )` adds custom MIME headers — but `Date`, `Message-ID`, `Content-Type`, and any header that has its own set-method are **not allowed**, and SAP disclaims responsibility for issues caused by nonstandard headers.
 - Everything raises `cx_bcs_mail`.
@@ -104,12 +104,12 @@ The rendered ADS PDF (an `xstring`) plugs straight into `cl_bcs_mail_binarypart=
 
 ```abap
 TRY.
-    DATA(mail) = cl_bcs_mail_message=>create_instance( ).
-    mail->set_sender( 'noreply@yourcompany.com' ).
-    mail->add_recipient( 'recipient1@yourcompany.com' ).
+    DATA(lo_mail) = cl_bcs_mail_message=>create_instance( ).
+    lo_mail->set_sender( 'noreply@yourcompany.com' ).
+    lo_mail->add_recipient( 'recipient1@yourcompany.com' ).
     " ... subject, main part ...
-    mail->send_async( ).
-  CATCH cx_bcs_mail INTO DATA(mail_error).
+    lo_mail->send_async( ).
+  CATCH cx_bcs_mail INTO DATA(lo_mail_error).
     " handle
 ENDTRY.
 ```
@@ -136,25 +136,25 @@ Editor facilities: *Edit* for both bodies (with import/export), *Tidy HTML*, tra
 The renderer fills subject and content of an existing mail request from the template:
 
 ```abap
-DATA data_keys TYPE if_smtg_email_template=>ty_gt_data_key.
+DATA lt_data_keys TYPE if_smtg_email_template=>ty_gt_data_key.
 
 TRY.
-    DATA(mail) = cl_bcs_mail_message=>create_instance( ).
-    mail->set_sender( 'noreply@yourcompany.com' ).
-    mail->add_recipient( 'recipient@yourcompany.com' ).
+    DATA(lo_mail) = cl_bcs_mail_message=>create_instance( ).
+    lo_mail->set_sender( 'noreply@yourcompany.com' ).
+    lo_mail->add_recipient( 'recipient@yourcompany.com' ).
 
-    DATA(template_renderer) = cl_smtg_email_templ_renderer=>create_instance(
+    DATA(lo_template_renderer) = cl_smtg_email_templ_renderer=>create_instance(
         iv_template_id = 'ZOM_ORDER_CONFIRMATION' ).
 
-    data_keys = VALUE #( ( name = 'SalesOrderId' value = order_id ) ).
+    lt_data_keys = VALUE #( ( name = 'SalesOrderId' value = lv_order_id ) ).
 
-    template_renderer->render_email_message(
-        io_message  = mail
+    lo_template_renderer->render_email_message(
+        io_message  = lo_mail
         iv_language = sy-langu
-        it_data_key = data_keys ).
+        it_data_key = lt_data_keys ).
 
-    mail->send( ).
-  CATCH cx_bcs_mail cx_smtg_email_common INTO DATA(render_error).
+    lo_mail->send( ).
+  CATCH cx_bcs_mail cx_smtg_email_common INTO DATA(lo_render_error).
     " handle
 ENDTRY.
 ```
@@ -203,10 +203,10 @@ The Adobe Document Services (ADS) rendering capability turns **Adobe XML Forms (
 
 1. **Data — `cl_fp_fdp_services`** ("RAP Data Services for Print Forms"). Expose the form data as a RAP **service definition** (no service binding needed). Then:
    ```abap
-   DATA(form_data_provider) = cl_fp_fdp_services=>get_instance( `ZOM_SALESORDER_FORM` ).
-   DATA(selection_keys) = form_data_provider->get_keys( ).
-   selection_keys[ name = 'SALESORDERID' ]-value = sales_order_id.
-   DATA(form_xml_data) = form_data_provider->read_to_xml_v2( selection_keys ).
+   DATA(lo_form_data_provider) = cl_fp_fdp_services=>get_instance( `ZOM_SALESORDER_FORM` ).
+   DATA(lt_selection_keys) = lo_form_data_provider->get_keys( ).
+   lt_selection_keys[ name = 'SALESORDERID' ]-value = lv_sales_order_id.
+   DATA(lv_form_xml_data) = lo_form_data_provider->read_to_xml_v2( lt_selection_keys ).
    ```
    `get_xsd_v2( )` returns the XML Schema (XSD) that the form designer binds against. For **draft-enabled** services, `IsActiveEntity` defaults to false — pass `it_select_add` with `name = 'IsActiveEntity' value = 'X'` to read active data. Errors raise `cx_fp_fdp_error`. (The reuse-services sample calls `read_to_xml`/`get_xsd` without the `_v2` suffix; the current documentation describes the `_v2` methods — prefer those and verify in your release.)
 2. **Template — `cl_fp_form_reader`**. XDP templates designed in *Adobe LiveCycle Designer* (download via *Install Additional Software*) and uploaded in ADT (*Working with Forms*) are read at runtime: `cl_fp_form_reader=>create_form_reader( 'MY_FORM' )` then `get_layout( )` → XDP as `xstring` (plus `get_fdp_name`, `get_data_optimized`, `get_font_embed`). Alternatively, the SAP-samples reuse-services repo pulls templates from the SAP Forms Service **template store** via a custom HTTP client and a communication arrangement — a valid pattern when templates are managed outside the ABAP system.
@@ -231,14 +231,14 @@ This keeps the slow remote ADS call out of both the user round trip and the orig
 Merges several PDFs into one file containing all pages in the order the sources were added:
 
 ```abap
-DATA(pdf_merger) = cl_rspo_pdf_merger=>create_instance( ).
-pdf_merger->add_document( cover_sheet_pdf ).
-pdf_merger->add_document( order_form_pdf ).
+DATA(lo_pdf_merger) = cl_rspo_pdf_merger=>create_instance( ).
+lo_pdf_merger->add_document( lv_cover_sheet_pdf ).
+lo_pdf_merger->add_document( lv_order_form_pdf ).
 
 TRY.
-    DATA(merged_pdf) = pdf_merger->merge_documents( ).
-  CATCH cx_rspo_pdf_merger INTO DATA(merge_error).
-    " merge_error->document_index / error_code / error_text
+    DATA(lv_merged_pdf) = lo_pdf_merger->merge_documents( ).
+  CATCH cx_rspo_pdf_merger INTO DATA(lo_merge_error).
+    " lo_merge_error->document_index / error_code / error_text
 ENDTRY.
 ```
 

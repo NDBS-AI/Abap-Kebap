@@ -43,10 +43,10 @@ plus zero or more attachments.
 Documented minimal call (from the Printing page, trimmed):
 
 ```abap
-DATA print_data TYPE xstring.
-DATA(queue_item_id) = cl_print_queue_utils=>create_queue_item_by_data(
+DATA lv_print_data TYPE xstring.
+DATA(lv_queue_item_id) = cl_print_queue_utils=>create_queue_item_by_data(
     iv_qname            = 'MY_QUEUE'
-    iv_print_data       = print_data
+    iv_print_data       = lv_print_data
     iv_name_of_main_doc = 'Sales order 4711' ).
 ```
 
@@ -71,9 +71,9 @@ The class provides XML data for rendering and the XSD for form design.
 ### Getting an instance and keys
 
 ```abap
-DATA(form_data_provider) = cl_fp_fdp_services=>get_instance( `FP_FDP_SERVICE_EX1` ).
-DATA(selection_keys) = form_data_provider->get_keys( ).
-selection_keys[ name = 'UUID' ]-value = 'FA163EE47BDD1ED9A682A2E6F1ECF696'.
+DATA(lo_form_data_provider) = cl_fp_fdp_services=>get_instance( `FP_FDP_SERVICE_EX1` ).
+DATA(lt_selection_keys) = lo_form_data_provider->get_keys( ).
+lt_selection_keys[ name = 'UUID' ]-value = 'FA163EE47BDD1ED9A682A2E6F1ECF696'.
 ```
 
 `get_keys( )` returns all key fields of the service definition
@@ -92,8 +92,8 @@ reuse-services sample additionally passes `iv_root_node` (the leading entity nam
 
 ```abap
 TRY.
-    DATA(form_xml_data) = form_data_provider->read_to_xml_v2( selection_keys ).
-  CATCH cx_fp_fdp_error INTO DATA(form_data_error).
+    DATA(lv_form_xml_data) = lo_form_data_provider->read_to_xml_v2( lt_selection_keys ).
+  CATCH cx_fp_fdp_error INTO DATA(lo_form_data_error).
 ENDTRY.
 ```
 
@@ -101,8 +101,8 @@ ENDTRY.
 false, so by default draft data would be addressed. To read **active** data, override it:
 
 ```abap
-DATA(form_xml_data) = form_data_provider->read_to_xml_v2(
-    it_select     = selection_keys
+DATA(lv_form_xml_data) = lo_form_data_provider->read_to_xml_v2(
+    it_select     = lt_selection_keys
     it_select_add = VALUE if_fp_fdp_api=>tt_select_keys(
         ( name = 'IsActiveEntity' value = 'X' data_type = 'ABAP_BOOL' ) ) ).
 ```
@@ -131,8 +131,8 @@ Templates uploaded through ADT (*Working with Forms* in the ADT user guide) are 
 runtime:
 
 ```abap
-DATA(form_reader) = cl_fp_form_reader=>create_form_reader( 'MY_FORM' ).
-DATA(xdp_layout) = form_reader->get_layout( ).   " RV_LAYOUT: XDP as xstring
+DATA(lo_form_reader) = cl_fp_form_reader=>create_form_reader( 'MY_FORM' ).
+DATA(lv_xdp_layout) = lo_form_reader->get_layout( ).   " RV_LAYOUT: XDP as xstring
 ```
 
 Further read-only getters (no import parameters): `get_fdp_name` (connected Form Data
@@ -167,14 +167,14 @@ Runtime API for ADS rendering calls; both methods raise `cx_fp_ads_util`.
 ```abap
 TRY.
     cl_fp_ads_util=>render_pdf(
-      EXPORTING iv_xml_data     = form_xml_data
-                iv_xdp_layout   = xdp_layout
+      EXPORTING iv_xml_data     = lv_form_xml_data
+                iv_xdp_layout   = lv_xdp_layout
                 iv_locale       = 'de_DE'
                 is_options      = VALUE #( trace_level = 0 )  " sample used 4 for debugging
-      IMPORTING ev_pdf          = rendered_pdf
-                ev_pages        = page_count
-                ev_trace_string = ads_trace ).
-  CATCH cx_fp_ads_util INTO DATA(rendering_error).
+      IMPORTING ev_pdf          = lv_rendered_pdf
+                ev_pages        = lv_page_count
+                ev_trace_string = lv_ads_trace ).
+  CATCH cx_fp_ads_util INTO DATA(lo_rendering_error).
 ENDTRY.
 ```
 
@@ -232,10 +232,10 @@ whose "Create PDF" action produces an Adobe-form PDF and stores it on the entity
 2. **Saver class `save_modified`** — collects sales-order IDs whose description carries the
    marker and registers a bgPF background process:
    ```abap
-   DATA(background_process) = cl_bgmc_process_factory=>get_default( )->create( ).
-   background_process->set_operation_tx_uncontrolled( pdf_generation_operation ).
-   background_process->set_name( |PDF salesorder { sales_order_id }| ).
-   background_process->save_for_execution( ).
+   DATA(lo_background_process) = cl_bgmc_process_factory=>get_default( )->create( ).
+   lo_background_process->set_operation_tx_uncontrolled( lo_pdf_generation_operation ).
+   lo_background_process->set_name( |PDF salesorder { lv_sales_order_id }| ).
+   lo_background_process->save_for_execution( ).
    ```
    Uncontrolled (`if_bgmc_op_single_tx_uncontr`) because the operation must issue its own
    `COMMIT ENTITIES`. See the abap-background-processing skill for the bgPF contract.

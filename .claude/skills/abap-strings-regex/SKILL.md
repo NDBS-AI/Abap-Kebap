@@ -41,14 +41,14 @@ ABAP gives you three layers for working with character strings: ABAP statements 
 Use `c` when a maximum/mandatory length is part of the contract (a 2-char country code, a form field). Use `string` when length is not a constraint — which is most of the time.
 
 ```abap
-TYPES: c_type   TYPE c LENGTH 3,
-       str_type TYPE string.
-DATA: flag TYPE c LENGTH 1,
-      str1 TYPE string VALUE `Hallo!`.
+TYPES: ty_c_type   TYPE c LENGTH 3,
+       ty_str_type TYPE string.
+DATA: lv_flag TYPE c LENGTH 1,
+      lv_str1 TYPE string VALUE `Hallo!`.
 "Inline declarations derive the type from the right side
-DATA(char2) = 'abcd'.   "type c length 4
-DATA(str5)  = `efgh`.   "type string
-FINAL(immutable) = `zyx`.
+DATA(lv_char2) = 'abcd'.   "type c length 4
+DATA(lv_str5)  = `efgh`.   "type string
+FINAL(lv_immutable) = `zyx`.
 ```
 
 `strlen` counts characters *including* trailing blanks for `string`; `numofchar` excludes trailing blanks regardless of type; `xstrlen` returns bytes of an `xstring`.
@@ -63,13 +63,13 @@ numofchar( `abc   ` ). "3  (always excludes trailing blanks)
 Construct strings from literal text plus embedded expressions in curly brackets. Any expression convertible to `string` is allowed: data objects, functional method calls, built-in functions.
 
 ```abap
-DATA(s1) = |Hallo { cl_abap_context_info=>get_user_technical_name( ) }!|.
-DATA(s3) = |{ s1 } { `How are you?` }|.
-DATA(s9) = |Length of string s5: { strlen( s5 ) }|.
+DATA(lv_s1) = |Hallo { cl_abap_context_info=>get_user_technical_name( ) }!|.
+DATA(lv_s3) = |{ lv_s1 } { `How are you?` }|.
+DATA(lv_s9) = |Length of string lv_s5: { strlen( lv_s5 ) }|.
 "\n / \t are backslash escapes recognized ONLY inside a |...| template
 "(never inside a `...` or '...' literal, where \ has no special meaning);
 "escape a literal \ | { } inside a template with a backslash too
-DATA(s12) = |\\ \| \{ \}|.   "\ | { }
+DATA(lv_s12) = |\\ \| \{ \}|.   "\ | { }
 ASSERT cl_abap_char_utilities=>newline = |\n|.          "the \n escape equals the newline constant
 ASSERT cl_abap_char_utilities=>horizontal_tab = |\t|.   "the \t escape equals the horizontal_tab constant
 
@@ -77,8 +77,8 @@ ASSERT cl_abap_char_utilities=>horizontal_tab = |\t|.   "the \t escape equals th
 "intent (a control character, not two literal characters "\" and "n") is
 "unambiguous to the reader - and verify with a length check, not by eyeballing
 "a rendered escape sequence.
-DATA(two_lines) = |First line{ cl_abap_char_utilities=>newline }Second line|.
-ASSERT strlen( two_lines ) = 22.   "10 + 1 (newline) + 11 characters
+DATA(lv_two_lines) = |First line{ cl_abap_char_utilities=>newline }Second line|.
+ASSERT strlen( lv_two_lines ) = 22.   "10 + 1 (newline) + 11 characters
 ```
 
 > A template that contains *only* literal text is still compiled as an expression at runtime — for pure literals prefer a backquoted text string literal `` `...` ``.
@@ -98,7 +98,7 @@ Options follow the embedded expression inside the braces. A selection (full list
 |{ `##` WIDTH = 10 ALIGN = RIGHT PAD = `.` }<---|. "'........##<---'
 
 "NUMBER / DECIMALS / SIGN / ZERO
-|{ decimal_number NUMBER = USER }|.       "user-master decimal/thousands separators
+|{ lv_decimal_number NUMBER = USER }|.       "user-master decimal/thousands separators
 |{ CONV decfloat34( - 1 / 3 ) DECIMALS = 3 }|.  "'-0.333'
 |{ 1 SIGN = LEFTPLUS }|.                   "+1
 |{ -1 SIGN = RIGHT }|.                     "1-
@@ -124,19 +124,19 @@ Formatting an unsupported value can raise `cx_sy_strg_format`. See [references/s
 
 ```abap
 "Preferred: && operator and templates
-DATA(s1) = `ab` && `cd`.            "abcd
-DATA(s3) = |{ s1 }. done!|.         "abcd. done!
-a &&= b.                            "concatenation assignment: same as a = a && b.
+DATA(lv_s1) = `ab` && `cd`.            "abcd
+DATA(lv_s3) = |{ lv_s1 }. done!|.      "abcd. done!
+lv_a &&= lv_b.                         "concatenation assignment: same as lv_a = lv_a && lv_b.
 
 "CONCATENATE statement — still valid, more verbose
-CONCATENATE s4 s5 INTO s3.
-CONCATENATE s4 s5 INTO DATA(s8) SEPARATED BY ` `.
-CONCATENATE 'a  ' 'b  ' INTO DATA(ch) RESPECTING BLANKS.  "keep trailing blanks of c
+CONCATENATE lv_s4 lv_s5 INTO lv_s3.
+CONCATENATE lv_s4 lv_s5 INTO DATA(lv_s8) SEPARATED BY ` `.
+CONCATENATE 'a  ' 'b  ' INTO DATA(lv_ch) RESPECTING BLANKS.  "keep trailing blanks of c
 
 "Concatenating internal-table lines (avoids a LOOP)
-DATA(itab) = VALUE string_table( ( `abc` ) ( `def` ) ( `ghi` ) ).
-CONCATENATE LINES OF itab INTO DATA(c1) SEPARATED BY `,`.  "abc,def,ghi
-DATA(c2) = concat_lines_of( table = itab sep = ` ` ).      "abc def ghi
+DATA(lt_itab) = VALUE string_table( ( `abc` ) ( `def` ) ( `ghi` ) ).
+CONCATENATE LINES OF lt_itab INTO DATA(lv_c1) SEPARATED BY `,`.  "abc,def,ghi
+DATA(lv_c2) = concat_lines_of( table = lt_itab sep = ` ` ).      "abc def ghi
 ```
 
 Clean ABAP: prefer string templates / `&&` / `concat_lines_of` over `CONCATENATE`. Do not confuse the literal operator `&` (combines character *literals* of the same type at compile time, max 255 chars) with the runtime operator `&&`.
@@ -144,11 +144,11 @@ Clean ABAP: prefer string templates / `&&` / `concat_lines_of` over `CONCATENATE
 ## Splitting
 
 ```abap
-DATA(s1) = `Hallo,world,123`.
-SPLIT s1 AT `,` INTO DATA(part1) DATA(part2) DATA(part3).  "fewer targets => last gets the rest
-SPLIT s1 AT `,` INTO TABLE DATA(itab).         "one segment per line, comma dropped
+DATA(lv_s1) = `Hallo,world,123`.
+SPLIT lv_s1 AT `,` INTO DATA(lv_part1) DATA(lv_part2) DATA(lv_part3).  "fewer targets => last gets the rest
+SPLIT lv_s1 AT `,` INTO TABLE DATA(lt_itab).         "one segment per line, comma dropped
 "Single segment by index, without splitting everything
-DATA(seg) = segment( val = s1 index = 2 sep = `,` ).  "world
+DATA(lv_seg) = segment( val = lv_s1 index = 2 sep = `,` ).  "world
 ```
 
 ## Common string functions
@@ -157,36 +157,36 @@ Functions return a value (offset as `i`, or the new string), never mutate the so
 
 ```abap
 "Length / case / structure
-strlen( str )  numofchar( str )  to_upper( str )  to_lower( str )
-reverse( str )  repeat( val = `ab` occ = 3 )  condense( str )
+strlen( lv_str )  numofchar( lv_str )  to_upper( lv_str )  to_lower( lv_str )
+reverse( lv_str )  repeat( val = `ab` occ = 3 )  condense( lv_str )
 
 "Substring extraction
-substring( val = s off = 6 len = 5 )
-substring_before( val = s sub = `b2` )   substring_after( val = s sub = `aa` )
-substring_from( val = s sub = `a3` )     substring_to( val = s sub = `3b` )
+substring( val = lv_s off = 6 len = 5 )
+substring_before( val = lv_s sub = `b2` )   substring_after( val = lv_s sub = `aa` )
+substring_from( val = lv_s sub = `a3` )     substring_to( val = lv_s sub = `3b` )
 match( val = `ABAP` pcre = `.b` case = abap_false )   "AB
 
 "Searching (offset, or -1 if not found)
-find( val = str sub = `ca` )                 "first occurrence from left
-find( val = str sub = `c` occ = 2 )          "2nd occurrence; negative occ = from right
-find_end( val = str sub = `of` )             "offset + length of match
-find_any_of( val = str sub = `xe4` )         "offset of any listed char
-count( val = str sub = `e` )                 "number of occurrences
+find( val = lv_str sub = `ca` )                 "first occurrence from left
+find( val = lv_str sub = `c` occ = 2 )          "2nd occurrence; negative occ = from right
+find_end( val = lv_str sub = `of` )             "offset + length of match
+find_any_of( val = lv_str sub = `xe4` )         "offset of any listed char
+count( val = lv_str sub = `e` )                 "number of occurrences
 
 "Replacing
-replace( val = str sub = `ap` with = `#` )            "first occurrence
-replace( val = str sub = `ab` with = `#` occ = 0 )    "occ = 0 => ALL occurrences
-translate( val = s from = `hi_` to = `?!+` )          "char-by-char mapping
+replace( val = lv_str sub = `ap` with = `#` )            "first occurrence
+replace( val = lv_str sub = `ab` with = `#` occ = 0 )    "occ = 0 => ALL occurrences
+translate( val = lv_s from = `hi_` to = `?!+` )          "char-by-char mapping
 insert( val = `abcghi` sub = `def` off = 3 )          "abcdefghi
 ```
 
 `contains` and `matches` are predicate functions (return a truth value — wrap with `xsdbool` to store):
 
 ```abap
-DATA(has_space) = xsdbool( contains( val = `abc def` sub = ` ` ) ).
+DATA(lv_has_space) = xsdbool( contains( val = `abc def` sub = ` ` ) ).
 
 "Illustrative only - NOT a production validator; use cl_mail_address=>create_instance( ... )->validate( ) for a real address check
-DATA(looks_like_email) = xsdbool( matches( val = addr pcre = `\w+@\w+\.\w{2,4}` ) ).
+DATA(lv_looks_like_email) = xsdbool( matches( val = lv_addr pcre = `\w+@\w+\.\w{2,4}` ) ).
 ```
 
 Full catalog — every function, its parameters, return type, and an example — is in [references/string-functions.md](references/string-functions.md).
@@ -196,26 +196,26 @@ Full catalog — every function, its parameters, return type, and an example —
 Statements carry a rich set of additions that the functions lack (sections, tables, results tables, submatches). `FIND` sets `sy-subrc` (0 found / 4 not found); `REPLACE` sets 0 / 2 (truncated) / 4.
 
 ```abap
-DATA(str) = `She sells seashells by the seashore.`.
+DATA(lv_str) = `She sells seashells by the seashore.`.
 
 "FIND — first occurrence by default; SUBSTRING is optional
-FIND `se` IN str.                                "sy-subrc = 0
-FIND ALL OCCURRENCES OF `se` IN str
-  MATCH COUNT DATA(cnt)     "3
-  MATCH OFFSET DATA(off).   "27 (last occurrence)
-FIND ALL OCCURRENCES OF `se` IN SECTION OFFSET 9 LENGTH 5 OF str MATCH COUNT DATA(c2).
-FIND FIRST OCCURRENCE OF `A` IN str IGNORING CASE MATCH OFFSET DATA(o2).
-FIND ALL OCCURRENCES OF `ab` IN str RESULTS DATA(res)  "res: match_result_tab
+FIND `se` IN lv_str.                                "sy-subrc = 0
+FIND ALL OCCURRENCES OF `se` IN lv_str
+  MATCH COUNT DATA(lv_cnt)     "3
+  MATCH OFFSET DATA(lv_off).   "27 (last occurrence)
+FIND ALL OCCURRENCES OF `se` IN SECTION OFFSET 9 LENGTH 5 OF lv_str MATCH COUNT DATA(lv_c2).
+FIND FIRST OCCURRENCE OF `A` IN lv_str IGNORING CASE MATCH OFFSET DATA(lv_o2).
+FIND ALL OCCURRENCES OF `ab` IN lv_str RESULTS DATA(lt_res)  "lt_res: match_result_tab
   IGNORING CASE.
 
 "REPLACE — first occurrence by default; ALL OCCURRENCES for global
-REPLACE ALL OCCURRENCES OF `ab` IN str WITH `##` IGNORING CASE
-  REPLACEMENT COUNT DATA(rcnt).
-REPLACE SECTION OFFSET 5 LENGTH 4 OF str WITH `#`.   "position-based
+REPLACE ALL OCCURRENCES OF `ab` IN lv_str WITH `##` IGNORING CASE
+  REPLACEMENT COUNT DATA(lv_rcnt).
+REPLACE SECTION OFFSET 5 LENGTH 4 OF lv_str WITH `#`.   "position-based
 
 "In internal tables (character-like line type, standard table)
-FIND ALL OCCURRENCES OF `Z` IN TABLE str_table RESULTS DATA(rtab) RESPECTING CASE.
-REPLACE ALL OCCURRENCES OF `Z` IN TABLE str_table FROM 1 TO 2 WITH `#` RESPECTING CASE.
+FIND ALL OCCURRENCES OF `Z` IN TABLE lt_str_table RESULTS DATA(lt_rtab) RESPECTING CASE.
+REPLACE ALL OCCURRENCES OF `Z` IN TABLE lt_str_table FROM 1 TO 2 WITH `#` RESPECTING CASE.
 ```
 
 Both statements take a `PCRE` addition in place of the substring (see below). `RESULTS` returns `match_result_tab` (ALL) or `match_result` (FIRST); `SUBMATCHES sub1 sub2` binds capturing-group content directly to variables.
@@ -236,9 +236,9 @@ For single characters and trivial wildcards, comparison operators are the lighte
 `CP` pattern characters: `*` = any sequence (incl. blanks), `+` = exactly one character, `#` = escape the next character for an exact match.
 
 ```abap
-DATA(sample) = `abc_def_ghi`.
-IF sample CP `*f#_*`. ... "true; sy-fdpos = 6  (f followed by a literal '_')
-IF sample CS `def`.  ... "true (substring, case-insensitive)
+DATA(lv_sample) = `abc_def_ghi`.
+IF lv_sample CP `*f#_*`. ... "true; sy-fdpos = 6  (f followed by a literal '_')
+IF lv_sample CS `def`.  ... "true (substring, case-insensitive)
 ```
 
 ### Complex patterns — PCRE regular expressions
@@ -262,23 +262,23 @@ PCRE syntax essentials — full table with match/no-match examples in [reference
 | Replacement refs | `$0` whole match, `$1`/`${1}` group, `$name`, case `\u \U \l \L \E` |
 
 ```abap
-DATA(some_string) = `aa bb cc dd ee`.
+DATA(lv_some_string) = `aa bb cc dd ee`.
 
 "Statements
-FIND ALL OCCURRENCES OF PCRE `\s` IN some_string RESULTS DATA(findings).
-REPLACE ALL OCCURRENCES OF PCRE `\s` IN some_string WITH `#`.  "aa#bb#cc#dd#ee
+FIND ALL OCCURRENCES OF PCRE `\s` IN lv_some_string RESULTS DATA(lt_findings).
+REPLACE ALL OCCURRENCES OF PCRE `\s` IN lv_some_string WITH `#`.  "aa#bb#cc#dd#ee
 
 "Built-in functions with the pcre parameter
-DATA(count_result)   = count( val = some_string pcre = `\s` ).            "4
-DATA(match_result)   = match( val = some_string pcre = `a.\s.` ).         "aa b
-DATA(replace_result) = replace( val = some_string pcre = `\s` with = `#` occ = 0 ). "all
+DATA(lv_count_result)   = count( val = lv_some_string pcre = `\s` ).            "4
+DATA(lv_match_result)   = match( val = lv_some_string pcre = `a.\s.` ).         "aa b
+DATA(lv_replace_result) = replace( val = lv_some_string pcre = `\s` with = `#` occ = 0 ). "all
 
 "Capturing groups in a replacement — replace the body of each <p>…</p>, keep the tags
-DATA(html) = |<p>Hallo</p><p>Ciao!</p>|.
-REPLACE ALL OCCURRENCES OF PCRE `(<p>)(.*?)(<\/p>)` IN html WITH `$1Hi$3`.
+DATA(lv_html) = |<p>Hallo</p><p>Ciao!</p>|.
+REPLACE ALL OCCURRENCES OF PCRE `(<p>)(.*?)(<\/p>)` IN lv_html WITH `$1Hi$3`.
 
 "Named groups: reformat a yyyymmdd date
-DATA(out) = replace( val = `20241128`
+DATA(lv_out) = replace( val = `20241128`
                      pcre = `(?<yr>\d{4})(?<mo>\d{2})(?<d>\d{2})`
                      with = `${d}.${mo}.${yr}` ).            "28.11.2024
 ```
@@ -286,7 +286,7 @@ DATA(out) = replace( val = `20241128`
 `FIND ... PCRE ... SUBMATCHES` binds capturing groups to variables; `RESULTS` exposes their offset/length in nested `submatches` tables:
 
 ```abap
-FIND PCRE `(.*)\son\s(.*)` IN str IGNORING CASE SUBMATCHES DATA(before) DATA(after).
+FIND PCRE `(.*)\son\s(.*)` IN lv_str IGNORING CASE SUBMATCHES DATA(lv_before) DATA(lv_after).
 ```
 
 ### The cl_abap_regex / cl_abap_matcher API
@@ -295,25 +295,25 @@ Use the OO API when you want to **compile a pattern once and reuse it**, iterate
 
 ```abap
 "Compile a PCRE pattern, create a matcher, find everything — one chain
-DATA(matches) = cl_abap_regex=>create_pcre( pattern = `\D\d` ignore_case = abap_true
-                                          )->create_matcher( text = str )->find_all( ).
+DATA(lt_matches) = cl_abap_regex=>create_pcre( pattern = `\D\d` ignore_case = abap_true
+                                          )->create_matcher( text = lv_str )->find_all( ).
 
 "Or build the matcher directly
-DATA(matcher) = cl_abap_matcher=>create_pcre( pattern = `X(.*?)X` text = str ).
-DATA(replaced_count) = matcher->replace_all( newtext = `#$1#` ).
-DATA(result_text)    = matcher->text.
+DATA(lo_matcher) = cl_abap_matcher=>create_pcre( pattern = `X(.*?)X` text = lv_str ).
+DATA(lv_replaced_count) = lo_matcher->replace_all( newtext = `#$1#` ).
+DATA(lv_result_text)    = lo_matcher->text.
 
 "Sequential processing with find_next + getters
-DATA(seq_matcher) = cl_abap_matcher=>create_pcre( pattern = `\d(\D.)` text = str ).
-WHILE seq_matcher->find_next( ) = abap_true.
-  DATA(match_offset) = seq_matcher->get_offset( ).
-  DATA(match_length) = seq_matcher->get_length( ).
-  DATA(sub) = seq_matcher->get_submatch( 1 ).
+DATA(lo_seq_matcher) = cl_abap_matcher=>create_pcre( pattern = `\d(\D.)` text = lv_str ).
+WHILE lo_seq_matcher->find_next( ) = abap_true.
+  DATA(lv_match_offset) = lo_seq_matcher->get_offset( ).
+  DATA(lv_match_length) = lo_seq_matcher->get_length( ).
+  DATA(lv_sub) = lo_seq_matcher->get_submatch( 1 ).
 ENDWHILE.
 
 "Reuse a compiled cl_abap_regex object in a statement (the valid REGEX use)
-DATA(re) = cl_abap_regex=>create_pcre( pattern = `\d(\D.)` ).
-FIND ALL OCCURRENCES OF REGEX re IN str RESULTS DATA(all).
+DATA(lo_re) = cl_abap_regex=>create_pcre( pattern = `\d(\D.)` ).
+FIND ALL OCCURRENCES OF REGEX lo_re IN lv_str RESULTS DATA(lt_all).
 ```
 
 Key `create_pcre` parameters: `pattern`, `text` (or `table`), `ignore_case`, `enable_multiline`, `extended`. The full method/parameter list and more patterns are in [references/regex-reference.md](references/regex-reference.md).

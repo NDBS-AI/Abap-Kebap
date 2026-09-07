@@ -95,8 +95,8 @@ replace( val = `ABap`            pcre = `[^Ap]`   with = `#` occ = 0 ). "A##p
 ```abap
 "Built with the named newline constant, not a literal \n, so it is unambiguous
 "that these are real line breaks, not the two characters "\" and "n"
-DATA(three_lines) = |abc{ cl_abap_char_utilities=>newline }def{ cl_abap_char_utilities=>newline }ghi|.
-replace( val = three_lines pcre = `(?m)^` with = `#` occ = 0 ). "#abc<NL>#def<NL>#ghi - each real line start matched (<NL> marks the newline character; strlen( ) = 11 + 3 '#' = 14)
+DATA(lv_three_lines) = |abc{ cl_abap_char_utilities=>newline }def{ cl_abap_char_utilities=>newline }ghi|.
+replace( val = lv_three_lines pcre = `(?m)^` with = `#` occ = 0 ). "#abc<NL>#def<NL>#ghi - each real line start matched (<NL> marks the newline character; strlen( ) = 11 + 3 '#' = 14)
 replace( val = `abcd`      pcre = `a.\Kc` with = `#` occ = 0 ). "ab#d (only 'c' replaced)
 ```
 
@@ -152,8 +152,8 @@ replace( val = `abcdefg` pcre = `c(..)(..)` with = `c\U$1\E$2` ). "abcDEfg
 ```abap
 "Built with the named newline constant, not a literal \n - dotall (?s)
 "makes "." match the two real newlines too
-DATA(three_lines) = |abc{ cl_abap_char_utilities=>newline }def{ cl_abap_char_utilities=>newline }ghi|.
-replace( val = three_lines pcre = `(?s).`  with = `#` occ = 0 ). "11 '#' characters - every character, including both real newlines, replaced
+DATA(lv_three_lines) = |abc{ cl_abap_char_utilities=>newline }def{ cl_abap_char_utilities=>newline }ghi|.
+replace( val = lv_three_lines pcre = `(?s).`  with = `#` occ = 0 ). "11 '#' characters - every character, including both real newlines, replaced
 replace( val = `abc def`  pcre = `(?-x)abc def` with = `#` ).    "# (space matched)
 ```
 
@@ -173,37 +173,37 @@ Key `create_pcre` parameters: `pattern`, `text` (or `table`), `ignore_case`, `en
 Key matcher methods: `find_all( )`, `find_next( )`, `match( )`, `replace_all( newtext = )`, `get_match( )`, `get_offset( )`, `get_length( )`, `get_submatch( n )`, `set_callout( )`, plus attributes `text` / `table`.
 
 ```abap
-DATA(str) = `a1 # B2 ? cd . E3`.
+DATA(lv_str) = `a1 # B2 ? cd . E3`.
 
 "Compile a pattern, create a matcher (two equivalent ways)
-DATA(regex)     = cl_abap_regex=>create_pcre( pattern = `\D\d` ignore_case = abap_true ).
-DATA(matcher_1) = regex->create_matcher( text = str ).
-DATA(matcher_3) = cl_abap_matcher=>create_pcre( pattern = `\D\d` text = str ignore_case = abap_true ).
+DATA(lo_regex)     = cl_abap_regex=>create_pcre( pattern = `\D\d` ignore_case = abap_true ).
+DATA(lo_matcher_1) = lo_regex->create_matcher( text = lv_str ).
+DATA(lo_matcher_3) = cl_abap_matcher=>create_pcre( pattern = `\D\d` text = lv_str ignore_case = abap_true ).
 
 "Find all — returns match_result_tab
-DATA(result_fa) = matcher_1->find_all( ).
+DATA(lt_result_fa) = lo_matcher_1->find_all( ).
 
 "Replace all in place; read the updated text afterwards
-DATA(matcher_2) = cl_abap_matcher=>create_pcre( pattern = `X(.*?)X` text = `XabcdXXefgX` ).
-DATA(count)     = matcher_2->replace_all( newtext = `#$1#` ).
-DATA(out)       = matcher_2->text.
+DATA(lo_matcher_2) = cl_abap_matcher=>create_pcre( pattern = `X(.*?)X` text = `XabcdXXefgX` ).
+DATA(lv_count)     = lo_matcher_2->replace_all( newtext = `#$1#` ).
+DATA(lv_out)       = lo_matcher_2->text.
 
 "Sequential processing with find_next + getters and submatches
-DATA(m2) = cl_abap_matcher=>create_pcre( pattern = `\d(\D.)` text = str ).
-WHILE m2->find_next( ) = abap_true.
-  DATA(offset)  = m2->get_offset( ).
-  DATA(length)  = m2->get_length( ).
-  DATA(sub1)    = m2->get_submatch( 1 ).
+DATA(lo_m2) = cl_abap_matcher=>create_pcre( pattern = `\d(\D.)` text = lv_str ).
+WHILE lo_m2->find_next( ) = abap_true.
+  DATA(lv_offset)  = lo_m2->get_offset( ).
+  DATA(lv_length)  = lo_m2->get_length( ).
+  DATA(lv_sub1)    = lo_m2->get_submatch( 1 ).
 ENDWHILE.
 
 "Reuse a compiled cl_abap_regex in a statement (REGEX addition, NOT obsolete here)
-DATA(re) = cl_abap_regex=>create_pcre( pattern = `\d(\D.)` ).
-FIND ALL OCCURRENCES OF REGEX re IN str RESULTS DATA(all).
+DATA(lo_re) = cl_abap_regex=>create_pcre( pattern = `\d(\D.)` ).
+FIND ALL OCCURRENCES OF REGEX lo_re IN lv_str RESULTS DATA(lt_all).
 
 "Multi-line / table / extended parameters
-DATA(mm) = cl_abap_matcher=>create_pcre( pattern = `^` text = |abc\ndef| enable_multiline = abap_true ).
-DATA(mt) = cl_abap_matcher=>create_pcre( pattern = `z+` table = str_table ignore_case = abap_true ).
-DATA(me) = cl_abap_matcher=>create_pcre( pattern = `abc def` text = `abc def` extended = abap_false ).
+DATA(lo_mm) = cl_abap_matcher=>create_pcre( pattern = `^` text = |abc\ndef| enable_multiline = abap_true ).
+DATA(lo_mt) = cl_abap_matcher=>create_pcre( pattern = `z+` table = lt_str_table ignore_case = abap_true ).
+DATA(lo_me) = cl_abap_matcher=>create_pcre( pattern = `abc def` text = `abc def` extended = abap_false ).
 ```
 
 ---
@@ -212,13 +212,13 @@ DATA(me) = cl_abap_matcher=>create_pcre( pattern = `abc def` text = `abc def` ex
 
 ```abap
 "Count, results, submatches
-FIND ALL OCCURRENCES OF PCRE `[A-Za-z]` IN str MATCH COUNT DATA(match_count).
-FIND ALL OCCURRENCES OF PCRE `\s` IN str RESULTS DATA(match_results).        "match_result_tab
-FIND PCRE `(.*)\son\s(.*)` IN str IGNORING CASE SUBMATCHES DATA(before) DATA(after).
+FIND ALL OCCURRENCES OF PCRE `[A-Za-z]` IN lv_str MATCH COUNT DATA(lv_match_count).
+FIND ALL OCCURRENCES OF PCRE `\s` IN lv_str RESULTS DATA(lt_match_results).        "match_result_tab
+FIND PCRE `(.*)\son\s(.*)` IN lv_str IGNORING CASE SUBMATCHES DATA(lv_before) DATA(lv_after).
 
 "Replace, capture-group reordering, table form
-REPLACE PCRE `(.*?)PP(.*)` IN str_replace WITH `$2#$1` IGNORING CASE.
-REPLACE ALL OCCURRENCES OF PCRE `\d` IN TABLE str_table WITH `#` RESULTS DATA(res_table).
+REPLACE PCRE `(.*?)PP(.*)` IN lv_str_replace WITH `$2#$1` IGNORING CASE.
+REPLACE ALL OCCURRENCES OF PCRE `\d` IN TABLE lt_str_table WITH `#` RESULTS DATA(lt_res_table).
 ```
 
 `RESULTS` of a PCRE `FIND` (type `match_result_tab`/`match_result`) contains `submatches` (a nested table of offset/length per capturing group); extract each submatch with `substring( val = text off = sub-offset len = sub-length )`. `RESULTS` of `REPLACE` (type `repl_result_tab`/`repl_result`) holds only line/offset/length.
@@ -240,9 +240,9 @@ REPLACE ALL OCCURRENCES OF PCRE `\d` IN TABLE str_table WITH `#` RESULTS DATA(re
 | HTML `<p>…</p>` body (non-greedy) | `(<p>)(.*?)(<\/p>)` | Regex on HTML is fragile; prefer a parser for real markup. |
 
 ```abap
-DATA(email) = match( val = `The email address is jon.doe@email.com.`
+DATA(lv_email) = match( val = `The email address is jon.doe@email.com.`
                      pcre = `\w+(\.\w+)*@(\w+\.)+(\w{2,4})` ).   "jon.doe@email.com
-DATA(ok)    = xsdbool( matches( val = `jon.doe@email.com`
+DATA(lv_ok)    = xsdbool( matches( val = `jon.doe@email.com`
                                 pcre = `\w+(\.\w+)*@(\w+\.)+(\w{2,4})` ) ).
 ```
 
@@ -258,7 +258,7 @@ SELECT SINGLE carrid, url,
   replace_regexpr( pcre = '\..', value = url, with = '#' ) AS repl,
   substring_regexpr( pcre = '\...', value = url ) AS sub
   FROM zdemo_abap_carr WHERE carrid = 'LH'
-  INTO @DATA(result).
+  INTO @DATA(ls_result).
 ```
 
 ---

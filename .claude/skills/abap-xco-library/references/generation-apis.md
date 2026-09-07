@@ -119,7 +119,7 @@ Deletes the objects if they exist. DELETE operations are built **per type**, and
 
 ```abap
 DATA(lo_delete_operation) = mo_environment->for-doma->create_delete_operation( ).
-lo_delete_operation->add_object( co_doma_status ).
+lo_delete_operation->add_object( c_doma_status ).
 lo_delete_operation->execute( ).
 ```
 
@@ -163,8 +163,8 @@ The fragments below are lifted from the RAP BO generation sample. A runnable Cle
 Database table (note the `for-tabl-for-database_table` path and the fluent field chains):
 
 ```abap
-DATA(lo_specification) = io_put_operation->for-tabl-for-database_table->add_object( co_tabl_dbt_name
-  )->set_package( co_package
+DATA(lo_specification) = io_put_operation->for-tabl-for-database_table->add_object( c_tabl_dbt_name
+  )->set_package( c_package
   )->create_form_specification( ).
 lo_specification->set_short_description( 'Vacation request'
   )->set_delivery_class( xco_cp_database_table=>delivery_class->a
@@ -177,29 +177,29 @@ lo_specification->add_field( 'IDENTIFIER' )->set_type( xco_cp_abap_dictionary=>b
   )->set_key_indicator(
   )->set_not_null( ).
 lo_specification->add_field( 'START_DATE' )->set_type( xco_cp_abap_dictionary=>built_in_type->dats ).
-lo_specification->add_field( 'STATUS' )->set_type( xco_cp_abap_dictionary=>data_element( co_dtel_status ) ).
+lo_specification->add_field( 'STATUS' )->set_type( xco_cp_abap_dictionary=>data_element( c_dtel_status ) ).
 ```
 
 Class (global definition + local behavior handler with method parameters):
 
 ```abap
-DATA(lo_specification) = io_put_operation->for-clas->add_object( co_clas_name
-  )->set_package( co_package
+DATA(lo_specification) = io_put_operation->for-clas->add_object( c_clas_name
+  )->set_package( c_package
   )->create_form_specification( ).
 lo_specification->set_short_description( 'Behavior implementation' ).
 
 lo_specification->definition->set_abstract(
-  )->set_for_behavior_of( co_ddls_interface_name ).
+  )->set_for_behavior_of( c_ddls_interface_name ).
 
 DATA(lo_handler) = lo_specification->add_local_class( 'LCL_HANDLER' ).
 lo_handler->definition->set_superclass( 'CL_ABAP_BEHAVIOR_HANDLER' ).
 
 DATA(lo_publish) = lo_handler->definition->section-private->add_method( 'APPROVE' ).
 lo_publish->behavior_implementation->set_for_modify(
-  )->set_result( co_ddls_interface_name ).
+  )->set_result( c_ddls_interface_name ).
 lo_publish->add_importing_parameter( 'IT_VACATION_REQUESTS'
   )->behavior_implementation->set_for_action(
-    iv_entity_name = co_ddls_interface_name
+    iv_entity_name = c_ddls_interface_name
     iv_action_name = 'approve'
 ).
 
@@ -213,7 +213,7 @@ The docs do not show a generic "set arbitrary source code" call on the CLAS form
 The *RAP BO Generation* page generates a complete BO in **one** PUT operation (plus the service binding in a second PUT, since SRVB must reference an activated SRVD). Object flow:
 
 1. **DOMA** — CHAR(10) format, fixed values `APPROVED`/`DECLINED` via `lo_specification->fixed_values->add_fixed_value( 'APPROVED' )->set_description( 'Approved' )`.
-2. **DTEL** — `set_data_type( xco_cp_abap_dictionary=>domain( co_doma_status ) )`.
+2. **DTEL** — `set_data_type( xco_cp_abap_dictionary=>domain( c_doma_status ) )`.
 3. **TABL** (database table) — as above.
 4. **DDLS** interface view — `->add_view_entity( )`, `lo_view_entity->set_root( )->data_source->set_view_entity( … )`, a WHERE clause built with `xco_cp_ddl=>field( 'is_active' )->eq( xco_cp_ddl=>literal->character( 'X' ) )`, annotations via `lo_view_entity->add_annotation( 'AccessControl.authorizationCheck' )->value->build( )->add_enum( 'CHECK' )`, fields via `lo_view_entity->add_field( xco_cp_ddl=>field( 'identifier' ) )->set_key( )->set_alias( 'Identifier' )`.
 5. **DDLS** projection view — `->add_projection_view( )` over the interface view.
@@ -229,20 +229,20 @@ lo_field->add_annotation( 'UI.lineItem' )->value->build(
   )->end_array( ).
 ```
 
-7. **DCLS** access control — `lo_specification->add_role( )`, `lo_role->add_access_rule( co_ddls_interface_name )->set_where( xco_cp_dcl=>field( 'Identifier' )->is_not_initial( ) )`.
+7. **DCLS** access control — `lo_specification->add_role( )`, `lo_role->add_access_rule( c_ddls_interface_name )->set_where( xco_cp_dcl=>field( 'Identifier' )->is_not_initial( ) )`.
 8. **BDEF** — managed implementation:
 
 ```abap
 lo_interface_specification->set_short_description( 'Vacation request behavior'
   )->set_implementation_type( xco_cp_behavior_definition=>implementation_type->managed
-  )->set_implementation_class( co_clas_name ).
+  )->set_implementation_class( c_clas_name ).
 
 DATA(lo_interface_behavior) = lo_interface_specification->add_behavior( ).
 
-lo_interface_behavior->characteristics->set_persistent_table( co_tabl_dbt_name
+lo_interface_behavior->characteristics->set_persistent_table( c_tabl_dbt_name
   )->lock->set_master( ).
 
-lo_interface_behavior->add_mapping_for( co_tabl_dbt_name )->set_field_mapping( VALUE #(
+lo_interface_behavior->add_mapping_for( c_tabl_dbt_name )->set_field_mapping( VALUE #(
   ( cds_view_field = 'Identifier' dbtable_field = 'identifier' )
   ( cds_view_field = 'StartDate' dbtable_field = 'start_date' )
 ) ).
@@ -256,8 +256,8 @@ lo_action->result->set_cardinality( xco_cp_cds=>cardinality->one )->set_self( ).
 
    The projection BDEF uses `implementation_type->projection` and `add_standard_operation( … )->set_use( )`.
 9. **CLAS** — behavior pool, as above.
-10. **SRVD** — `lo_specification->add_exposure( co_ddls_consumption_name )->set_alias( 'VacationRequest' )`.
-11. **SRVB** (separate PUT) — `set_binding_type( xco_cp_service_binding=>binding_type->odata_v2_ui )`, `lo_specification->add_service( )->add_version( '0001' )->set_service_definition( co_srvd_name )`.
+10. **SRVD** — `lo_specification->add_exposure( c_ddls_consumption_name )->set_alias( 'VacationRequest' )`.
+11. **SRVB** (separate PUT) — `set_binding_type( xco_cp_service_binding=>binding_type->odata_v2_ui )`, `lo_specification->add_service( )->add_version( '0001' )->set_service_definition( c_srvd_name )`.
 
 ## Error Handling
 
@@ -266,14 +266,14 @@ Each operation kind has its exception: `CX_XCO_GEN_POST_EXCEPTION`, `CX_XCO_GEN_
 ```abap
 TRY.
     lo_put_operation->execute( ).
-  CATCH cx_xco_gen_put_exception INTO DATA(lx_put_exception).
+  CATCH cx_xco_gen_put_exception INTO DATA(lo_put_exception).
     " Get all findings.
     out->plain->write( |Findings:| ).
-    out->write_news( lx_put_exception ).
+    out->write_news( lo_put_exception ).
 
     " Get only the TTYP findings.
     out->plain->write( |Table type findings:| ).
-    out->write_news( lx_put_exception->findings->for->ttyp ).
+    out->write_news( lo_put_exception->findings->for->ttyp ).
 ENDTRY.
 ```
 

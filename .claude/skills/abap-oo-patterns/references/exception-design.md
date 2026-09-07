@@ -142,27 +142,27 @@ A resumable exception allows the caller to **continue execution from the point w
 ```abap
 " --- Method that raises a resumable exception ---
 CLASS-METHODS divide
-  IMPORTING  num1              TYPE i
-             num2              TYPE i
-  RETURNING  VALUE(div_result) TYPE string
+  IMPORTING  iv_num1              TYPE i
+             iv_num2              TYPE i
+  RETURNING  VALUE(rv_div_result) TYPE string
   RAISING    RESUMABLE(zcx_division_error).
 
 METHOD divide.
-  IF num2 = 0.
+  IF iv_num2 = 0.
     RAISE RESUMABLE EXCEPTION TYPE zcx_division_error.
     " Execution continues here after RESUME
-    div_result = `No result. Resumed!`.
+    rv_div_result = `No result. Resumed!`.
   ELSE.
-    div_result = num1 / num2.
+    rv_div_result = iv_num1 / iv_num2.
   ENDIF.
 ENDMETHOD.
 
 " --- Caller handles and optionally resumes ---
 TRY.
-    DATA(result) = divide( num1 = 5 num2 = 0 ).
-  CATCH BEFORE UNWIND zcx_division_error INTO DATA(ex).
+    DATA(lv_result) = divide( iv_num1 = 5 iv_num2 = 0 ).
+  CATCH BEFORE UNWIND zcx_division_error INTO DATA(lo_ex).
     " Check whether resuming is meaningful
-    IF ex->is_resumable = abap_true.
+    IF lo_ex->is_resumable = abap_true.
       " Log the error, then resume — execution picks up after RAISE RESUMABLE
       RESUME.
     ENDIF.
@@ -181,11 +181,11 @@ When you catch one exception and raise another at a higher abstraction level, **
 
 ```abap
 TRY.
-    DATA(rate) = rate_service->rate( currency ).
-  CATCH cx_rate_service_unavailable INTO DATA(ex).
+    DATA(lv_rate) = lo_rate_service->rate( lv_currency ).
+  CATCH cx_rate_service_unavailable INTO DATA(lo_ex).
     RAISE EXCEPTION TYPE cx_pricing_input_missing
       EXPORTING
-        previous = ex
+        previous = lo_ex
         cause    = `Missing FX rate`.
 ENDTRY.
 ```

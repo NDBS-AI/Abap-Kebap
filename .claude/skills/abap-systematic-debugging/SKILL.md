@@ -88,8 +88,8 @@ See [references/common-dumps.md](references/common-dumps.md) for a triage table 
 A hypothesis is a **single, falsifiable statement** about the cause. "It might be the buffer or it might be the SELECT" is two hypotheses; pick the more likely one.
 
 Good hypothesis traits:
-- **Specific to a line or a path.** "`READ TABLE lt_x WITH KEY id = customer-bukrs` reads `bukrs` from an uninitialized structure when `customer` is bound but not loaded."
-- **Falsifiable cheaply.** "Setting a breakpoint there and looking at `customer-bukrs` value will refute or confirm in 5 seconds."
+- **Specific to a line or a path.** "`READ TABLE lt_x WITH KEY id = ls_customer-bukrs` reads `bukrs` from an uninitialized structure when `ls_customer` is bound but not loaded."
+- **Falsifiable cheaply.** "Setting a breakpoint there and looking at `ls_customer-bukrs` value will refute or confirm in 5 seconds."
 - **One step from the symptom.** Don't jump to "DB hardware". Start at the line where the wrong value appears and walk *one step backward*.
 
 **Anti-pattern:** "It's flaky, must be a race condition." That is a category, not a hypothesis. Force yourself to name the *specific* shared resource: "`cl_singleton=>get_instance( )` returns a stale price table when two work processes initialize within ~10ms because the LOAD-OF-PROGRAM only runs once per session and Session A finished before the price update."
@@ -114,7 +114,7 @@ You have a hypothesis. What measurement will *distinguish* it from the alternate
 
 If the verification confirms the hypothesis, you're at step 7. If it refutes, drop the hypothesis. Don't keep it on life support ("well, maybe sometimes…"). Form a new one based on what the refutation taught you, and go to step 4 again.
 
-Write down (mentally or in a scratch note) what each refutation eliminated. Two refuted hypotheses about "the value of `customer-bukrs`" both being correct mean the value is fine; stop looking there.
+Write down (mentally or in a scratch note) what each refutation eliminated. Two refuted hypotheses about "the value of `ls_customer-bukrs`" both being correct mean the value is fine; stop looking there.
 
 ## Step 7 — Fix at the right layer
 

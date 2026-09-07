@@ -80,11 +80,11 @@ Declaration part of an AMDP procedure has special rules:
 
 ```abap
 "Table type with a structured row type
-TYPES tab_type TYPE STANDARD TABLE OF dbtab WITH EMPTY KEY.
+TYPES tt_tab_type TYPE STANDARD TABLE OF dbtab WITH EMPTY KEY.
 
 METHODS amdp_meth
-  IMPORTING VALUE(num) TYPE i,
-  EXPORTING VALUE(tab) TYPE tab_type.
+  IMPORTING VALUE(iv_num) TYPE i,
+  EXPORTING VALUE(et_tab) TYPE tt_tab_type.
 ```
 
 Implementation part:
@@ -256,7 +256,7 @@ SELECT FROM HIERARCHY( SOURCE demo_cds_simple_tree_view
               hierarchy_is_orphan,
               node_id,
               parent_id
-       INTO TABLE @FINAL(result).
+       INTO TABLE @FINAL(lt_result).
 ```
 
 - `SOURCE` — a data source exposing a hierarchy association (CDS view or CTE with `WITH ASSOCIATIONS`).
@@ -279,7 +279,7 @@ SELECT FROM HIERARCHY_DESCENDANTS(
               SOURCE demo_cds_simple_tree( p_id = @root_id )
               START WHERE id = @sub_id )
   FIELDS id, parent_id, name, hierarchy_distance
-  INTO TABLE @FINAL(descendants).
+  INTO TABLE @FINAL(lt_descendants).
 ```
 
 Full hierarchy syntax, the `define hierarchy` form, CTE hierarchies, and aggregate navigators are in [references/hierarchies.md](references/hierarchies.md).

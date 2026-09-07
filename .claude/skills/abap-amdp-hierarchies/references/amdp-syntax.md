@@ -51,11 +51,11 @@ PRIVATE SECTION.
 ```abap
 PUBLIC SECTION.
   "Table type with a structured row type
-  TYPES tab_type TYPE STANDARD TABLE OF dbtab WITH EMPTY KEY.
+  TYPES tt_tab_type TYPE STANDARD TABLE OF dbtab WITH EMPTY KEY.
 
   METHODS amdp_meth
-    IMPORTING VALUE(num) TYPE i,
-    EXPORTING VALUE(tab) TYPE tab_type.
+    IMPORTING VALUE(iv_num) TYPE i,
+    EXPORTING VALUE(et_tab) TYPE tt_tab_type.
 ```
 
 ### Implementation part
@@ -122,12 +122,12 @@ Declaration:
 
 ```abap
 PUBLIC SECTION.
-  TYPES tab_type TYPE STANDARD TABLE OF dbtab WITH EMPTY KEY.
+  TYPES tt_tab_type TYPE STANDARD TABLE OF dbtab WITH EMPTY KEY.
 
   METHODS amdp_func
-    IMPORTING VALUE(num)       TYPE i,
-              VALUE(some_elem) TYPE c LENGTH 3,
-    RETURNING VALUE(tab)       TYPE tab_type.
+    IMPORTING VALUE(iv_num)       TYPE i,
+              VALUE(iv_some_elem) TYPE c LENGTH 3,
+    RETURNING VALUE(rt_tab)       TYPE tt_tab_type.
 ```
 
 ### 4b. AMDP table functions for CDS table functions — `FOR TABLE FUNCTION`
@@ -178,8 +178,8 @@ Similar to AMDP table functions, but:
 ```abap
 METHODS get_max_fltime
   AMDP OPTIONS READ-ONLY CDS SESSION CLIENT DEPENDENT
-  IMPORTING VALUE(carrid)     TYPE zdemo_abap_flsch_ve-carrid
-  RETURNING VALUE(max_fltime) TYPE zdemo_abap_flsch_ve-fltime.
+  IMPORTING VALUE(iv_carrid)     TYPE zdemo_abap_flsch_ve-carrid
+  RETURNING VALUE(rv_max_fltime) TYPE zdemo_abap_flsch_ve-fltime.
 ```
 
 ```abap
@@ -190,9 +190,9 @@ METHOD get_max_fltime BY DATABASE FUNCTION
        USING zdemo_abap_flsch_ve.
 
   SELECT MAX(fltime)
-         INTO max_fltime
+         INTO rv_max_fltime
          FROM zdemo_abap_flsch_ve
-         WHERE carrid = :carrid;
+         WHERE carrid = :iv_carrid;
 
 ENDMETHOD.
 ```
@@ -278,15 +278,15 @@ METHOD select_entries_w_max_fltime BY DATABASE PROCEDURE
        USING zdemo_abap_flsch_ve
              zcl_demo_abap=>get_max_fltime.
 
-  flight_tab = select carrid, connid, cityfrom, cityto, fltime
+  et_flight_tab = select carrid, connid, cityfrom, cityto, fltime
                       from zdemo_abap_flsch_ve
-                      where fltime = "ZCL_DEMO_ABAP=>GET_MAX_FLTIME"( carrid => :carrid );
+                      where fltime = "ZCL_DEMO_ABAP=>GET_MAX_FLTIME"( iv_carrid => :iv_carrid );
 
 ENDMETHOD.
 ```
 
 - The called AMDP function/procedure is listed in `USING`.
-- Method parameters are referenced in SQLScript with a leading colon (`:carrid`).
+- Method parameters are referenced in SQLScript with a leading colon (`:iv_carrid`).
 
 ## 6. ABAP for Cloud Development — client handling & safety
 

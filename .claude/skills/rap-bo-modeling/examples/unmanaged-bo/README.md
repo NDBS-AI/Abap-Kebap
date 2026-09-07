@@ -141,13 +141,13 @@ ENDCLASS.
 **Buffer discipline (the whole game):** every modify handler writes to the *buffer only* and records the outcome in `mapped`/`failed`/`reported`; the saver's `save` performs the only database write. Never write the database from a handler — that splits the LUW (strict mode turns it into a runtime error). Here the legacy API brings its own buffer, so the handlers delegate to it. If your legacy API has *no* buffer, build one — a static internal table carrying the instance, its `%cid`, and change flags, exactly like the `lcl_buffer` class in the ABAP cheat-sheets unmanaged demo (`zbp_demo_abap_rap_ro_u`):
 
 ```abap
-TYPES: BEGIN OF buffered_travel,
+TYPES: BEGIN OF ty_buffered_travel,
          instance TYPE zi_rap_travel_u,
          cid      TYPE string,
          changed  TYPE abap_bool,
          deleted  TYPE abap_bool,
-       END OF buffered_travel.
-CLASS-DATA travel_buffer TYPE STANDARD TABLE OF buffered_travel WITH EMPTY KEY.
+       END OF ty_buffered_travel.
+CLASS-DATA mt_travel_buffer TYPE STANDARD TABLE OF ty_buffered_travel WITH EMPTY KEY.
 ```
 
 ```abap
@@ -158,35 +158,35 @@ CLASS lhc_travel IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD create.
-    DATA legacy_messages   TYPE /dmo/t_message.
-    DATA legacy_travel_in  TYPE /dmo/travel.
-    DATA legacy_travel_out TYPE /dmo/travel.
+    DATA lt_legacy_messages   TYPE /dmo/t_message.
+    DATA ls_legacy_travel_in  TYPE /dmo/travel.
+    DATA ls_legacy_travel_out TYPE /dmo/travel.
 
-    LOOP AT entities ASSIGNING FIELD-SYMBOL(<travel_to_create>).
+    LOOP AT entities ASSIGNING FIELD-SYMBOL(<fs_travel_to_create>).
       " Central mapping + %control: only consumer-provided fields reach the API
-      legacy_travel_in = CORRESPONDING #( <travel_to_create> MAPPING FROM ENTITY USING CONTROL ).
+      ls_legacy_travel_in = CORRESPONDING #( <fs_travel_to_create> MAPPING FROM ENTITY USING CONTROL ).
 
       CALL FUNCTION '/DMO/FLIGHT_TRAVEL_CREATE'  " writes to the legacy buffer, no COMMIT
         EXPORTING
-          is_travel   = CORRESPONDING /dmo/s_travel_in( legacy_travel_in )
+          is_travel   = CORRESPONDING /dmo/s_travel_in( ls_legacy_travel_in )
         IMPORTING
-          es_travel   = legacy_travel_out
-          et_messages = legacy_messages.
+          es_travel   = ls_legacy_travel_out
+          et_messages = lt_legacy_messages.
 
-      IF legacy_messages IS INITIAL.
+      IF lt_legacy_messages IS INITIAL.
         " The API assigned the key — hand it back: %cid → TravelId
-        APPEND VALUE #( %cid     = <travel_to_create>-%cid
-                        TravelId = legacy_travel_out-travel_id ) TO mapped-travel.
+        APPEND VALUE #( %cid     = <fs_travel_to_create>-%cid
+                        TravelId = ls_legacy_travel_out-travel_id ) TO mapped-travel.
       ELSE.
-        APPEND VALUE #( %cid = <travel_to_create>-%cid ) TO failed-travel.
-        APPEND VALUE #( %cid = <travel_to_create>-%cid
-                        %msg = new_message( id       = legacy_messages[ 1 ]-msgid
-                                            number   = legacy_messages[ 1 ]-msgno
-                                            severity = CONV #( legacy_messages[ 1 ]-msgty )
-                                            v1       = legacy_messages[ 1 ]-msgv1
-                                            v2       = legacy_messages[ 1 ]-msgv2
-                                            v3       = legacy_messages[ 1 ]-msgv3
-                                            v4       = legacy_messages[ 1 ]-msgv4 ) )
+        APPEND VALUE #( %cid = <fs_travel_to_create>-%cid ) TO failed-travel.
+        APPEND VALUE #( %cid = <fs_travel_to_create>-%cid
+                        %msg = new_message( id       = lt_legacy_messages[ 1 ]-msgid
+                                            number   = lt_legacy_messages[ 1 ]-msgno
+                                            severity = CONV #( lt_legacy_messages[ 1 ]-msgty )
+                                            v1       = lt_legacy_messages[ 1 ]-msgv1
+                                            v2       = lt_legacy_messages[ 1 ]-msgv2
+                                            v3       = lt_legacy_messages[ 1 ]-msgv3
+                                            v4       = lt_legacy_messages[ 1 ]-msgv4 ) )
           TO reported-travel.
       ENDIF.
     ENDLOOP.
@@ -197,56 +197,56 @@ The `mapped`/`failed`/`reported` triple is the RAP BO contract: `mapped` for eve
 
 ```abap
   METHOD update.
-    DATA legacy_messages  TYPE /dmo/t_message.
-    DATA legacy_travel_in TYPE /dmo/travel.
-    DATA legacy_travel_x  TYPE /dmo/s_travel_inx.
+    DATA lt_legacy_messages  TYPE /dmo/t_message.
+    DATA ls_legacy_travel_in TYPE /dmo/travel.
+    DATA ls_legacy_travel_x  TYPE /dmo/s_travel_inx.
 
-    LOOP AT entities ASSIGNING FIELD-SYMBOL(<travel_to_update>).
-      legacy_travel_in          = CORRESPONDING #( <travel_to_update> MAPPING FROM ENTITY ).
-      legacy_travel_x-travel_id = <travel_to_update>-TravelId.
+    LOOP AT entities ASSIGNING FIELD-SYMBOL(<fs_travel_to_update>).
+      ls_legacy_travel_in          = CORRESPONDING #( <fs_travel_to_update> MAPPING FROM ENTITY ).
+      ls_legacy_travel_x-travel_id = <fs_travel_to_update>-TravelId.
       " Translate RAP %control flags into the BAPI x-structure via the mapping
-      legacy_travel_x-_intx     = CORRESPONDING zsrap_travel_x( <travel_to_update> MAPPING FROM ENTITY ).
+      ls_legacy_travel_x-_intx     = CORRESPONDING zsrap_travel_x( <fs_travel_to_update> MAPPING FROM ENTITY ).
 
       CALL FUNCTION '/DMO/FLIGHT_TRAVEL_UPDATE'
         EXPORTING
-          is_travel   = CORRESPONDING /dmo/s_travel_in( legacy_travel_in )
-          is_travelx  = legacy_travel_x
+          is_travel   = CORRESPONDING /dmo/s_travel_in( ls_legacy_travel_in )
+          is_travelx  = ls_legacy_travel_x
         IMPORTING
-          et_messages = legacy_messages.
+          et_messages = lt_legacy_messages.
 
-      IF legacy_messages IS INITIAL.
-        APPEND VALUE #( %tky = <travel_to_update>-%tky ) TO mapped-travel.
+      IF lt_legacy_messages IS INITIAL.
+        APPEND VALUE #( %tky = <fs_travel_to_update>-%tky ) TO mapped-travel.
       ELSE.
-        APPEND VALUE #( %tky = <travel_to_update>-%tky ) TO failed-travel.
-        APPEND VALUE #( %tky = <travel_to_update>-%tky
-                        %msg = new_message( id       = legacy_messages[ 1 ]-msgid
-                                            number   = legacy_messages[ 1 ]-msgno
-                                            severity = CONV #( legacy_messages[ 1 ]-msgty )
-                                            v1       = legacy_messages[ 1 ]-msgv1 ) )
+        APPEND VALUE #( %tky = <fs_travel_to_update>-%tky ) TO failed-travel.
+        APPEND VALUE #( %tky = <fs_travel_to_update>-%tky
+                        %msg = new_message( id       = lt_legacy_messages[ 1 ]-msgid
+                                            number   = lt_legacy_messages[ 1 ]-msgno
+                                            severity = CONV #( lt_legacy_messages[ 1 ]-msgty )
+                                            v1       = lt_legacy_messages[ 1 ]-msgv1 ) )
           TO reported-travel.
       ENDIF.
     ENDLOOP.
   ENDMETHOD.
 
   METHOD delete.
-    DATA legacy_messages TYPE /dmo/t_message.
+    DATA lt_legacy_messages TYPE /dmo/t_message.
 
-    LOOP AT keys ASSIGNING FIELD-SYMBOL(<travel_to_delete>).
+    LOOP AT keys ASSIGNING FIELD-SYMBOL(<fs_travel_to_delete>).
       CALL FUNCTION '/DMO/FLIGHT_TRAVEL_DELETE'
         EXPORTING
-          iv_travel_id = <travel_to_delete>-TravelId
+          iv_travel_id = <fs_travel_to_delete>-TravelId
         IMPORTING
-          et_messages  = legacy_messages.
+          et_messages  = lt_legacy_messages.
 
-      IF legacy_messages IS INITIAL.
-        APPEND VALUE #( %tky = <travel_to_delete>-%tky ) TO mapped-travel.
+      IF lt_legacy_messages IS INITIAL.
+        APPEND VALUE #( %tky = <fs_travel_to_delete>-%tky ) TO mapped-travel.
       ELSE.
-        APPEND VALUE #( %tky = <travel_to_delete>-%tky ) TO failed-travel.
-        APPEND VALUE #( %tky = <travel_to_delete>-%tky
-                        %msg = new_message( id       = legacy_messages[ 1 ]-msgid
-                                            number   = legacy_messages[ 1 ]-msgno
-                                            severity = CONV #( legacy_messages[ 1 ]-msgty )
-                                            v1       = legacy_messages[ 1 ]-msgv1 ) )
+        APPEND VALUE #( %tky = <fs_travel_to_delete>-%tky ) TO failed-travel.
+        APPEND VALUE #( %tky = <fs_travel_to_delete>-%tky
+                        %msg = new_message( id       = lt_legacy_messages[ 1 ]-msgid
+                                            number   = lt_legacy_messages[ 1 ]-msgno
+                                            severity = CONV #( lt_legacy_messages[ 1 ]-msgty )
+                                            v1       = lt_legacy_messages[ 1 ]-msgv1 ) )
           TO reported-travel.
       ENDIF.
     ENDLOOP.
@@ -257,22 +257,22 @@ Note the *double-write avoidance*: create/update/delete touch only the legacy bu
 
 ```abap
   METHOD read.
-    DATA legacy_travel_out TYPE /dmo/travel.
-    DATA legacy_messages   TYPE /dmo/t_message.
+    DATA ls_legacy_travel_out TYPE /dmo/travel.
+    DATA lt_legacy_messages   TYPE /dmo/t_message.
 
     " Group so the legacy API is called once per TravelId, not once per row
-    LOOP AT keys INTO DATA(travel_key) GROUP BY travel_key-TravelId.
+    LOOP AT keys INTO DATA(ls_travel_key) GROUP BY ls_travel_key-TravelId.
       CALL FUNCTION '/DMO/FLIGHT_TRAVEL_READ'   " reads the BUFFER, not the database
         EXPORTING
-          iv_travel_id = travel_key-TravelId
+          iv_travel_id = ls_travel_key-TravelId
         IMPORTING
-          es_travel    = legacy_travel_out
-          et_messages  = legacy_messages.
+          es_travel    = ls_legacy_travel_out
+          et_messages  = lt_legacy_messages.
 
-      IF legacy_messages IS INITIAL.
-        INSERT CORRESPONDING #( legacy_travel_out MAPPING TO ENTITY ) INTO TABLE result.
+      IF lt_legacy_messages IS INITIAL.
+        INSERT CORRESPONDING #( ls_legacy_travel_out MAPPING TO ENTITY ) INTO TABLE result.
       ELSE.
-        APPEND VALUE #( %tky        = travel_key-%tky
+        APPEND VALUE #( %tky        = ls_travel_key-%tky
                         %fail-cause = if_abap_behv=>cause-not_found ) TO failed-travel.
       ENDIF.
     ENDLOOP.
@@ -280,21 +280,21 @@ Note the *double-write avoidance*: create/update/delete touch only the legacy bu
 
   METHOD lock.
     " lock master in the BDEF only declares intent — the enqueue is yours
-    DATA(travel_lock) = cl_abap_lock_object_factory=>get_instance( iv_name = '/DMO/ETRAVEL' ).
+    DATA(lo_travel_lock) = cl_abap_lock_object_factory=>get_instance( iv_name = '/DMO/ETRAVEL' ).
 
-    LOOP AT keys ASSIGNING FIELD-SYMBOL(<travel_to_lock>).
+    LOOP AT keys ASSIGNING FIELD-SYMBOL(<fs_travel_to_lock>).
       TRY.
-          travel_lock->enqueue(
-            it_parameter = VALUE #( ( name = 'TRAVEL_ID' value = REF #( <travel_to_lock>-TravelId ) ) ) ).
-        CATCH cx_abap_foreign_lock INTO DATA(foreign_lock_error).
-          APPEND VALUE #( %tky        = <travel_to_lock>-%tky
+          lo_travel_lock->enqueue(
+            it_parameter = VALUE #( ( name = 'TRAVEL_ID' value = REF #( <fs_travel_to_lock>-TravelId ) ) ) ).
+        CATCH cx_abap_foreign_lock INTO DATA(lo_foreign_lock_error).
+          APPEND VALUE #( %tky        = <fs_travel_to_lock>-%tky
                           %fail-cause = if_abap_behv=>cause-locked ) TO failed-travel.
-          APPEND VALUE #( %tky = <travel_to_lock>-%tky
+          APPEND VALUE #( %tky = <fs_travel_to_lock>-%tky
                           %msg = new_message( id       = '/DMO/CM_FLIGHT_LEGAC'
                                               number   = '032'
                                               severity = if_abap_behv_message=>severity-error
-                                              v1       = <travel_to_lock>-TravelId
-                                              v2       = foreign_lock_error->user_name ) )
+                                              v1       = <fs_travel_to_lock>-TravelId
+                                              v2       = lo_foreign_lock_error->user_name ) )
             TO reported-travel.
       ENDTRY.
     ENDLOOP.
@@ -360,13 +360,13 @@ MODIFY ENTITIES OF zi_rap_travel_u
                   BeginDate   = cl_abap_context_info=>get_system_date( )
                   EndDate     = cl_abap_context_info=>get_system_date( ) + 30
                   Description = 'Unmanaged BO smoke test' ) )
-  MAPPED   DATA(mapped)
-  FAILED   DATA(failed)
-  REPORTED DATA(reported).
+  MAPPED   DATA(lt_mapped)
+  FAILED   DATA(lt_failed)
+  REPORTED DATA(lt_reported).
 
-IF failed-travel IS INITIAL.
+IF lt_failed-travel IS INITIAL.
   COMMIT ENTITIES.   " triggers finalize → check_before_save → save → cleanup
-  DATA(new_travel_id) = mapped-travel[ 1 ]-TravelId.
+  DATA(lv_new_travel_id) = lt_mapped-travel[ 1 ]-TravelId.
 ENDIF.
 ```
 

@@ -122,13 +122,13 @@ DATA lo_worksheet TYPE REF TO if_xco_xlsx_ra_worksheet.
 
 " The type definition resembling the structure of the rows in the worksheet selection.
 TYPES:
-  BEGIN OF ts_row,
+  BEGIN OF ty_row,
     first_name   TYPE string,
     last_name    TYPE string,
     day_of_birth TYPE d,
-  END OF ts_row,
+  END OF ty_row,
 
-  tt_row TYPE STANDARD TABLE OF ts_row WITH DEFAULT KEY.
+  tt_row TYPE STANDARD TABLE OF ty_row WITH DEFAULT KEY.
 
 DATA lt_rows TYPE tt_row.
 

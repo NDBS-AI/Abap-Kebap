@@ -28,6 +28,16 @@ A guide for designing and reviewing Core Data Services (CDS) views in ABAP. CDS 
 
 SAP's Virtual Data Model (VDM) prescribes three primary CDS layers. Use them consistently — review feedback dries up.
 
+> **Naming note:** this file's three-tier `I_`/`C_`/`P_` letters are SAP's classic VDM
+> layer scheme, where `C_` means **composite** (an intermediate business-logic layer).
+> The shipped ABAP naming convention ([naming-conventions.md](../abap-clean-style/references/naming-conventions.md))
+> collapses CDS views into two customer-Z rows — interface/basic (`_i_`) and
+> projection/consumption (`_c_`) — for projects that don't need a separate composite
+> layer. If your project's view stack genuinely has three tiers, follow this file's
+> `Z_I_`/`Z_C_`/`Z_P_` scheme; a two-tier project can fold composite logic into either
+> the interface or the projection view and use just `_i_`/`_c_` per the shipped
+> convention. Either way, never double the leading `Z`/`Y`.
+
 | Layer | Naming | Purpose | Annotations |
 |---|---|---|---|
 | **Basic / Interface** | `Z_I_*` | One entity, faithful to source. Join only to closely-bound master. No business logic. | `@AbapCatalog.viewEnhancementCategory: [#NONE]`, `@AccessControl.authorizationCheck: #CHECK`, `@EndUserText.label: '…'` |
@@ -301,6 +311,8 @@ define role Z_I_SalesOrder_Auth {
 | `Amount`, `Quantity`, `Date` | Common typed names; pair with `@Semantics` |
 
 Internal element names use UpperCamelCase (CDS convention), not snake_case (ABAP convention).
+
+This three-tier `Z_I_`/`Z_C_`/`Z_P_` scheme is SAP's classic VDM naming. See the note under [VDM Layering](#vdm-layering--pick-a-layer-per-view) above for how it relates to the shipped two-tier customer convention in [naming-conventions.md](../abap-clean-style/references/naming-conventions.md).
 
 ## Examples
 

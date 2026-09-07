@@ -69,8 +69,8 @@ value itself is a valid final key):
 
 ```abap
 METHOD adjust_numbers.
-  LOOP AT mapped-calc ASSIGNING FIELD-SYMBOL(<calculation>).
-    <calculation>-%key-id = <calculation>-%pid.
+  LOOP AT mapped-calc ASSIGNING FIELD-SYMBOL(<fs_calculation>).
+    <fs_calculation>-%key-id = <fs_calculation>-%pid.
   ENDLOOP.
 ENDMETHOD.
 ```

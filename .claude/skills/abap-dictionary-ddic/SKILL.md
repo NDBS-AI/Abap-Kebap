@@ -58,15 +58,15 @@ In data definitions, length/decimals go in parentheses: `abap.char(3)`, `abap.cu
 
 ```abap
 "Built-in DDIC types map to ABAP types via data elements that share the name:
-DATA int4_val TYPE int4.    "-> i
-DATA date_val TYPE datn.    "-> d
-DATA utc_val  TYPE utcl.    "-> utclong
+DATA lv_int4_val TYPE int4.    "-> i
+DATA lv_date_val TYPE datn.    "-> d
+DATA lv_utc_val  TYPE utcl.    "-> utclong
 
 "A built-in DDIC type CANNOT be used directly in ABAP:
-"DATA raw_val TYPE rawstring.   "not possible
+"DATA lv_raw_val TYPE rawstring.   "not possible
 "Local types hide identically named global types:
 TYPES rawstring TYPE xstring.
-DATA raw_val TYPE rawstring.
+DATA lv_raw_val TYPE rawstring.
 ```
 
 See [references/objects-catalog.md](references/objects-catalog.md) for the full built-in type table.
@@ -90,13 +90,13 @@ Three flavours (from the cheat sheet's examples):
 ```abap
 "Using data elements for local types and data objects
 TYPES ty_dtel1 TYPE zdemo_abap_dtel_pr.    "based on a built-in dict. type
-DATA char3_dtel TYPE zdemo_abap_dtel_pr.
+DATA lv_char3_dtel TYPE zdemo_abap_dtel_pr.
 
 TYPES ty_dtel2 TYPE zdemo_abap_dtel_do.    "based on a domain
-DATA char1_dtel TYPE zdemo_abap_dtel_do.
+DATA lv_char1_dtel TYPE zdemo_abap_dtel_do.
 
 TYPES ty_dtel3 TYPE zdemo_abap_dtel_ref.   "based on a reference type
-DATA char10_dtel_ref TYPE zdemo_abap_dtel_ref.
+DATA lv_char10_dtel_ref TYPE zdemo_abap_dtel_ref.
 ```
 
 **Successor:** CDS simple types are the successors of data elements; a CDS simple type can be based on a built-in CDS type, a DDIC data element (inheriting its properties), or another simple type.
@@ -155,7 +155,7 @@ A DDIC table type describes an **internal table** (not a DB table). It is define
 "Declaring internal tables / local table types from DDIC table types
 TYPES ty_tab_elem  TYPE zdemo_abap_tt_str.   "elementary line type (~ string_table)
 TYPES ty_tab_struc TYPE zdemo_abap_tt_so.    "flat line type, sorted, with keys
-DATA  tab_struct1  TYPE zdemo_abap_tt_so.
+DATA  lt_tab_struct1  TYPE zdemo_abap_tt_so.
 ```
 
 A table type with an elementary line type and length 0 corresponds to the released `string_table`. A flat line type can be created sorted/unique with primary key components, a secondary unique-sorted key, and a key alias.
@@ -292,7 +292,7 @@ SELECT ReleasedObjectType, ReleasedObjectName, ReleaseState
   WHERE releasestate = 'RELEASED'
   AND ( ReleasedObjectType = 'DTEL' OR ReleasedObjectType = 'DOMA' )
   ORDER BY ReleasedObjectType, ReleasedObjectName
-  INTO TABLE @DATA(released_dtel_doma).
+  INTO TABLE @DATA(lt_released_dtel_doma).
 ```
 
 - **Not in Cloud:** classic DDIC views, classic (dynpro) search helps, classic lock objects bound to dynpros, maintenance views. Use CDS-based successors.

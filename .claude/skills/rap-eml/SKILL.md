@@ -39,25 +39,25 @@ Every EML operand and handler parameter is typed with a type *derived* from the 
 
 ```abap
 "Tabular types — the workhorses
-DATA create_instances   TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m.
-DATA update_instances   TYPE TABLE FOR UPDATE zdemo_abap_rap_ro_m.
-DATA delete_instances   TYPE TABLE FOR DELETE zdemo_abap_rap_ro_m.
-DATA read_keys          TYPE TABLE FOR READ IMPORT zdemo_abap_rap_ro_m.
-DATA read_result        TYPE TABLE FOR READ RESULT zdemo_abap_rap_ro_m.
-DATA action_input       TYPE TABLE FOR ACTION IMPORT zdemo_abap_rap_ro_m~multiply_by_2.
+DATA lt_create_instances   TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m.
+DATA lt_update_instances   TYPE TABLE FOR UPDATE zdemo_abap_rap_ro_m.
+DATA lt_delete_instances   TYPE TABLE FOR DELETE zdemo_abap_rap_ro_m.
+DATA lt_read_keys          TYPE TABLE FOR READ IMPORT zdemo_abap_rap_ro_m.
+DATA lt_read_result        TYPE TABLE FOR READ RESULT zdemo_abap_rap_ro_m.
+DATA lt_action_input       TYPE TABLE FOR ACTION IMPORT zdemo_abap_rap_ro_m~multiply_by_2.
 "Only if the action declares `result` in the BDEF:
-"DATA action_result     TYPE TABLE FOR ACTION RESULT zdemo_abap_rap_ro_m~some_action.
-DATA create_by_assoc    TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m\_child.
-DATA lock_keys          TYPE TABLE FOR KEY OF zdemo_abap_rap_ro_m.
+"DATA lt_action_result     TYPE TABLE FOR ACTION RESULT zdemo_abap_rap_ro_m~some_action.
+DATA lt_create_by_assoc    TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m\_child.
+DATA lt_lock_keys          TYPE TABLE FOR KEY OF zdemo_abap_rap_ro_m.
 
 "Structured types — work areas / single rows
-DATA create_row         TYPE STRUCTURE FOR CREATE zdemo_abap_rap_ro_m.
-DATA permission_request TYPE STRUCTURE FOR PERMISSIONS REQUEST zdemo_abap_rap_ro_m.
+DATA ls_create_row         TYPE STRUCTURE FOR CREATE zdemo_abap_rap_ro_m.
+DATA ls_permission_request TYPE STRUCTURE FOR PERMISSIONS REQUEST zdemo_abap_rap_ro_m.
 
 "Response types — deep structures with one table per entity
-DATA mapped_response    TYPE RESPONSE FOR MAPPED zdemo_abap_rap_ro_m.
-DATA failed_response    TYPE RESPONSE FOR FAILED zdemo_abap_rap_ro_m.
-DATA reported_response  TYPE RESPONSE FOR REPORTED zdemo_abap_rap_ro_m.
+DATA lt_mapped_response    TYPE RESPONSE FOR MAPPED zdemo_abap_rap_ro_m.
+DATA lt_failed_response    TYPE RESPONSE FOR FAILED zdemo_abap_rap_ro_m.
+DATA lt_reported_response  TYPE RESPONSE FOR REPORTED zdemo_abap_rap_ro_m.
 ```
 
 Naming forms: short form names an entity directly (`... FOR UPDATE zdemo_abap_rap_ch_m.`); long form is root + `\\` + entity (alias if one is defined): `... FOR UPDATE zdemo_abap_rap_ro_m\\child.`; associations are prefixed `\`: `... FOR CREATE zdemo_abap_rap_ro_m\_child.`
@@ -112,9 +112,9 @@ Short form (one entity), `FIELDS ( ... ) WITH` sets `%control` automatically:
 MODIFY ENTITY zdemo_abap_rap_ro_m
   CREATE FIELDS ( key_field field1 field2 )
   WITH VALUE #( ( %cid = 'create_1' key_field = 1 field1 = 'A' field2 = 'B' ) )
-  MAPPED   DATA(mapped_response)
-  FAILED   DATA(failed_response)
-  REPORTED DATA(reported_response).
+  MAPPED   DATA(lt_mapped_response)
+  FAILED   DATA(lt_failed_response)
+  REPORTED DATA(lt_reported_response).
 ```
 
 Long form (`MODIFY ENTITIES OF <root>`) bundles several operations — on one entity or across entities of the same BO — in **one** statement; the response clauses come once, after all operations:
@@ -130,13 +130,13 @@ MODIFY ENTITIES OF zdemo_abap_rap_ro_m
     VALUE #( ( key_field = 9 ) )                          "or ( %cid_ref = ... )
     EXECUTE multiply_by_2 FROM
     VALUE #( ( %cid_ref = 'cid4' ) ( key_field = 1 ) )
-  MAPPED   DATA(mapped_response)
-  FAILED   DATA(failed_response)
-  REPORTED DATA(reported_response).
+  MAPPED   DATA(lt_mapped_response)
+  FAILED   DATA(lt_failed_response)
+  REPORTED DATA(lt_reported_response).
 ```
 
 Key rules:
-- `FIELDS ( f1 f2 ) WITH itab` — listed fields get `%control = mk-on`, unlisted `mk-off` (their values are ignored). `FROM itab` — you must fill `%control` yourself. `DELETE` allows only `FROM` (rows = key or `%cid_ref` only). Avoid `SET FIELDS WITH` (limitations, syntax warnings).
+- `FIELDS ( f1 f2 ) WITH lt_itab` — listed fields get `%control = mk-on`, unlisted `mk-off` (their values are ignored). `FROM lt_itab` — you must fill `%control` yourself. `DELETE` allows only `FROM` (rows = key or `%cid_ref` only). Avoid `SET FIELDS WITH` (limitations, syntax warnings).
 - `%cid` must be unique per request; fill it even when unused, or use `CREATE AUTO FILL CID` — but then you cannot reference the instance via `%cid_ref` later.
 - In draft scenarios, create drafts with `%is_draft = if_abap_behv=>mk-on` in the rows.
 - `MAPPED` returns `%cid` → key mapping for creates; there is no `MAPPED` for pure update/delete.
@@ -154,9 +154,9 @@ MODIFY ENTITIES OF zdemo_abap_rap_ro_m
       VALUE #( ( %cid_ref = 'parent_1'
                  %target = VALUE #( ( %cid = 'child_1' key_ch = 1 field_ch1 = 'aa' )
                                     ( %cid = 'child_2' key_ch = 2 field_ch1 = 'bb' ) ) ) )
-  MAPPED   DATA(mapped_response)
-  FAILED   DATA(failed_response)
-  REPORTED DATA(reported_response).
+  MAPPED   DATA(lt_mapped_response)
+  FAILED   DATA(lt_failed_response)
+  REPORTED DATA(lt_reported_response).
 ```
 
 A dynamic form `MODIFY ENTITIES OPERATIONS op_tab` (type `abp_behv_changes_tab`, one row per operation with `op`, `entity_name`, `instances`, optional `sub_name`) handles multiple BOs in one statement — see [references/eml-statement-catalog.md](references/eml-statement-catalog.md).
@@ -170,17 +170,17 @@ READ ENTITIES OF zdemo_abap_rap_ro_m
   ENTITY root
   ALL FIELDS WITH VALUE #( ( key_field = 1 )    "TYPE TABLE FOR READ IMPORT: keys (+ %control)
                            ( key_field = 2 ) )
-  RESULT   DATA(active_instances)
-  FAILED   DATA(failed_read)
-  REPORTED DATA(reported_read).
+  RESULT   DATA(lt_active_instances)
+  FAILED   DATA(lt_failed_read)
+  REPORTED DATA(lt_reported_read).
 
 "Read by association — works both directions (parent→child, child→parent)
 READ ENTITIES OF zdemo_abap_rap_ro_m
   ENTITY root
   BY \_child
   ALL FIELDS WITH VALUE #( ( key_field = 1 ) )
-  RESULT DATA(child_instances)
-  LINK   DATA(key_links).       "optional: source/target key pairs
+  RESULT DATA(lt_child_instances)
+  LINK   DATA(lt_key_links).       "optional: source/target key pairs
 ```
 
 Field selection: `FIELDS ( f1 f2 ) WITH`, `FROM` (fill `%control` yourself), or `ALL FIELDS WITH`. Fields with `%control = mk-off` come back initial. Inside behavior pools, `READ ... IN LOCAL MODE ... WITH CHANGES` additionally returns `%chg` accumulated-change info (managed BOs only). Dynamic form: `READ ENTITIES OPERATIONS op_tab` (type `abp_behv_retrievals_tab`).
@@ -200,11 +200,11 @@ Order that matters: per-operation clauses (`RESULT`, `LINK`) follow their operat
 
 ```abap
 COMMIT ENTITIES RESPONSE OF zdemo_abap_rap_ro_m
-  FAILED   DATA(failed_commit)
-  REPORTED DATA(reported_commit).
+  FAILED   DATA(lt_failed_commit)
+  REPORTED DATA(lt_reported_commit).
 
 IF sy-subrc <> 0.
-  "React: evaluate failed_commit/reported_commit; ROLLBACK ENTITIES to continue cleanly
+  "React: evaluate lt_failed_commit/lt_reported_commit; ROLLBACK ENTITIES to continue cleanly
 ENDIF.
 ```
 
@@ -220,18 +220,18 @@ ENDIF.
 Ask a BO what the current user/instance may do — global/instance authorization and feature control — e.g. to drive your own UI enablement:
 
 ```abap
-DATA permission_request TYPE STRUCTURE FOR PERMISSIONS REQUEST zdemo_abap_rap_ro_m.
+DATA ls_permission_request TYPE STRUCTURE FOR PERMISSIONS REQUEST zdemo_abap_rap_ro_m.
 
-permission_request = VALUE #( %create       = if_abap_behv=>mk-on
+ls_permission_request = VALUE #( %create       = if_abap_behv=>mk-on
                               %update       = if_abap_behv=>mk-on
                               %delete       = if_abap_behv=>mk-on
                               %field-field1 = if_abap_behv=>mk-on ).
 
 GET PERMISSIONS ONLY GLOBAL ENTITY zdemo_abap_rap_ro_m
-  REQUEST permission_request
-  RESULT   DATA(permission_result)
-  FAILED   DATA(failed_permissions)
-  REPORTED DATA(reported_permissions).
+  REQUEST ls_permission_request
+  RESULT   DATA(ls_permission_result)
+  FAILED   DATA(lt_failed_permissions)
+  REPORTED DATA(lt_reported_permissions).
 ```
 
 Note the `REQUEST` operand is a *structure*, not a table. `ONLY GLOBAL` restricts to global authorization + global/static feature control; other only-clauses and instance variants exist.
@@ -241,13 +241,13 @@ Note the `REQUEST` operand is a *structure*, not a table. `ONLY GLOBAL` restrict
 Explicitly acquire the exclusive (enqueue) locks for instances — normally the framework locks on modify, but `SET LOCKS` lets you lock up front. The lock lives until the RAP transaction ends (commit/rollback):
 
 ```abap
-DATA lock_keys TYPE TABLE FOR KEY OF zdemo_abap_rap_ro_u.
-lock_keys = VALUE #( ( key_field = 1 ) ( key_field = 2 ) ).
+DATA lt_lock_keys TYPE TABLE FOR KEY OF zdemo_abap_rap_ro_u.
+lt_lock_keys = VALUE #( ( key_field = 1 ) ( key_field = 2 ) ).
 
 SET LOCKS ENTITY zdemo_abap_rap_ro_u
-  FROM lock_keys
-  FAILED   DATA(failed_locks)
-  REPORTED DATA(reported_locks).
+  FROM lt_lock_keys
+  FAILED   DATA(lt_failed_locks)
+  REPORTED DATA(lt_reported_locks).
 ```
 
 Failed rows carry `%fail-cause = if_abap_behv=>cause-locked` when someone else holds the lock. Long form (`SET LOCKS OF <root> ENTITY ... FROM ...`) locks across the composition tree; dynamic form takes `abp_behv_locks_tab`.
@@ -296,15 +296,15 @@ Setup patterns, `cl_cds_test_environment`, and assertion style: [abap-unit-tdd](
 
 | Task | Statement |
 |---|---|
-| Create instances | `MODIFY ENTITY bo CREATE FIELDS ( ... ) WITH itab MAPPED m FAILED f REPORTED r.` |
+| Create instances | `MODIFY ENTITY bo CREATE FIELDS ( ... ) WITH lt_itab MAPPED m FAILED f REPORTED r.` |
 | Create w/o caring about %cid | `... CREATE AUTO FILL CID FIELDS ( ... ) WITH ...` (no `%cid_ref` possible afterwards) |
 | Create draft instance | row with `%is_draft = if_abap_behv=>mk-on` |
 | Deep create | `CREATE ... WITH ... CREATE BY \_assoc FIELDS ( ... ) WITH` rows of `%cid_ref` + `%target` |
-| Update | `MODIFY ENTITY bo UPDATE FIELDS ( ... ) WITH itab FAILED f REPORTED r.` (identify via `%tky` or `%cid_ref`) |
-| Delete | `MODIFY ENTITY bo DELETE FROM itab ...` (keys or `%cid_ref` only) |
-| Execute action | `MODIFY ENTITY bo EXECUTE act FROM itab [RESULT res] ...` |
-| Read | `READ ENTITY bo ALL FIELDS WITH itab RESULT res FAILED f REPORTED r.` |
-| Read via association | `READ ENTITIES OF root ENTITY e BY \_assoc ALL FIELDS WITH itab RESULT res [LINK lnk].` |
+| Update | `MODIFY ENTITY bo UPDATE FIELDS ( ... ) WITH lt_itab FAILED f REPORTED r.` (identify via `%tky` or `%cid_ref`) |
+| Delete | `MODIFY ENTITY bo DELETE FROM lt_itab ...` (keys or `%cid_ref` only) |
+| Execute action | `MODIFY ENTITY bo EXECUTE act FROM lt_itab [RESULT res] ...` |
+| Read | `READ ENTITY bo ALL FIELDS WITH lt_itab RESULT res FAILED f REPORTED r.` |
+| Read via association | `READ ENTITIES OF root ENTITY e BY \_assoc ALL FIELDS WITH lt_itab RESULT res [LINK lnk].` |
 | Persist | `COMMIT ENTITIES [RESPONSE OF root FAILED f REPORTED r].` then check `sy-subrc` (0/4/8) |
 | Dry-run consistency check | `COMMIT ENTITIES IN SIMULATION MODE.` |
 | Discard | `ROLLBACK ENTITIES.` |
@@ -328,7 +328,7 @@ Setup patterns, `cl_cds_test_environment`, and assertion style: [abap-unit-tdd](
 | Reading with `FIELDS ( field1 )` and wondering why `field2` is initial | Unlisted fields have `%control = mk-off` and are not returned; list them or use `ALL FIELDS WITH` |
 | Handler code modifying its own BO without `IN LOCAL MODE` | Use `IN LOCAL MODE` for the BO's own reads/writes — otherwise read-only field controls and auth checks block legitimate internal changes |
 | `INSERT dbtab FROM TABLE @derived_rows.` in a saver class | Derived types carry `%` components and entity names; convert with `CORRESPONDING ... MAPPING FROM ENTITY` or use `INSERT ... MAPPING FROM ENTITY` |
-| Looking for a `%result` component to read an action result | It doesn't exist — declare `RESULT DATA(res)` after `EXECUTE`; rows contain keys + `%param` |
+| Looking for a `%result` component to read an action result | It doesn't exist — declare `RESULT DATA(lt_res)` after `EXECUTE`; rows contain keys + `%param` |
 
 ## References
 

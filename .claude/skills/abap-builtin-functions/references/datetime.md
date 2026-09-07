@@ -26,11 +26,11 @@ Back to [SKILL.md](../SKILL.md). Related: [numeric.md](numeric.md), [builtin-cat
   - `timestampl` — long, to 100 ns (7 decimals), format `yyyymmddhhmmss.sssssss`.
 
 ```abap
-DATA some_date TYPE d.            some_date = '20240101'.
-DATA(some_time) = CONV t( '123456' ).
-FINAL(utc_ts)   = CONV utclong( '2024-01-01 15:30:00' ).
-DATA ts_short TYPE timestamp.     ts_short = '20240101082802'.
-DATA ts_long  TYPE timestampl VALUE '20240101082802.1700020'.
+DATA lv_some_date TYPE d.            lv_some_date = '20240101'.
+DATA(lv_some_time) = CONV t( '123456' ).
+FINAL(lv_utc_ts)   = CONV utclong( '2024-01-01 15:30:00' ).
+DATA lv_ts_short TYPE timestamp.     lv_ts_short = '20240101082802'.
+DATA lv_ts_long  TYPE timestampl VALUE '20240101082802.1700020'.
 ```
 
 > Time stamps of the ABAP runtime are **POSIX**: 86400 seconds/day, no leap seconds, time-zone independent.
@@ -43,13 +43,13 @@ DATA ts_long  TYPE timestampl VALUE '20240101082802.1700020'.
 ```abap
 "Recommended: cl_abap_context_info
 TRY.
-    DATA(tz) = cl_abap_context_info=>get_user_time_zone( ).  "e.g. UTC
+    DATA(lv_tz) = cl_abap_context_info=>get_user_time_zone( ).  "e.g. UTC
   CATCH cx_abap_context_info_error.
 ENDTRY.
 
 "XCO
-DATA(tz_w_xco)     = xco_cp_time=>time_zone->user->value.
-DATA(tz_w_xco_utc) = xco_cp_time=>time_zone->utc->value.
+DATA(lv_tz_w_xco)     = xco_cp_time=>time_zone->user->value.
+DATA(lv_tz_w_xco_utc) = xco_cp_time=>time_zone->utc->value.
 ```
 
 CDS view with time-zone info: `I_TIMEZONE`. On SAP BTP ABAP Environment the time zone defaults to UTC.
@@ -62,36 +62,36 @@ CDS view with time-zone info: `I_TIMEZONE`. On SAP BTP ABAP Environment the time
 
 ```abap
 "Current date (UTC) — base type dats, mapped to d
-DATA(utc_date) = cl_abap_context_info=>get_system_date( ).  "e.g. 20240101
+DATA(lv_utc_date) = cl_abap_context_info=>get_system_date( ).  "e.g. 20240101
 
 "XCO (results are type string); 'as' applies a format, 'date' takes optional time zone
-DATA(date_abap)  = xco_cp=>sy->date( )->as( xco_cp_time=>format->abap )->value.              "20250101
-DATA(date_basic) = xco_cp=>sy->date( )->as( xco_cp_time=>format->iso_8601_basic )->value.    "20250101
-DATA(date_ext)   = xco_cp=>sy->date( )->as( xco_cp_time=>format->iso_8601_extended )->value. "2025-01-01
-DATA(date_user)  = xco_cp=>sy->date( xco_cp_time=>time_zone->user )->as( xco_cp_time=>format->iso_8601_basic )->value.
-DATA(date_utc)   = xco_cp=>sy->date( xco_cp_time=>time_zone->utc  )->as( xco_cp_time=>format->iso_8601_basic )->value.
+DATA(lv_date_abap)  = xco_cp=>sy->date( )->as( xco_cp_time=>format->abap )->value.              "20250101
+DATA(lv_date_basic) = xco_cp=>sy->date( )->as( xco_cp_time=>format->iso_8601_basic )->value.    "20250101
+DATA(lv_date_ext)   = xco_cp=>sy->date( )->as( xco_cp_time=>format->iso_8601_extended )->value. "2025-01-01
+DATA(lv_date_user)  = xco_cp=>sy->date( xco_cp_time=>time_zone->user )->as( xco_cp_time=>format->iso_8601_basic )->value.
+DATA(lv_date_utc)   = xco_cp=>sy->date( xco_cp_time=>time_zone->utc  )->as( xco_cp_time=>format->iso_8601_basic )->value.
 
 "Current date parts
-DATA(day)   = xco_cp=>sy->date( )->day.
-DATA(month) = xco_cp=>sy->date( )->month.
-DATA(year)  = xco_cp=>sy->date( )->year.
+DATA(lv_day)   = xco_cp=>sy->date( )->day.
+DATA(lv_month) = xco_cp=>sy->date( )->month.
+DATA(lv_year)  = xco_cp=>sy->date( )->year.
 
 "Creating
-DATA date_cr2 TYPE d VALUE '20240202'.
-DATA(date_cr3) = CONV d( '20240303' ).
-DATA(xco_date) = xco_cp_time=>date( iv_year = 2024 iv_month = 3 iv_day = 3 ).
-DATA(date_cr4) = xco_date->as( xco_cp_time=>format->iso_8601_extended )->value. "2024-03-03
+DATA lv_date_cr2 TYPE d VALUE '20240202'.
+DATA(lv_date_cr3) = CONV d( '20240303' ).
+DATA(lo_xco_date) = xco_cp_time=>date( iv_year = 2024 iv_month = 3 iv_day = 3 ).
+DATA(lv_date_cr4) = lo_xco_date->as( xco_cp_time=>format->iso_8601_extended )->value. "2024-03-03
 ```
 
 ### Validity
 
 ```abap
 TRY.
-    DATA(inv_date1) = EXACT d( '20240231' ).  "CX_SY_CONVERSION_NO_DATE (Feb 31)
+    DATA(lv_inv_date1) = EXACT d( '20240231' ).  "CX_SY_CONVERSION_NO_DATE (Feb 31)
   CATCH cx_sy_conversion_no_date.
 ENDTRY.
 "Assigning an invalid date to a numeric type produces the initial value (0).
-DATA(inv_date3) = CONV i( CONV d( '20240231' ) ). ASSERT inv_date3 = 0.
+DATA(lv_inv_date3) = CONV i( CONV d( '20240231' ) ). ASSERT lv_inv_date3 = 0.
 ```
 
 The runtime checks validity in lossless assignments (`EXACT`), conversions to time stamps, and assignments to numeric fields.
@@ -99,13 +99,13 @@ The runtime checks validity in lossless assignments (`EXACT`), conversions to ti
 ### Character-like access
 
 ```abap
-DATA some_date TYPE d VALUE '20240102'.
-DATA(year_sub)  = substring( val = some_date off = 0 len = 4 ). "2024
-DATA(month_sub) = substring( val = some_date off = 4 len = 2 ). "01
-DATA(day_sub)   = substring( val = some_date off = 6 len = 2 ). "02
-DATA(yr)        = some_date(4).      "2024 (offset/length)
-DATA(mo)        = some_date+4(2).    "01
-some_date+4(2)  = '10'.              "write access -> 20241002
+DATA lv_some_date TYPE d VALUE '20240102'.
+DATA(lv_year_sub)  = substring( val = lv_some_date off = 0 len = 4 ). "2024
+DATA(lv_month_sub) = substring( val = lv_some_date off = 4 len = 2 ). "01
+DATA(lv_day_sub)   = substring( val = lv_some_date off = 6 len = 2 ). "02
+DATA(lv_yr)        = lv_some_date(4).      "2024 (offset/length)
+DATA(lv_mo)        = lv_some_date+4(2).    "01
+lv_some_date+4(2)  = '10'.              "write access -> 20241002
 ```
 
 Comparison rule for `d`/`t`: compared left to right; first differing character decides which is greater (works naturally with `yyyymmdd`). Ranges tables (`TYPE RANGE OF d`) work with `IN`.
@@ -113,26 +113,26 @@ Comparison rule for `d`/`t`: compared left to right; first differing character d
 ### Numeric access / calculations
 
 ```abap
-DATA date_calc_1 TYPE d VALUE '20240101'.
-DATA date_calc_2 TYPE d VALUE '20231227'.
-DATA(days_diff)            = date_calc_1 - date_calc_2.        "5
-DATA(days_since_0001)      = CONV i( date_calc_1 ).            "738887
-DATA(weekday1)             = ( 5 + date_calc_1 MOD 7 ) MOD 7 + 1. "1 = Monday (2=Tue…7=Sun)
-DATA(first_day_of_month)   = CONV d( replace( val = `202403020` off = 6 len = 2 with = `01` ) ). "20240301
-DATA(last_day_prev_month)  = CONV d( first_day_of_month - 1 ).   "20240229
+DATA lv_date_calc_1 TYPE d VALUE '20240101'.
+DATA lv_date_calc_2 TYPE d VALUE '20231227'.
+DATA(lv_days_diff)            = lv_date_calc_1 - lv_date_calc_2.        "5
+DATA(lv_days_since_0001)      = CONV i( lv_date_calc_1 ).            "738887
+DATA(lv_weekday1)             = ( 5 + lv_date_calc_1 MOD 7 ) MOD 7 + 1. "1 = Monday (2=Tue…7=Sun)
+DATA(lv_first_day_of_month)   = CONV d( replace( val = `202403020` off = 6 len = 2 with = `01` ) ). "20240301
+DATA(lv_last_day_prev_month)  = CONV d( lv_first_day_of_month - 1 ).   "20240229
 ```
 
 ### XCO additions / subtractions
 
 ```abap
-DATA(add5) = xco_cp=>sy->date( )->add( iv_day = 5 )->as( xco_cp_time=>format->iso_8601_extended )->value.
-DATA(addM) = xco_cp=>sy->date( )->add( iv_day = 1 iv_month = 1 iv_year = 1 )->as( xco_cp_time=>format->iso_8601_extended )->value.
-DATA(sub)  = xco_cp=>sy->date( )->subtract( iv_day = 1 iv_month = 1 iv_year = 1 )->as( xco_cp_time=>format->iso_8601_extended )->value.
+DATA(lv_add5) = xco_cp=>sy->date( )->add( iv_day = 5 )->as( xco_cp_time=>format->iso_8601_extended )->value.
+DATA(lv_addm) = xco_cp=>sy->date( )->add( iv_day = 1 iv_month = 1 iv_year = 1 )->as( xco_cp_time=>format->iso_8601_extended )->value.
+DATA(lv_sub)  = xco_cp=>sy->date( )->subtract( iv_day = 1 iv_month = 1 iv_year = 1 )->as( xco_cp_time=>format->iso_8601_extended )->value.
 
 "io_calculation parameter for month-end edge cases:
 " ->preserving (default): mathematical; invalid result raises an exception
 " ->ultimo: clamps to the actual last day of the month (e.g. Aug 31 + 1 month = Sep 30)
-DATA(ultimo) = xco_cp_time=>date( iv_year = '2024' iv_month = '08' iv_day = '31'
+DATA(lv_ultimo) = xco_cp_time=>date( iv_year = '2024' iv_month = '08' iv_day = '31'
               )->add( iv_month = 1 io_calculation = xco_cp_time=>date_calculation->ultimo
               )->as( xco_cp_time=>format->iso_8601_extended )->value. "2024-09-30
 ```
@@ -143,12 +143,12 @@ DATA(ultimo) = xco_cp_time=>date( iv_year = '2024' iv_month = '08' iv_day = '31'
 "Date format values: '1' DD.MM.YYYY  '2' MM/DD/YYYY  '3' MM-DD-YYYY  '4' YYYY.MM.DD
 "'5' YYYY/MM/DD  '6' YYYY-MM-DD (ISO)  '7'-'9' Japanese  'A'/'B' Islamic  'C' Iranian
 cl_abap_datfm=>conv_date_int_to_ext( EXPORTING im_datint = CONV d( '20240202' ) im_datfmdes = '6'
-                                     IMPORTING ex_datext = DATA(ext) ex_datfmused = DATA(fmt) ).
-cl_abap_datfm=>conv_date_ext_to_int( EXPORTING im_datext = ext im_datfmdes = '6'
-                                     IMPORTING ex_datint = DATA(int_d) ex_datfmused = fmt ).
-DATA(datfm)         = cl_abap_datfm=>get_datfm( ).             "active format
-DATA(country_datfm) = cl_abap_datfm=>get_country_datfm( 'DE' ).
-DATA(is_valid)      = cl_abap_datfm=>check_date_format( '1' ). "abap_true
+                                     IMPORTING ex_datext = DATA(lv_ext) ex_datfmused = DATA(lv_fmt) ).
+cl_abap_datfm=>conv_date_ext_to_int( EXPORTING im_datext = lv_ext im_datfmdes = '6'
+                                     IMPORTING ex_datint = DATA(lv_int_d) ex_datfmused = lv_fmt ).
+DATA(lv_datfm)         = cl_abap_datfm=>get_datfm( ).             "active format
+DATA(lv_country_datfm) = cl_abap_datfm=>get_country_datfm( 'DE' ).
+DATA(lv_is_valid)      = cl_abap_datfm=>check_date_format( '1' ). "abap_true
 ```
 
 Exceptions: `cx_abap_datfm_format_unknown`, `cx_abap_datfm_no_date`, `cx_abap_datfm_invalid_date`, `cx_abap_datfm_ambiguous`.
@@ -160,55 +160,55 @@ Exceptions: `cx_abap_datfm_format_unknown`, `cx_abap_datfm_no_date`, `cx_abap_da
 ### Retrieving / accessing / creating
 
 ```abap
-DATA(utc_time) = cl_abap_context_info=>get_system_time( ).    "e.g. 152450
+DATA(lv_utc_time) = cl_abap_context_info=>get_system_time( ).    "e.g. 152450
 
-DATA(time_ext) = xco_cp=>sy->time( )->as( xco_cp_time=>format->iso_8601_extended )->value. "16:09:07
-DATA(sec_xco)  = xco_cp=>sy->time( xco_cp_time=>time_zone->user )->second.
-DATA(min_xco)  = xco_cp=>sy->time( xco_cp_time=>time_zone->user )->minute.
-DATA(hr_xco)   = xco_cp=>sy->time( xco_cp_time=>time_zone->user )->hour.
+DATA(lv_time_ext) = xco_cp=>sy->time( )->as( xco_cp_time=>format->iso_8601_extended )->value. "16:09:07
+DATA(lv_sec_xco)  = xco_cp=>sy->time( xco_cp_time=>time_zone->user )->second.
+DATA(lv_min_xco)  = xco_cp=>sy->time( xco_cp_time=>time_zone->user )->minute.
+DATA(lv_hr_xco)   = xco_cp=>sy->time( xco_cp_time=>time_zone->user )->hour.
 
-DATA some_time TYPE t VALUE '123456'.
-DATA(hour_extr) = substring( val = some_time off = 0 len = 2 ). "12
-DATA(hour_part) = some_time(2).      "12
-some_time+4(2)  = '10'.              "123410
+DATA lv_some_time TYPE t VALUE '123456'.
+DATA(lv_hour_extr) = substring( val = lv_some_time off = 0 len = 2 ). "12
+DATA(lv_hour_part) = lv_some_time(2).      "12
+lv_some_time+4(2)  = '10'.              "123410
 
-DATA time_cr2 TYPE t VALUE '112400'.
-DATA(time_cr3) = CONV t( '120000' ).
-DATA(xco_time) = xco_cp_time=>time( iv_hour = '08' iv_minute = '34' iv_second = '05' ).
-DATA(time_cr4) = xco_time->as( xco_cp_time=>format->iso_8601_extended )->value. "08:34:05
+DATA lv_time_cr2 TYPE t VALUE '112400'.
+DATA(lv_time_cr3) = CONV t( '120000' ).
+DATA(lo_xco_time) = xco_cp_time=>time( iv_hour = '08' iv_minute = '34' iv_second = '05' ).
+DATA(lv_time_cr4) = lo_xco_time->as( xco_cp_time=>format->iso_8601_extended )->value. "08:34:05
 ```
 
 ### Calculations
 
 ```abap
 "Type t -> i conversion: hh*3600 + mm*60 + ss (seconds since 00:00:00)
-DATA time4calc TYPE t VALUE '115708'.
-DATA(seconds_total) = CONV i( time4calc ).            "43028
-DATA(calc_hours)    = seconds_total DIV 3600.         "11
-DATA(min_calc)      = ( seconds_total - calc_hours * 3600 ) DIV 60. "57
-DATA(sec_calc)      = ( seconds_total - calc_hours * 3600 ) - min_calc * 60. "8
+DATA lv_time4calc TYPE t VALUE '115708'.
+DATA(lv_seconds_total) = CONV i( lv_time4calc ).            "43028
+DATA(lv_calc_hours)    = lv_seconds_total DIV 3600.         "11
+DATA(lv_min_calc)      = ( lv_seconds_total - lv_calc_hours * 3600 ) DIV 60. "57
+DATA(lv_sec_calc)      = ( lv_seconds_total - lv_calc_hours * 3600 ) - lv_min_calc * 60. "8
 
 "XCO add / subtract
-DATA(add) = xco_cp=>sy->time( xco_cp_time=>time_zone->user )->add( iv_hour = 1 iv_minute = 1 iv_second = 1 )->as( xco_cp_time=>format->iso_8601_extended )->value.
-DATA(sub) = xco_cp=>sy->time( xco_cp_time=>time_zone->user )->subtract( iv_hour = 1 iv_minute = 1 iv_second = 1 )->as( xco_cp_time=>format->iso_8601_extended )->value.
+DATA(lv_add) = xco_cp=>sy->time( xco_cp_time=>time_zone->user )->add( iv_hour = 1 iv_minute = 1 iv_second = 1 )->as( xco_cp_time=>format->iso_8601_extended )->value.
+DATA(lv_sub) = xco_cp=>sy->time( xco_cp_time=>time_zone->user )->subtract( iv_hour = 1 iv_minute = 1 iv_second = 1 )->as( xco_cp_time=>format->iso_8601_extended )->value.
 ```
 
 ### Time delta across midnight — the MOD 86400 idiom
 
-`time2 - time1` yields type `i` (seconds) and can be negative. `MOD 86400` (seconds/day) normalizes to the positive elapsed time, regardless of sign:
+`lv_time2 - lv_time1` yields type `i` (seconds) and can be negative. `MOD 86400` (seconds/day) normalizes to the positive elapsed time, regardless of sign:
 
 ```abap
-DATA: time1 TYPE t VALUE '210000', time2 TYPE t VALUE '040000'.
-DATA(time_diff) = time2 - time1.                       "-61200 (raw)
-DATA(elapsed)   = ( time2 - time1 ) MOD 86400.         "25200 seconds (7 h)
-DATA(minutes)   = CONV decfloat34( ( ( time2 - time1 ) MOD 86400 ) / 60 ).   "420
-DATA(hours_dec) = CONV decfloat34( ( ( time2 - time1 ) MOD 86400 ) / 3600 ). "7
+DATA: lv_time1 TYPE t VALUE '210000', lv_time2 TYPE t VALUE '040000'.
+DATA(lv_time_diff) = lv_time2 - lv_time1.                       "-61200 (raw)
+DATA(lv_elapsed)   = ( lv_time2 - lv_time1 ) MOD 86400.         "25200 seconds (7 h)
+DATA(lv_minutes)   = CONV decfloat34( ( ( lv_time2 - lv_time1 ) MOD 86400 ) / 60 ).   "420
+DATA(lv_hours_dec) = CONV decfloat34( ( ( lv_time2 - lv_time1 ) MOD 86400 ) / 3600 ). "7
 
 "Split into a type-t result with DIV/MOD
-DATA diff_time TYPE t.
-diff_time(2)   = ( ( time2 - time1 ) MOD 86400 ) DIV 3600.
-diff_time+2(2) = ( ( ( time2 - time1 ) MOD 86400 ) MOD 3600 ) DIV 60.
-diff_time+4(2) = ( ( ( time2 - time1 ) MOD 86400 ) MOD 3600 ) MOD 60. "'070000'
+DATA lv_diff_time TYPE t.
+lv_diff_time(2)   = ( ( lv_time2 - lv_time1 ) MOD 86400 ) DIV 3600.
+lv_diff_time+2(2) = ( ( ( lv_time2 - lv_time1 ) MOD 86400 ) MOD 3600 ) DIV 60.
+lv_diff_time+4(2) = ( ( ( lv_time2 - lv_time1 ) MOD 86400 ) MOD 3600 ) MOD 60. "'070000'
 ```
 
 > Use `DIV`, not `/`: `( … ) DIV 3600` truncates to `15`; `( … ) / 3600` into an integer target **rounds** to `16`.
@@ -219,9 +219,9 @@ diff_time+4(2) = ( ( ( time2 - time1 ) MOD 86400 ) MOD 3600 ) MOD 60. "'070000'
 cl_abap_timefm=>conv_time_int_to_ext( EXPORTING time_int = CONV t( '123456' )
                                                 without_seconds = abap_false
                                                 format_according_to = cl_abap_timefm=>iso
-                                      IMPORTING time_ext = DATA(time_str) ). "12:34:56
-cl_abap_timefm=>conv_time_ext_to_int( EXPORTING time_ext = time_str
-                                      IMPORTING time_int = DATA(time_int) ). "123456
+                                      IMPORTING time_ext = DATA(lv_time_str) ). "12:34:56
+cl_abap_timefm=>conv_time_ext_to_int( EXPORTING time_ext = lv_time_str
+                                      IMPORTING time_int = DATA(lv_time_int) ). "123456
 ```
 
 Exceptions: `cx_parameter_invalid_range`, `cx_abap_timefm_invalid`.
@@ -233,17 +233,17 @@ Exceptions: `cx_parameter_invalid_range`, `cx_abap_timefm_invalid`.
 ### Retrieve / create / modify
 
 ```abap
-DATA(ts1) = utclong_current( ).                            "type utclong
-DATA ts8 TYPE utclong VALUE '2024-11-05 15:30:00'.
-DATA(ts9) = CONV utclong( '2024-11-03 05:30:00' ).
+DATA(lv_ts1) = utclong_current( ).                            "type utclong
+DATA lv_ts8 TYPE utclong VALUE '2024-11-05 15:30:00'.
+DATA(lv_ts9) = CONV utclong( '2024-11-03 05:30:00' ).
 
 "XCO moment (return type string)
-DATA(ts_ext) = xco_cp=>sy->moment( )->as( xco_cp_time=>format->iso_8601_extended )->value. "2025-01-01T16:23:20
-DATA(ts10)   = xco_cp_time=>moment( iv_year = '2024' iv_month = '01' iv_day = '01'
+DATA(lv_ts_ext) = xco_cp=>sy->moment( )->as( xco_cp_time=>format->iso_8601_extended )->value. "2025-01-01T16:23:20
+DATA(lv_ts10)   = xco_cp_time=>moment( iv_year = '2024' iv_month = '01' iv_day = '01'
                                     iv_hour = '12' iv_minute = '34' iv_second = '55'
                                   )->as( xco_cp_time=>format->iso_8601_extended )->value.
 "overwrite specific components
-DATA(ts12)   = xco_cp_time=>moment( iv_year = '2024' iv_month = '03' iv_day = '05' iv_hour = '02' iv_minute = '54' iv_second = '12'
+DATA(lv_ts12)   = xco_cp_time=>moment( iv_year = '2024' iv_month = '03' iv_day = '05' iv_hour = '02' iv_minute = '54' iv_second = '12'
                                   )->overwrite( iv_year = '2025' iv_month = '07' iv_day = '15' iv_hour = '01'
                                   )->as( xco_cp_time=>format->iso_8601_extended )->value. "2025-07-15T01:54:12
 ```
@@ -251,10 +251,10 @@ DATA(ts12)   = xco_cp_time=>moment( iv_year = '2024' iv_month = '03' iv_day = '0
 ### utclong_add — add/subtract (no year/month params; negative = subtract)
 
 ```abap
-DATA(utc4calc) = CONV utclong( '2024-01-01 15:55:14.1173220' ).
-DATA(plus1h)  = utclong_add( val = utc4calc hours = 1 ).   "…16:55:14…
-DATA(minus1h) = utclong_add( val = utc4calc hours = -1 ).  "…14:55:14…
-DATA(allp)    = utclong_add( val = utc4calc
+DATA(lv_utc4calc) = CONV utclong( '2024-01-01 15:55:14.1173220' ).
+DATA(lv_plus1h)  = utclong_add( val = lv_utc4calc hours = 1 ).   "…16:55:14…
+DATA(lv_minus1h) = utclong_add( val = lv_utc4calc hours = -1 ).  "…14:55:14…
+DATA(lv_allp)    = utclong_add( val = lv_utc4calc
                              days = 1                       "type i
                              hours = 2                      "type i
                              minutes = CONV int8( '13' )
@@ -266,24 +266,24 @@ At least one parameter besides `val` must be specified. Parameters: `days`, `hou
 ### XCO add / subtract / interval
 
 ```abap
-DATA(ts_ref1) = xco_cp_time=>moment( iv_year = '2024' iv_month = '01' iv_day = '01' iv_hour = '11' iv_minute = '37' iv_second = '54' ).
-DATA(addYMD)  = ts_ref1->add( iv_day = 1 iv_month = 2 iv_year = 3 )->as( xco_cp_time=>format->iso_8601_extended )->value. "2027-03-02T11:37:54
-DATA(subYMD)  = ts_ref1->subtract( iv_day = 1 iv_month = 2 iv_year = 3 )->as( xco_cp_time=>format->iso_8601_extended )->value. "2020-10-31T11:37:54
+DATA(lo_ts_ref1) = xco_cp_time=>moment( iv_year = '2024' iv_month = '01' iv_day = '01' iv_hour = '11' iv_minute = '37' iv_second = '54' ).
+DATA(lv_addymd)  = lo_ts_ref1->add( iv_day = 1 iv_month = 2 iv_year = 3 )->as( xco_cp_time=>format->iso_8601_extended )->value. "2027-03-02T11:37:54
+DATA(lv_subymd)  = lo_ts_ref1->subtract( iv_day = 1 iv_month = 2 iv_year = 3 )->as( xco_cp_time=>format->iso_8601_extended )->value. "2020-10-31T11:37:54
 
 "Interval + contains
-DATA(interval) = xco_cp=>sy->moment( )->interval_to( ts_ref1 ).
-DATA(inside)   = interval->contains( ts_ref1 ).   "abap_bool
-DATA(low)      = interval->lower_bound->as( xco_cp_time=>format->iso_8601_extended )->value.
-DATA(high)     = interval->upper_bound->as( xco_cp_time=>format->iso_8601_extended )->value.
+DATA(lo_interval) = xco_cp=>sy->moment( )->interval_to( lo_ts_ref1 ).
+DATA(lv_inside)   = lo_interval->contains( lo_ts_ref1 ).   "abap_bool
+DATA(lv_low)      = lo_interval->lower_bound->as( xco_cp_time=>format->iso_8601_extended )->value.
+DATA(lv_high)     = lo_interval->upper_bound->as( xco_cp_time=>format->iso_8601_extended )->value.
 ```
 
 ### utclong_diff — exact difference (type decfloat34, seconds)
 
 ```abap
-DATA(ts16) = CONV utclong( '2024-01-01 05:30:00' ).
-DATA(ts17) = CONV utclong( '2024-01-01 06:30:00' ).
-DATA(diff1) = utclong_diff( high = ts17 low = ts16 ). "3600
-DATA(diff2) = utclong_diff( high = ts16 low = ts17 ). "-3600
+DATA(lv_ts16) = CONV utclong( '2024-01-01 05:30:00' ).
+DATA(lv_ts17) = CONV utclong( '2024-01-01 06:30:00' ).
+DATA(lv_diff1) = utclong_diff( high = lv_ts17 low = lv_ts16 ). "3600
+DATA(lv_diff2) = utclong_diff( high = lv_ts16 low = lv_ts17 ). "-3600
 ```
 
 ### CONVERT UTCLONG — utclong ⇄ local date/time
@@ -291,19 +291,19 @@ DATA(diff2) = utclong_diff( high = ts16 low = ts17 ). "-3600
 ```abap
 "utclong -> local date/time
 CONVERT UTCLONG CONV utclong( '2024-11-03 05:30:00' )
-        INTO DATE DATA(date_utc) TIME DATA(time_utc) TIME ZONE 'EST'. "20241103 / 013000
+        INTO DATE DATA(lv_date_utc) TIME DATA(lv_time_utc) TIME ZONE 'EST'. "20241103 / 013000
 
 "with fractional seconds + daylight saving flag
 CONVERT UTCLONG CONV utclong( '2024-08-08 09:23:11.7681270' )
-        INTO DATE date_utc TIME time_utc
-             FRACTIONAL SECONDS DATA(fract) "0.768127
-             DAYLIGHT SAVING TIME DATA(dst) "X
+        INTO DATE lv_date_utc TIME lv_time_utc
+             FRACTIONAL SECONDS DATA(lv_fract) "0.768127
+             DAYLIGHT SAVING TIME DATA(lv_dst) "X
              TIME ZONE 'EST'.
 "Initial time zone -> no conversion. Non-existent zone -> CX_SY_CONVERSION_NO_DATE_TIME.
 
 "local date/time -> utclong
 CONVERT DATE CONV d( '20240101' ) TIME CONV t( '112458' )
-        TIME ZONE 'EST' INTO UTCLONG DATA(utcl). "2024-01-01 16:24:58.0000000
+        TIME ZONE 'EST' INTO UTCLONG DATA(lv_utcl). "2024-01-01 16:24:58.0000000
 ```
 
 Validity errors when converting INTO UTCLONG: `cx_sy_conversion_no_date` (bad date), `cx_sy_conversion_no_time` (bad time), `cx_sy_conversion_no_date_time` (bad fractions/DST combo), `cx_parameter_invalid_range` (bad DST value).
@@ -314,13 +314,13 @@ Validity errors when converting INTO UTCLONG: `cx_sy_conversion_no_date` (bad da
 "diff into components
 cl_abap_utclong=>diff( EXPORTING high = CONV utclong( '2024-01-03 10:35:12' )
                                  low  = CONV utclong( '2024-01-01 05:30:00' )
-                       IMPORTING days = DATA(diff_days) hours = DATA(diff_hours) minutes = DATA(diff_minutes) seconds = DATA(diff_seconds) ). "2 / 5 / 5 / 12
+                       IMPORTING days = DATA(lv_diff_days) hours = DATA(lv_diff_hours) minutes = DATA(lv_diff_minutes) seconds = DATA(lv_diff_seconds) ). "2 / 5 / 5 / 12
 
 "read a character-like time stamp into utclong
-DATA(ts_string) = |{ utclong_current( ) TIMESTAMP = ENVIRONMENT TIMEZONE = 'UTC' }|.
+DATA(lv_ts_string) = |{ utclong_current( ) TIMESTAMP = ENVIRONMENT TIMEZONE = 'UTC' }|.
 TRY.
-    cl_abap_utclong=>read( EXPORTING string = ts_string timezone = 'UTC'
-                           IMPORTING value  = DATA(utc_ts) ).
+    cl_abap_utclong=>read( EXPORTING string = lv_ts_string timezone = 'UTC'
+                           IMPORTING value  = DATA(lv_utc_ts) ).
   CATCH cx_abap_utclong_invalid.
 ENDTRY.
 ```
@@ -334,41 +334,41 @@ Only a few ABAP statements treat these specially; most interpret them as numbers
 ### GET TIME STAMP
 
 ```abap
-DATA ts_short TYPE timestamp.  GET TIME STAMP FIELD ts_short. "e.g. 20240101081317
-DATA ts_long  TYPE timestampl. GET TIME STAMP FIELD ts_long.  "e.g. 20240101081317.81011
-GET TIME STAMP FIELD DATA(ts_inl).                            "inline -> short form (timestamp)
+DATA lv_ts_short TYPE timestamp.  GET TIME STAMP FIELD lv_ts_short. "e.g. 20240101081317
+DATA lv_ts_long  TYPE timestampl. GET TIME STAMP FIELD lv_ts_long.  "e.g. 20240101081317.81011
+GET TIME STAMP FIELD DATA(lv_ts_inl).                            "inline -> short form (timestamp)
 ```
 
 ### CONVERT TIME STAMP — packed ⇄ local date/time
 
 ```abap
-GET TIME STAMP FIELD DATA(tsf).
-DATA(user_tz) = cl_abap_context_info=>get_user_time_zone( ).
-CONVERT TIME STAMP tsf TIME ZONE user_tz INTO DATE DATA(dat) TIME DATA(tim).
+GET TIME STAMP FIELD DATA(lv_tsf).
+DATA(lv_user_tz) = cl_abap_context_info=>get_user_time_zone( ).
+CONVERT TIME STAMP lv_tsf TIME ZONE lv_user_tz INTO DATE DATA(lv_dat) TIME DATA(lv_tim).
 
 "timestampl source -> fractions ignored; with DAYLIGHT SAVING TIME flag
 CONVERT TIME STAMP CONV timestamp( '20240808112458' ) TIME ZONE 'EST'
-        INTO DATE dat TIME tim DAYLIGHT SAVING TIME DATA(dst). "dst = abap_true
+        INTO DATE lv_dat TIME lv_tim DAYLIGHT SAVING TIME DATA(lv_dst). "lv_dst = abap_true
 
 "sy-subrc: invalid time zone -> 8 ; invalid time stamp -> 12
 
 "local -> packed
-DATA ts_conv TYPE timestamp.
+DATA lv_ts_conv TYPE timestamp.
 CONVERT DATE CONV d( '20240101' ) TIME CONV t( '112458' )
-        INTO TIME STAMP ts_conv TIME ZONE 'EST'. "20240101162458
+        INTO TIME STAMP lv_ts_conv TIME ZONE 'EST'. "20240101162458
 ```
 
 ### CL_ABAP_TSTMP — calculate / convert packed time stamps
 
 ```abap
-GET TIME STAMP FIELD DATA(tsa).
-DATA(tsb)     = cl_abap_tstmp=>add( tstmp = tsa secs = 3600 ).         "+1 h
-DATA(tsc)     = cl_abap_tstmp=>subtractsecs( tstmp = tsa secs = 7200 )."-2 h
-DATA tsl TYPE timestampl. GET TIME STAMP FIELD tsl.
-DATA(tsd)     = cl_abap_tstmp=>move_to_short( tsl ).                   "timestampl -> timestamp
-DATA(ts2utcl) = cl_abap_tstmp=>tstmp2utclong( tsl ).                   "-> utclong
-DATA(utcl2ts) = cl_abap_tstmp=>utclong2tstmp_short( ts2utcl ).         "utclong -> timestamp
-DATA(utcl2tsl)= cl_abap_tstmp=>utclong2tstmp( ts2utcl ).               "utclong -> timestampl
+GET TIME STAMP FIELD DATA(lv_tsa).
+DATA(lv_tsb)     = cl_abap_tstmp=>add( tstmp = lv_tsa secs = 3600 ).         "+1 h
+DATA(lv_tsc)     = cl_abap_tstmp=>subtractsecs( tstmp = lv_tsa secs = 7200 )."-2 h
+DATA lv_tsl TYPE timestampl. GET TIME STAMP FIELD lv_tsl.
+DATA(lv_tsd)     = cl_abap_tstmp=>move_to_short( lv_tsl ).                   "timestampl -> timestamp
+DATA(lv_ts2utcl) = cl_abap_tstmp=>tstmp2utclong( lv_tsl ).                   "-> utclong
+DATA(lv_utcl2ts) = cl_abap_tstmp=>utclong2tstmp_short( lv_ts2utcl ).         "utclong -> timestamp
+DATA(lv_utcl2tsl)= cl_abap_tstmp=>utclong2tstmp( lv_ts2utcl ).               "utclong -> timestampl
 ```
 
 ---
@@ -378,12 +378,12 @@ DATA(utcl2tsl)= cl_abap_tstmp=>utclong2tstmp( ts2utcl ).               "utclong 
 Unix time stamp = seconds since 1970-01-01 00:00:00 UTC.
 
 ```abap
-DATA(unix_now)    = xco_cp=>sy->unix_timestamp( )->value.
-DATA(unix_custom) = xco_cp_time=>moment( iv_year = '2024' iv_month = '11' iv_day = '03'
+DATA(lv_unix_now)    = xco_cp=>sy->unix_timestamp( )->value.
+DATA(lv_unix_custom) = xco_cp_time=>moment( iv_year = '2024' iv_month = '11' iv_day = '03'
                                          iv_hour = '07' iv_minute = '12' iv_second = '30'
                                        )->get_unix_timestamp( )->value. "1730617950
 "Unix seconds -> utclong via utclong_add
-DATA(ts_from_unix) = utclong_add( val = CONV utclong( '1970-01-01 00:00:00' ) seconds = 1730617950 ).
+DATA(lv_ts_from_unix) = utclong_add( val = CONV utclong( '1970-01-01 00:00:00' ) seconds = 1730617950 ).
 ```
 
 ---
@@ -392,15 +392,15 @@ DATA(ts_from_unix) = utclong_add( val = CONV utclong( '1970-01-01 00:00:00' ) se
 
 ```abap
 "DATE = USER | RAW | ISO | ENVIRONMENT
-DATA(d1) = |{ cl_abap_context_info=>get_system_date( ) DATE = ISO }|.  "2024-01-01
-DATA(d2) = |{ cl_abap_context_info=>get_system_date( ) DATE = RAW }|.  "20240101
+DATA(lv_d1) = |{ cl_abap_context_info=>get_system_date( ) DATE = ISO }|.  "2024-01-01
+DATA(lv_d2) = |{ cl_abap_context_info=>get_system_date( ) DATE = RAW }|.  "20240101
 "TIME = ISO | RAW | USER | ENVIRONMENT
-DATA(t1) = |{ cl_abap_context_info=>get_system_time( ) TIME = ISO }|.  "14:37:24
+DATA(lv_t1) = |{ cl_abap_context_info=>get_system_time( ) TIME = ISO }|.  "14:37:24
 "TIMESTAMP = SPACE | ISO | USER | ENVIRONMENT
-DATA(s1) = |{ utclong_current( ) TIMESTAMP = ISO }|.                   "2024-01-01T14:39:50,4071110
+DATA(lv_s1) = |{ utclong_current( ) TIMESTAMP = ISO }|.                   "2024-01-01T14:39:50,4071110
 "TIMEZONE (+ COUNTRY) for localized output
-DATA(z1) = |{ utclong_current( ) TIMEZONE = 'UTC' }|.
-DATA(z2) = |{ utclong_current( ) TIMEZONE = 'CET' COUNTRY = 'DE ' }|.  "30.12.2024 15:43:20,…
+DATA(lv_z1) = |{ utclong_current( ) TIMEZONE = 'UTC' }|.
+DATA(lv_z2) = |{ utclong_current( ) TIMEZONE = 'CET' COUNTRY = 'DE ' }|.  "30.12.2024 15:43:20,…
 ```
 
 ---
@@ -411,26 +411,26 @@ Available in both ABAP SQL and ABAP CDS (same names). See full list in [builtin-
 
 ```abap
 SELECT SINGLE FROM i_timezone FIELDS
-  is_valid( @ti ) AS isvalid,                       "1
-  extract_year( @utc ) AS extr_year,                "2024
-  dayname( @da ) AS day_name,                       "Monday
-  monthname( @utc ) AS month_name,                  "February
-  weekday( @utc ) AS week_day,                      "3
-  days_between( @utc, utclong`2024-02-25 08:14:26` ) AS days_bw, "10
-  add_days( @da, 2 ) AS add_days,                   "20240124
-  add_months( @utc, 3 ) AS add_months,              "2024-05-15 …
+  is_valid( @lv_ti ) AS isvalid,                       "1
+  extract_year( @lv_utc ) AS extr_year,                "2024
+  dayname( @lv_da ) AS day_name,                       "Monday
+  monthname( @lv_utc ) AS month_name,                  "February
+  weekday( @lv_utc ) AS week_day,                      "3
+  days_between( @lv_utc, utclong`2024-02-25 08:14:26` ) AS days_bw, "10
+  add_days( @lv_da, 2 ) AS add_days,                   "20240124
+  add_months( @lv_utc, 3 ) AS add_months,              "2024-05-15 …
   dats_add_days( dats`20240812`, 4 ) AS dats_add,   "20240816
   dats_add_months( dats`20240812`, 3 ) AS dats_addm,"20241112
-  extract_hour( @utc ) AS extr_hour,                "5
+  extract_hour( @lv_utc ) AS extr_hour,                "5
   utcl_current( ) AS utcl_current,
-  utcl_add_seconds( @utc, 5 ) AS sec_add_utc,
+  utcl_add_seconds( @lv_utc, 5 ) AS sec_add_utc,
   utcl_seconds_between( utclong`2024-02-25 08:14:26`, utclong`2024-02-25 08:15:17` ) AS sec_bw, "51
-  tstmp_is_valid( @tmst ) AS ts_valid,              "1
+  tstmp_is_valid( @lv_tmst ) AS ts_valid,              "1
   tstmp_current_utctimestamp( ) AS ts_current,
-  tstmp_to_dats( tstmp = @tmst, tzone = CAST( char`EST` AS CHAR( 6 ) ) ) AS to_dats, "20240808
-  dats_tims_to_tstmp( date = @da, time = @ti, tzone = CAST( char`EST` AS CHAR( 6 ) ) ) AS to_tstmp
+  tstmp_to_dats( tstmp = @lv_tmst, tzone = CAST( char`EST` AS CHAR( 6 ) ) ) AS to_dats, "20240808
+  dats_tims_to_tstmp( date = @lv_da, time = @lv_ti, tzone = CAST( char`EST` AS CHAR( 6 ) ) ) AS to_tstmp
 WHERE TimeZoneID = char`EST`
-INTO @DATA(result).
+INTO @DATA(ls_result).
 ```
 
 ---
@@ -446,13 +446,13 @@ INTO @DATA(result).
 
 ```abap
 TRY.
-    DATA(factory_calendar) = cl_fhc_calendar_runtime=>create_factorycalendar_runtime(
+    DATA(lo_factory_calendar) = cl_fhc_calendar_runtime=>create_factorycalendar_runtime(
                                iv_factorycalendar_id = '<factory calendar ID>' ).
-    DATA(date_from_factorydate) = factory_calendar->convert_factorydate_to_date(
+    DATA(lv_date_from_factorydate) = lo_factory_calendar->convert_factorydate_to_date(
                                     iv_factorydate = '123' ).
     "further calls: is_date_workingday, calc_workingdays_between_dates,
     "add_workingdays_to_date, subtract_workingdays_from_date, ...
-  CATCH cx_fhc_runtime INTO DATA(calendar_error).
+  CATCH cx_fhc_runtime INTO DATA(lo_calendar_error).
     "exception handling
 ENDTRY.
 ```

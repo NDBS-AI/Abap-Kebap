@@ -19,7 +19,7 @@ Releasing either kind pushes the changes to the Git repository of the associated
 The factory class `mbc_cp_api` instantiates a transport API used to **validate** and **record** entity keys of a RAP BO on a customizing transport request:
 
 ```abap
-DATA(transport_api) = mbc_cp_api=>rap_tdat_cts(
+DATA(lo_transport_api) = mbc_cp_api=>rap_tdat_cts(
   tdat_name              = '/ITAPC1/CODE'
   table_entity_relations = VALUE #(
     ( entity = '/ITAPC1/I_Status'     table = '/ITAPC1/STATUS' )

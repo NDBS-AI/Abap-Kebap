@@ -76,22 +76,22 @@ ENDTRY.
 
 ```abap
 "ABAP -> asXML (xstring), itab becomes the <ITAB> element name
-CALL TRANSFORMATION id SOURCE itab = tab RESULT XML DATA(xml_xstr).
+CALL TRANSFORMATION id SOURCE itab = lt_tab RESULT XML DATA(lv_xml_xstr).
 
 "Dynamic source binding
-DATA(srctab) = VALUE abap_trans_srcbind_tab( ( name = 'ITAB' value = REF #( tab ) ) ).
-CALL TRANSFORMATION id SOURCE (srctab) RESULT XML DATA(xml_b).
+DATA(lt_srctab) = VALUE abap_trans_srcbind_tab( ( name = 'ITAB' value = REF #( lt_tab ) ) ).
+CALL TRANSFORMATION id SOURCE (lt_srctab) RESULT XML DATA(lv_xml_b).
 
 "asXML -> ABAP
-DATA tab_b LIKE tab.
-CALL TRANSFORMATION id SOURCE XML xml_xstr RESULT itab = tab_b.
+DATA lt_tab_b LIKE lt_tab.
+CALL TRANSFORMATION id SOURCE XML lv_xml_xstr RESULT itab = lt_tab_b.
 
 "Dynamic result binding
-DATA(restab) = VALUE abap_trans_resbind_tab( ( name = 'ITAB' value = REF #( tab_b ) ) ).
-CALL TRANSFORMATION id SOURCE XML xml_xstr RESULT (restab).
+DATA(lt_restab) = VALUE abap_trans_resbind_tab( ( name = 'ITAB' value = REF #( lt_tab_b ) ) ).
+CALL TRANSFORMATION id SOURCE XML lv_xml_xstr RESULT (lt_restab).
 
 "Suppress the XML declaration when writing to a flat table
-CALL TRANSFORMATION id SOURCE itab = tab RESULT XML chartab OPTIONS xml_header = 'NO'.
+CALL TRANSFORMATION id SOURCE itab = lt_tab RESULT XML lt_chartab OPTIONS xml_header = 'NO'.
 ```
 
 > More additions exist: `PARAMETERS` (bind XSLT/ST parameters) and `OPTIONS` (e.g. `xml_header`). Use appropriate exception classes — see the `CALL TRANSFORMATION` doc. Full syntax in [references/transformations.md](references/transformations.md).
@@ -114,36 +114,36 @@ sXML processes documents **sequentially**, no DOM. Supports XML 1.0, XOP, binary
 
 ```abap
 "Token-based XML writer (UTF-8 XML 1.0)
-DATA(writer) = CAST if_sxml_writer( cl_sxml_string_writer=>create(
+DATA(lo_writer) = CAST if_sxml_writer( cl_sxml_string_writer=>create(
                        type = if_sxml=>co_xt_xml10 encoding = 'UTF-8' ) ).
 TRY.
-    writer->open_element( name = 'flights' ).
-    writer->open_element( name = 'flight' ).
-    writer->open_element( name = 'carrier' ).
-    writer->write_value( 'LH' ).
-    writer->close_element( ).
-    writer->close_element( ).
-    writer->close_element( ).
+    lo_writer->open_element( name = 'flights' ).
+    lo_writer->open_element( name = 'flight' ).
+    lo_writer->open_element( name = 'carrier' ).
+    lo_writer->write_value( 'LH' ).
+    lo_writer->close_element( ).
+    lo_writer->close_element( ).
+    lo_writer->close_element( ).
   CATCH cx_sxml_state_error.
 ENDTRY.
 "Output is xstring; another cast to reach get_output
-DATA(xml) = CAST cl_sxml_string_writer( writer )->get_output( ).
+DATA(lv_xml) = CAST cl_sxml_string_writer( lo_writer )->get_output( ).
 ```
 
 ```abap
 "Token-based reader — iterate every node with next_node
-DATA(reader) = cl_sxml_string_reader=>create( xml_to_parse ).  "xstring in
+DATA(lo_reader) = cl_sxml_string_reader=>create( xml_to_parse ).  "xstring in
 DO.
-  reader->next_node( ).
-  IF reader->node_type = if_sxml_node=>co_nt_final.
+  lo_reader->next_node( ).
+  IF lo_reader->node_type = if_sxml_node=>co_nt_final.
     EXIT.
   ENDIF.
-  "reader->node_type, reader->name, reader->value are directly available
-  IF reader->node_type = if_sxml_node=>co_nt_element_open.
+  "lo_reader->node_type, lo_reader->name, lo_reader->value are directly available
+  IF lo_reader->node_type = if_sxml_node=>co_nt_element_open.
     DO.  "walk this element's attributes
-      reader->next_attribute( ).
-      IF reader->node_type <> if_sxml_node=>co_nt_attribute. EXIT. ENDIF.
-      "reader->name / reader->value hold the attribute
+      lo_reader->next_attribute( ).
+      IF lo_reader->node_type <> if_sxml_node=>co_nt_attribute. EXIT. ENDIF.
+      "lo_reader->name / lo_reader->value hold the attribute
     ENDDO.
   ENDIF.
 ENDDO.
@@ -159,30 +159,30 @@ Node types live in `if_sxml_node`: `co_nt_element_open`, `co_nt_element_close`, 
 
 ```abap
 "ABAP -> JSON via a JSON writer
-DATA str_a TYPE string VALUE `Hello`.
-DATA(writer) = cl_sxml_string_writer=>create( type = if_sxml=>co_xt_json ).
-CALL TRANSFORMATION id SOURCE hi = str_a RESULT XML writer.
-DATA(json) = cl_abap_conv_codepage=>create_in( )->convert( writer->get_output( ) ).
-"json: {"HI":"Hello"}
+DATA lv_str_a TYPE string VALUE `Hello`.
+DATA(lo_writer) = cl_sxml_string_writer=>create( type = if_sxml=>co_xt_json ).
+CALL TRANSFORMATION id SOURCE hi = lv_str_a RESULT XML lo_writer.
+DATA(lv_json) = cl_abap_conv_codepage=>create_in( )->convert( lo_writer->get_output( ) ).
+"lv_json: {"HI":"Hello"}
 
 "JSON -> ABAP (source is JSON; handled implicitly)
-DATA str_b TYPE string.
-CALL TRANSFORMATION id SOURCE XML json RESULT hi = str_b.   "str_b: Hello
+DATA lv_str_b TYPE string.
+CALL TRANSFORMATION id SOURCE XML lv_json RESULT hi = lv_str_b.   "lv_str_b: Hello
 
 "Using the SOURCE JSON / RESULT JSON additions
-DATA num TYPE i VALUE 123.
-CALL TRANSFORMATION id SOURCE var = num RESULT JSON DATA(json2).  "{"VAR":123}
-DATA int TYPE i.
-CALL TRANSFORMATION id SOURCE JSON json2 RESULT var = int.        "int: 123
+DATA lv_num TYPE i VALUE 123.
+CALL TRANSFORMATION id SOURCE var = lv_num RESULT JSON DATA(lv_json2).  "{"VAR":123}
+DATA lv_int TYPE i.
+CALL TRANSFORMATION id SOURCE JSON lv_json2 RESULT var = lv_int.        "lv_int: 123
 ```
 
 Format the JSON output by setting writer options before the call:
 
 ```abap
-DATA(json_wr) = CAST if_sxml_writer( cl_sxml_string_writer=>create( type = if_sxml=>co_xt_json ) ).
-json_wr->set_option( option = if_sxml_writer=>co_opt_linebreaks ).
-json_wr->set_option( option = if_sxml_writer=>co_opt_indent ).
-CALL TRANSFORMATION id SOURCE itab = it RESULT XML json_wr.
+DATA(lo_json_wr) = CAST if_sxml_writer( cl_sxml_string_writer=>create( type = if_sxml=>co_xt_json ) ).
+lo_json_wr->set_option( option = if_sxml_writer=>co_opt_linebreaks ).
+lo_json_wr->set_option( option = if_sxml_writer=>co_opt_indent ).
+CALL TRANSFORMATION id SOURCE itab = lt_it RESULT XML lo_json_wr.
 ```
 
 Field names come out **upper case** (`{"COMP1":1,...}`) — the asJSON convention. Use a JSON class below to get camelCase or custom names.
@@ -193,25 +193,25 @@ Available in most systems (classic and many cloud-adjacent stacks). Static `seri
 
 ```abap
 "ABAP -> JSON
-DATA(json_str) = /ui2/cl_json=>serialize( data = itab ).
-DATA(jp) = /ui2/cl_json=>serialize( data = itab format_output = abap_true ).
-DATA(jc) = /ui2/cl_json=>serialize( data = itab
+DATA(lv_json_str) = /ui2/cl_json=>serialize( data = lt_itab ).
+DATA(lv_jp) = /ui2/cl_json=>serialize( data = lt_itab format_output = abap_true ).
+DATA(lv_jc) = /ui2/cl_json=>serialize( data = lt_itab
                                     format_output = abap_true
                                     pretty_name   = /ui2/cl_json=>pretty_mode-camel_case ).
 
 "JSON -> ABAP (deserialize writes into a CHANGING target)
-DATA result LIKE itab.
-/ui2/cl_json=>deserialize( EXPORTING json = json_str CHANGING data = result ).
+DATA lt_result LIKE lt_itab.
+/ui2/cl_json=>deserialize( EXPORTING json = lv_json_str CHANGING data = lt_result ).
 
 "Name mapping (ABAP field <-> JSON name)
-/ui2/cl_json=>deserialize( EXPORTING json = json_str
+/ui2/cl_json=>deserialize( EXPORTING json = lv_json_str
   name_mappings = VALUE #( ( abap = 'CARR' json = `CARRIER_ID` )
                            ( abap = 'CONN' json = `CONNECTION_ID` ) )
-  CHANGING data = itab4map ).
+  CHANGING data = lt_itab4map ).
 
 "JSON as xstring (jsonx), and 'generate' when no ABAP type exists
-/ui2/cl_json=>deserialize( EXPORTING jsonx = json_xstring CHANGING data = result ).
-DATA(dref) = /ui2/cl_json=>generate( json = some_json ).  "RETURNING ref to data
+/ui2/cl_json=>deserialize( EXPORTING jsonx = lv_json_xstring CHANGING data = lt_result ).
+DATA(lr_dref) = /ui2/cl_json=>generate( json = lv_some_json ).  "RETURNING ref to data
 ```
 
 `generate` yields a generic `REF TO data` you can inspect via RTTS — see [abap-dynamic-programming](../abap-dynamic-programming/SKILL.md).
@@ -222,23 +222,23 @@ Released for ABAP Cloud; fluent API. `from_abap`/`to_string`, `from_string`/`wri
 
 ```abap
 "ABAP -> JSON
-DATA(json_struc) = xco_cp_json=>data->from_abap( carrier_struc )->to_string( ).
-DATA(json_tab)   = xco_cp_json=>data->from_abap( carriers_tab )->to_string( ).
+DATA(lv_json_struc) = xco_cp_json=>data->from_abap( ls_carrier_struc )->to_string( ).
+DATA(lv_json_tab)   = xco_cp_json=>data->from_abap( lt_carriers_tab )->to_string( ).
 
 "JSON -> ABAP (write_to takes a data reference)
-xco_cp_json=>data->from_string( json_struc )->write_to( REF #( target_struc ) ).
+xco_cp_json=>data->from_string( lv_json_struc )->write_to( REF #( ls_target_struc ) ).
 
 "Fluent builder
-DATA(builder) = xco_cp_json=>data->builder( ).
-builder->begin_object(
+DATA(lo_builder) = xco_cp_json=>data->builder( ).
+lo_builder->begin_object(
   )->add_member( 'CarrierId' )->add_string( 'DL'
   )->add_member( 'ConnectionId' )->add_string( '1984'
   )->end_object( ).
-DATA(built) = builder->get_data( )->to_string( ).
+DATA(lv_built) = lo_builder->get_data( )->to_string( ).
 
 "Apply a name transformation while reading (PascalCase -> underscore)
-xco_cp_json=>data->from_string( built )->apply( VALUE #(
-  ( xco_cp_json=>transformation->pascal_case_to_underscore ) ) )->write_to( REF #( target_struc ) ).
+xco_cp_json=>data->from_string( lv_built )->apply( VALUE #(
+  ( xco_cp_json=>transformation->pascal_case_to_underscore ) ) )->write_to( REF #( ls_target_struc ) ).
 ```
 
 ## Serializing objects
@@ -249,15 +249,15 @@ Class instances serialize via `CALL TRANSFORMATION id` once the class implements
 CLASS zcl_demo DEFINITION ... .
   PUBLIC SECTION.
     INTERFACES if_serializable_object.
-    DATA timestamp TYPE utclong.
+    DATA mv_timestamp TYPE utclong.
 ENDCLASS.
 
-DATA(oref) = NEW zcl_demo( ).
-oref->timestamp = utclong_current( ).
-CALL TRANSFORMATION id SOURCE obj = oref RESULT XML DATA(serialized_obj).  "xstring (inline declaration)
+DATA(lo_oref) = NEW zcl_demo( ).
+lo_oref->mv_timestamp = utclong_current( ).
+CALL TRANSFORMATION id SOURCE obj = lo_oref RESULT XML DATA(lv_serialized_obj).  "xstring (inline declaration)
 
-DATA deserialized TYPE REF TO zcl_demo.
-CALL TRANSFORMATION id SOURCE XML serialized_obj RESULT obj = deserialized.
+DATA lo_deserialized TYPE REF TO zcl_demo.
+CALL TRANSFORMATION id SOURCE XML lv_serialized_obj RESULT obj = lo_deserialized.
 ```
 
 To customize, implement the **private instance** methods `SERIALIZE_HELPER` (output params only) and `DESERIALIZE_HELPER` (input params only) — both or neither. Same-named, same-typed parameters on each. Use them to exclude attributes from (de)serialization.
@@ -273,12 +273,12 @@ XML/JSON serialization frequently produces or consumes `xstring`. Convert with a
 
 ```abap
 "string -> xstring
-DATA(xstr) = cl_abap_conv_codepage=>create_out( )->convert( `<TXT>ABAP</TXT>` ).
+DATA(lv_xstr) = cl_abap_conv_codepage=>create_out( )->convert( `<TXT>ABAP</TXT>` ).
 "xstring -> string
-DATA(str)  = cl_abap_conv_codepage=>create_in( )->convert( xstr ).
+DATA(lv_str)  = cl_abap_conv_codepage=>create_in( )->convert( lv_xstr ).
 
 "XCO alternative
-DATA(xstr_xco) = xco_cp=>string( `<TXT>ABAP</TXT>` )->as_xstring( xco_cp_character=>code_page->utf_8 )->value.
+DATA(lv_xstr_xco) = xco_cp=>string( `<TXT>ABAP</TXT>` )->as_xstring( xco_cp_character=>code_page->utf_8 )->value.
 ```
 
 See [abap-strings-regex](../abap-strings-regex/SKILL.md) for the string layer. For very large payloads, compress with `cl_abap_gzip=>compress_binary` / `decompress_binary`.

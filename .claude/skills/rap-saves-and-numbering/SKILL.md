@@ -120,10 +120,10 @@ CLASS lsc_zr_salesorder IMPLEMENTATION.
     "Framework has handled persistence; add side work only.
     IF create-salesorder IS NOT INITIAL.
       RAISE ENTITY EVENT zr_salesorder~created
-        FROM VALUE #( FOR <created_order> IN create-salesorder
-                      ( %key = VALUE #( SalesOrderUuid = <created_order>-SalesOrderUuid ) ) ).
+        FROM VALUE #( FOR <fs_created_order> IN create-salesorder
+                      ( %key = VALUE #( SalesOrderUuid = <fs_created_order>-SalesOrderUuid ) ) ).
     ENDIF.
-    LOOP AT update-salesorder INTO DATA(changed_order)
+    LOOP AT update-salesorder INTO DATA(ls_changed_order)
          WHERE %control-OverallStatus = if_abap_behv=>mk-on.
       "write application log entry / change document for the status change
     ENDLOOP.
@@ -169,20 +169,20 @@ with unmanaged save
 
 ```abap
 METHOD save_modified.
-  DATA new_orders TYPE STANDARD TABLE OF zaonlineshop.
+  DATA lt_new_orders TYPE STANDARD TABLE OF zaonlineshop.
 
   IF create-onlineshop IS NOT INITIAL.
-    new_orders = CORRESPONDING #( create-onlineshop MAPPING FROM ENTITY ).
-    INSERT zaonlineshop FROM TABLE @new_orders.
+    lt_new_orders = CORRESPONDING #( create-onlineshop MAPPING FROM ENTITY ).
+    INSERT zaonlineshop FROM TABLE @lt_new_orders.
   ENDIF.
 
   IF update-onlineshop IS NOT INITIAL.
     "Variant A: %control-guarded single-column updates
-    LOOP AT update-onlineshop INTO DATA(changed_order)
+    LOOP AT update-onlineshop INTO DATA(ls_changed_order)
          WHERE %control-OverallStatus = if_abap_behv=>mk-on.
       UPDATE zaonlineshop
-        SET overall_status = @changed_order-OverallStatus
-        WHERE order_uuid = @changed_order-OrderUuid.
+        SET overall_status = @ls_changed_order-OverallStatus
+        WHERE order_uuid = @ls_changed_order-OrderUuid.
     ENDLOOP.
     "Variant B: let SQL apply exactly the changed columns
     UPDATE zaonlineshop FROM TABLE @update-onlineshop
@@ -190,8 +190,8 @@ METHOD save_modified.
   ENDIF.
 
   IF delete-onlineshop IS NOT INITIAL.
-    LOOP AT delete-onlineshop INTO DATA(order_to_delete).
-      DELETE FROM zaonlineshop WHERE order_uuid = @order_to_delete-OrderUuid.
+    LOOP AT delete-onlineshop INTO DATA(ls_order_to_delete).
+      DELETE FROM zaonlineshop WHERE order_uuid = @ls_order_to_delete-OrderUuid.
     ENDLOOP.
   ENDIF.
 ENDMETHOD.
@@ -219,31 +219,31 @@ The double-write discipline: every modify handler writes to the buffer *and* rec
 
 ```abap
 METHOD create.
-  DATA messages          TYPE /dmo/t_message.
-  DATA legacy_travel_in  TYPE /dmo/travel.
-  DATA legacy_travel_out TYPE /dmo/travel.
+  DATA lt_messages          TYPE /dmo/t_message.
+  DATA ls_legacy_travel_in  TYPE /dmo/travel.
+  DATA ls_legacy_travel_out TYPE /dmo/travel.
 
-  LOOP AT entities ASSIGNING FIELD-SYMBOL(<travel_to_create>).
-    legacy_travel_in = CORRESPONDING #( <travel_to_create> MAPPING FROM ENTITY USING CONTROL ).
+  LOOP AT entities ASSIGNING FIELD-SYMBOL(<fs_travel_to_create>).
+    ls_legacy_travel_in = CORRESPONDING #( <fs_travel_to_create> MAPPING FROM ENTITY USING CONTROL ).
 
     CALL FUNCTION '/DMO/FLIGHT_TRAVEL_CREATE'   "writes to the legacy buffer, no COMMIT
-      EXPORTING is_travel   = CORRESPONDING /dmo/s_travel_in( legacy_travel_in )
-      IMPORTING es_travel   = legacy_travel_out
-                et_messages = messages.
+      EXPORTING is_travel   = CORRESPONDING /dmo/s_travel_in( ls_legacy_travel_in )
+      IMPORTING es_travel   = ls_legacy_travel_out
+                et_messages = lt_messages.
 
-    IF messages IS INITIAL.
-      APPEND VALUE #( %cid     = <travel_to_create>-%cid
-                      travelid = legacy_travel_out-travel_id ) TO mapped-travel.
+    IF lt_messages IS INITIAL.
+      APPEND VALUE #( %cid     = <fs_travel_to_create>-%cid
+                      travelid = ls_legacy_travel_out-travel_id ) TO mapped-travel.
     ELSE.
-      APPEND VALUE #( travelid = legacy_travel_in-travel_id ) TO failed-travel.
-      APPEND VALUE #( travelid = legacy_travel_in-travel_id
-                      %msg     = new_message( id       = messages[ 1 ]-msgid
-                                              number   = messages[ 1 ]-msgno
-                                              severity = CONV #( messages[ 1 ]-msgty )
-                                              v1       = messages[ 1 ]-msgv1
-                                              v2       = messages[ 1 ]-msgv2
-                                              v3       = messages[ 1 ]-msgv3
-                                              v4       = messages[ 1 ]-msgv4 ) ) TO reported-travel.
+      APPEND VALUE #( travelid = ls_legacy_travel_in-travel_id ) TO failed-travel.
+      APPEND VALUE #( travelid = ls_legacy_travel_in-travel_id
+                      %msg     = new_message( id       = lt_messages[ 1 ]-msgid
+                                              number   = lt_messages[ 1 ]-msgno
+                                              severity = CONV #( lt_messages[ 1 ]-msgty )
+                                              v1       = lt_messages[ 1 ]-msgv1
+                                              v2       = lt_messages[ 1 ]-msgv2
+                                              v3       = lt_messages[ 1 ]-msgv3
+                                              v4       = lt_messages[ 1 ]-msgv4 ) ) TO reported-travel.
     ENDIF.
   ENDLOOP.
 ENDMETHOD.
@@ -286,25 +286,25 @@ METHODS earlynumbering_create FOR NUMBERING
 
 METHOD earlynumbering_create.
   "Idempotency first: instances that already carry a key go straight to mapped
-  LOOP AT entities INTO DATA(travel_with_key) WHERE TravelId IS NOT INITIAL.
-    APPEND CORRESPONDING #( travel_with_key ) TO mapped-travel.
+  LOOP AT entities INTO DATA(ls_travel_with_key) WHERE TravelId IS NOT INITIAL.
+    APPEND CORRESPONDING #( ls_travel_with_key ) TO mapped-travel.
   ENDLOOP.
-  DATA(travels_without_key) = entities.
-  DELETE travels_without_key WHERE TravelId IS NOT INITIAL.
+  DATA(lt_travels_without_key) = entities.
+  DELETE lt_travels_without_key WHERE TravelId IS NOT INITIAL.
 
   cl_numberrange_runtime=>number_get( EXPORTING nr_range_nr = '01'
                                                 object      = '/DMO/TRV_M'
-                                                quantity    = CONV #( lines( travels_without_key ) )
-                                      IMPORTING number            = DATA(number_range_key)
-                                                returned_quantity = DATA(returned_quantity) ).
-  DATA(next_travel_id) = CONV /dmo/travel_id( number_range_key - returned_quantity ).
+                                                quantity    = CONV #( lines( lt_travels_without_key ) )
+                                      IMPORTING number            = DATA(lv_number_range_key)
+                                                returned_quantity = DATA(lv_returned_quantity) ).
+  DATA(lv_next_travel_id) = CONV /dmo/travel_id( lv_number_range_key - lv_returned_quantity ).
 
-  LOOP AT travels_without_key INTO DATA(travel_to_number).
-    next_travel_id += 1.
-    travel_to_number-TravelId = next_travel_id.
-    APPEND VALUE #( %cid      = travel_to_number-%cid
-                    %key      = travel_to_number-%key
-                    %is_draft = travel_to_number-%is_draft ) TO mapped-travel.
+  LOOP AT lt_travels_without_key INTO DATA(ls_travel_to_number).
+    lv_next_travel_id += 1.
+    ls_travel_to_number-TravelId = lv_next_travel_id.
+    APPEND VALUE #( %cid      = ls_travel_to_number-%cid
+                    %key      = ls_travel_to_number-%key
+                    %is_draft = ls_travel_to_number-%is_draft ) TO mapped-travel.
   ENDLOOP.
 ENDMETHOD.
 ```
@@ -328,8 +328,8 @@ Simplest possible implementation (cheat-sheet demo — the key field is a UUID t
 
 ```abap
 METHOD adjust_numbers.
-  LOOP AT mapped-calc ASSIGNING FIELD-SYMBOL(<calculation>).
-    <calculation>-%key-id = <calculation>-%pid.
+  LOOP AT mapped-calc ASSIGNING FIELD-SYMBOL(<fs_calculation>).
+    <fs_calculation>-%key-id = <fs_calculation>-%pid.
   ENDLOOP.
 ENDMETHOD.
 ```
@@ -346,18 +346,18 @@ Three patterns, escalating by how much the legacy API cooperates:
 
 **2. You call another RAP BO (e.g. a released API like `I_PurchaseRequisitionTP`) from your action and must store its late-numbered key in your own tables** → `managed with unmanaged save` (RAP610 pattern):
 
-- The action does the cross-BO EML `MODIFY ENTITIES OF i_purchaserequisitiontp ... MAPPED DATA(mapped_pr)` and stashes `mapped_pr` in a `CLASS-DATA` attribute of the global behavior pool class (`TYPE RESPONSE FOR MAPPED i_purchaserequisitiontp`) — the sanctioned way to carry data from the interaction phase into the save sequence.
+- The action does the cross-BO EML `MODIFY ENTITIES OF i_purchaserequisitiontp ... MAPPED DATA(lt_mapped_pr)` and stashes `lt_mapped_pr` in a `CLASS-DATA` attribute of the global behavior pool class (`mt_mapped_pr TYPE RESPONSE FOR MAPPED i_purchaserequisitiontp`) — the sanctioned way to carry data from the interaction phase into the save sequence.
 - The action also updates own fields via EML so the save sequence is guaranteed to run.
-- In `save_modified`: `CONVERT KEY OF i_purchaserequisitiontp FROM <mapped_row>-%pid TO DATA(final_pr_key).` — then write the final key into your persistent table with plain SQL. This write into your own persistence is exactly why additional save is not enough here: the framework must not also write the row.
+- In `save_modified`: `CONVERT KEY OF i_purchaserequisitiontp FROM <fs_mapped_row>-%pid TO DATA(ls_final_pr_key).` — then write the final key into your persistent table with plain SQL. This write into your own persistence is exactly why additional save is not enough here: the framework must not also write the row.
 
 **3. The API demands its own commit/LUW (classic BAPI + `BAPI_TRANSACTION_COMMIT`, enqueue-heavy legacy transaction)** → do **not** call it in the RAP transaction at all. Decouple via **bgPF** (background processing framework): in `save_modified`/`save`, register an operation object and `save_for_execution( )` — the framework runs it in its own LUW after the RAP commit:
 
 ```abap
 "inside save_modified — bgPF handoff (transactionally uncontrolled operation)
-DATA(background_process) = cl_bgmc_process_factory=>get_default( )->create( ).
-background_process->set_operation_tx_uncontrolled( follow_up_operation ).
-background_process->set_name( |Follow-up for { sales_order_id }| ).
-background_process->save_for_execution( ).
+DATA(lo_background_process) = cl_bgmc_process_factory=>get_default( )->create( ).
+lo_background_process->set_operation_tx_uncontrolled( follow_up_operation ).
+lo_background_process->set_name( |Follow-up for { sales_order_id }| ).
+lo_background_process->save_for_execution( ).
 ```
 
 Setup, operation classes, and retry semantics: [abap-background-processing](../abap-background-processing/SKILL.md). Raising a business event (`RAISE ENTITY EVENT` in `save`/`save_modified`) is the other decoupling option — see [rap-business-events-side-effects](../rap-business-events-side-effects/SKILL.md).

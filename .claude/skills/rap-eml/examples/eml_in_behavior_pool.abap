@@ -41,22 +41,22 @@ CLASS lhc_customer IMPLEMENTATION.
       ENTITY Customer
       FIELDS ( Name )
       WITH CORRESPONDING #( keys )
-      RESULT DATA(customers).
+      RESULT DATA(lt_customers).
 
-    LOOP AT customers ASSIGNING FIELD-SYMBOL(<customer>).
-      IF strlen( <customer>-Name ) < 3.
+    LOOP AT lt_customers ASSIGNING FIELD-SYMBOL(<fs_customer>).
+      IF strlen( <fs_customer>-Name ) < 3.
         "failed: identifies the rejected instance via %tky
-        APPEND VALUE #( %tky = <customer>-%tky ) TO failed-customer.
+        APPEND VALUE #( %tky = <fs_customer>-%tky ) TO failed-customer.
 
         "reported: message for the consumer/UI.
         " - %msg carries the message object
         " - %element-Name marks the field so a UI can highlight it
-        APPEND VALUE #( %tky          = <customer>-%tky
+        APPEND VALUE #( %tky          = <fs_customer>-%tky
                         %msg          = new_message(
                                           id       = 'ZCUST_MSG'
                                           number   = '001'
                                           severity = if_abap_behv_message=>severity-error
-                                          v1       = <customer>-Name )
+                                          v1       = <fs_customer>-Name )
                         %element-Name = if_abap_behv=>mk-on )
                TO reported-customer.
       ENDIF.
@@ -73,14 +73,14 @@ CLASS lhc_customer IMPLEMENTATION.
     MODIFY ENTITIES OF z_r_customer IN LOCAL MODE
       ENTITY Customer
       UPDATE FIELDS ( LastChangedAt )
-      WITH VALUE #( FOR <changed_customer> IN keys
-                    ( %tky          = <changed_customer>-%tky
+      WITH VALUE #( FOR <fs_changed_customer> IN keys
+                    ( %tky          = <fs_changed_customer>-%tky
                       LastChangedAt = utclong_current( ) ) )
-      REPORTED DATA(reported_update).
+      REPORTED DATA(lt_reported_update).
 
     "Propagate messages of the internal modify, if any
-    LOOP AT reported_update-customer ASSIGNING FIELD-SYMBOL(<reported_line>).
-      APPEND <reported_line> TO reported-customer.
+    LOOP AT lt_reported_update-customer ASSIGNING FIELD-SYMBOL(<fs_reported_line>).
+      APPEND <fs_reported_line> TO reported-customer.
     ENDLOOP.
   ENDMETHOD.
 
@@ -96,16 +96,16 @@ CLASS lhc_customer IMPLEMENTATION.
     MODIFY ENTITIES OF z_r_customer IN LOCAL MODE
       ENTITY Customer
       UPDATE FIELDS ( Blocked )
-      WITH VALUE #( FOR <key_to_block> IN keys
-                    ( %tky    = <key_to_block>-%tky
+      WITH VALUE #( FOR <fs_key_to_block> IN keys
+                    ( %tky    = <fs_key_to_block>-%tky
                       Blocked = abap_true ) )
-      FAILED   DATA(failed_block)
-      REPORTED DATA(reported_block).
+      FAILED   DATA(lt_failed_block)
+      REPORTED DATA(lt_reported_block).
 
     "Propagate failures of the internal modify to the caller
-    LOOP AT failed_block-customer ASSIGNING FIELD-SYMBOL(<failed_customer>).
-      APPEND VALUE #( %tky                  = <failed_customer>-%tky
-                      %fail-cause           = <failed_customer>-%fail-cause
+    LOOP AT lt_failed_block-customer ASSIGNING FIELD-SYMBOL(<fs_failed_customer>).
+      APPEND VALUE #( %tky                  = <fs_failed_customer>-%tky
+                      %fail-cause           = <fs_failed_customer>-%fail-cause
                       %action-block         = if_abap_behv=>mk-on )
              TO failed-customer.
     ENDLOOP.
@@ -114,11 +114,11 @@ CLASS lhc_customer IMPLEMENTATION.
     READ ENTITIES OF z_r_customer IN LOCAL MODE
       ENTITY Customer
       ALL FIELDS WITH CORRESPONDING #( keys )
-      RESULT DATA(blocked_customers).
+      RESULT DATA(lt_blocked_customers).
 
-    result = VALUE #( FOR <blocked_customer> IN blocked_customers
-                      ( %tky   = <blocked_customer>-%tky
-                        %param = <blocked_customer> ) ).
+    result = VALUE #( FOR <fs_blocked_customer> IN lt_blocked_customers
+                      ( %tky   = <fs_blocked_customer>-%tky
+                        %param = <fs_blocked_customer> ) ).
   ENDMETHOD.
 
 ENDCLASS.

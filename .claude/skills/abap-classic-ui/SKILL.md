@@ -139,16 +139,16 @@ Override static element attributes in PBO. Note dynpro uses `'0'`/`'1'`, not `ab
 
 ```abap
 MODULE pbo_9000 OUTPUT.
-  LOOP AT SCREEN INTO DATA(scr).
-    IF scr-name = 'SOME_INPUT_FIELD'.
-      scr-required = '1'.           "also: -active, -input, -invisible, -intensified
-      MODIFY SCREEN FROM scr.
+  LOOP AT SCREEN INTO DATA(gs_scr).
+    IF gs_scr-name = 'SOME_INPUT_FIELD'.
+      gs_scr-required = '1'.           "also: -active, -input, -invisible, -intensified
+      MODIFY SCREEN FROM gs_scr.
     ENDIF.
   ENDLOOP.
 ENDMODULE.
 ```
 
-The `MODIF ID` attribute groups elements (`scr-group1`) so you can modify many at once — heavily used on selection screens too.
+The `MODIF ID` attribute groups elements (`gs_scr-group1`) so you can modify many at once — heavily used on selection screens too.
 
 For controls (table controls, tabstrips, GUI controls like `CL_GUI_ALV_GRID`), modal/subscreen dynpros, `CHAIN`/`ENDCHAIN`, and input checks (`AT EXIT-COMMAND`), see **[references/dynpro.md](references/dynpro.md)**.
 
@@ -186,16 +186,16 @@ Other additions: `MATCHCODE OBJECT shlp` (search help), `MEMORY ID pid` (SPA/GPA
 | `HIGH` | interval upper bound (for `BT`/`NB`) |
 
 ```abap
-DATA: BEGIN OF demo_structure, carrid TYPE c LENGTH 3, num TYPE i, END OF demo_structure.
-DATA itab LIKE TABLE OF demo_structure WITH EMPTY KEY.
+DATA: BEGIN OF gs_demo_structure, carrid TYPE c LENGTH 3, num TYPE i, END OF gs_demo_structure.
+DATA gt_itab LIKE TABLE OF gs_demo_structure WITH EMPTY KEY.
 
-SELECT-OPTIONS sel1 FOR demo_structure-num.
-SELECT-OPTIONS sel2 FOR demo_structure-num DEFAULT 5 TO 10 OPTION BT SIGN I.
-SELECT-OPTIONS sel3 FOR demo_structure-carrid DEFAULT 'A*' OPTION CP SIGN I.
+SELECT-OPTIONS sel1 FOR gs_demo_structure-num.
+SELECT-OPTIONS sel2 FOR gs_demo_structure-num DEFAULT 5 TO 10 OPTION BT SIGN I.
+SELECT-OPTIONS sel3 FOR gs_demo_structure-carrid DEFAULT 'A*' OPTION CP SIGN I.
 
 START-OF-SELECTION.
-  SELECT carrid, num FROM @itab AS tab WHERE num IN @sel1 INTO @demo_structure.
-    WRITE / |{ demo_structure-carrid } { demo_structure-num }|.
+  SELECT carrid, num FROM @gt_itab AS tab WHERE num IN @sel1 INTO @gs_demo_structure.
+    WRITE / |{ gs_demo_structure-carrid } { gs_demo_structure-num }|.
   ENDSELECT.
 ```
 
@@ -265,16 +265,16 @@ Formatting: `WRITE ... COLOR col_positive`, `... RIGHT-JUSTIFIED|CENTERED`, `...
 ```abap
 START-OF-SELECTION.
   FORMAT HOTSPOT.
-  LOOP AT itab INTO DATA(wa).
-    addition_result = wa-num1 + wa-num2.
-    WRITE / |{ wa-num1 } + { wa-num2 } = ...|.
-    HIDE addition_result.        "stash a value with the current line
+  LOOP AT gt_itab INTO DATA(gs_wa).
+    gv_addition_result = gs_wa-num1 + gs_wa-num2.
+    WRITE / |{ gs_wa-num1 } + { gs_wa-num2 } = ...|.
+    HIDE gv_addition_result.        "stash a value with the current line
   ENDLOOP.
 
 AT LINE-SELECTION.               "raised by double-click / F2 (function code PICK)
   WRITE / |You clicked line { sy-lilli }.|.
   WRITE / |Clicked line content (sy-lisel): { sy-lisel }|.
-  WRITE (*) addition_result.     "HIDE value restored automatically for the clicked line
+  WRITE (*) gv_addition_result.     "HIDE value restored automatically for the clicked line
 
 AT USER-COMMAND.                 "raised by custom function codes
   CASE sy-ucomm.
@@ -302,11 +302,11 @@ Minimal SALV:
 
 ```abap
 TRY.
-    cl_salv_table=>factory( IMPORTING r_salv_table = DATA(alv)
-                            CHANGING  t_table      = itab ).
-    alv->display( ).
-  CATCH cx_salv_msg INTO DATA(err).
-    MESSAGE err->get_text( ) TYPE 'I' DISPLAY LIKE 'E'.
+    cl_salv_table=>factory( IMPORTING r_salv_table = DATA(lo_alv)
+                            CHANGING  t_table      = gt_itab ).
+    lo_alv->display( ).
+  CATCH cx_salv_msg INTO DATA(lo_err).
+    MESSAGE lo_err->get_text( ) TYPE 'I' DISPLAY LIKE 'E'.
 ENDTRY.
 ```
 
@@ -319,7 +319,7 @@ ENDTRY.
 | Building a new classic dynpro for a new app | Dead-end UI, no cloud path, no Fiori | Use RAP + Fiori ([rap-bo-modeling](../rap-bo-modeling/SKILL.md)) |
 | Evaluating `sy-ucomm` instead of the OK field / `sscrfields-ucomm` | Stale or wrong function code | Use named OK field (dynpro) or `sscrfields-ucomm` (selection screen) |
 | Forgetting to `CLEAR ok_code` after evaluating it | A code re-fires on the next PBO | Save to `save_ok`, then `CLEAR ok_code` |
-| `MODIFY SCREEN` with `abap_true` | No effect — dynpro uses `'0'`/`'1'` | Set `scr-required = '1'` etc. |
+| `MODIFY SCREEN` with `abap_true` | No effect — dynpro uses `'0'`/`'1'` | Set `gs_scr-required = '1'` etc. |
 | Validating input only in `START-OF-SELECTION` | User can't correct in place | Validate in `AT SELECTION-SCREEN ON ...` with `MESSAGE 'E'` |
 | Addressing a SELECT-OPTIONS table without `[]` | Hits the header line, not the body | Use `sel[]` for `LOOP AT`, comparisons |
 | Declaring data inside a dialog module/event block | Becomes a hidden global | Declare globally, or call a method on a local class |

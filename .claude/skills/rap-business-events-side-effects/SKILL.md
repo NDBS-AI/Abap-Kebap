@@ -119,17 +119,17 @@ CLASS lsc_inventory IMPLEMENTATION.
     " Event without payload — key only
     IF create-inventory IS NOT INITIAL.
       RAISE ENTITY EVENT zr_inventory~StockCounted
-        FROM VALUE #( FOR <created_inventory> IN create-inventory
-                      ( %key = <created_inventory>-%key ) ).
+        FROM VALUE #( FOR <fs_created_inventory> IN create-inventory
+                      ( %key = <fs_created_inventory>-%key ) ).
     ENDIF.
 
     " Event with payload — fill %param from the abstract entity's fields
-    LOOP AT update-inventory ASSIGNING FIELD-SYMBOL(<updated_inventory>)
+    LOOP AT update-inventory ASSIGNING FIELD-SYMBOL(<fs_updated_inventory>)
          WHERE %control-Quantity = if_abap_behv=>mk-on.
       RAISE ENTITY EVENT zr_inventory~OutOfStock
-        FROM VALUE #( ( %key   = <updated_inventory>-%key
-                        %param = VALUE #( product_id = <updated_inventory>-ProductID
-                                          quantity   = <updated_inventory>-Quantity
+        FROM VALUE #( ( %key   = <fs_updated_inventory>-%key
+                        %param = VALUE #( product_id = <fs_updated_inventory>-ProductID
+                                          quantity   = <fs_updated_inventory>-Quantity
                                           plant      = 'WERK' ) ) ).
     ENDLOOP.
   ENDMETHOD.
@@ -174,8 +174,8 @@ ENDCLASS.
 
 CLASS lhe_inventory IMPLEMENTATION.
   METHOD on_out_of_stock.
-    LOOP AT out_of_stock_events INTO DATA(out_of_stock_event).
-      " out_of_stock_event contains the instance key and %param (payload)
+    LOOP AT out_of_stock_events INTO DATA(ls_out_of_stock_event).
+      " ls_out_of_stock_event contains the instance key and %param (payload)
       " e.g. write an application log entry, start follow-up processing
     ENDLOOP.
   ENDMETHOD.

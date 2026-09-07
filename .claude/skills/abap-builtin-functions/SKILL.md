@@ -38,8 +38,8 @@ ABAP ships a large library of *built-in functions* (predefined, no `CALL METHOD`
 `boolc` returns type `string` ('X'/' ') and must **not** be compared with `abap_true`/`abap_false`. Use `xsdbool` (type `c` length 1) when you need an `abap_bool`.
 
 ```abap
-DATA(flag) = xsdbool( 3 > 1 ).            "abap_true (type c length 1, safe to compare)
-DATA(line_ok) = xsdbool( line_exists( itab[ comp1 = 2 ] ) ).
+DATA(lv_flag) = xsdbool( 3 > 1 ).            "abap_true (type c length 1, safe to compare)
+DATA(lv_line_ok) = xsdbool( line_exists( lt_itab[ comp1 = 2 ] ) ).
 ```
 
 ---
@@ -58,9 +58,9 @@ DATA(line_ok) = xsdbool( line_exists( itab[ comp1 = 2 ] ) ).
 Type `n` is **character-like**, not numeric — use it for IDs/article numbers, never for calculations.
 
 ```abap
-DATA(float)  = CONV f( '0.815' ).         "8.1499999999999995E-01 (not exact!)
-DATA(dec34)  = CONV decfloat34( '0.815' ). "0.815
-ASSERT float <> dec34.                     "binary float != decimal float
+DATA(lv_float)  = CONV f( '0.815' ).         "8.1499999999999995E-01 (not exact!)
+DATA(lv_dec34)  = CONV decfloat34( '0.815' ). "0.815
+ASSERT lv_float <> lv_dec34.                     "binary float != decimal float
 ```
 
 ### Rounding functions — know which way they go
@@ -76,9 +76,9 @@ frac(  )  "  0.999  0.001  -0.999  -0.001   decimal part
 ```
 
 ```abap
-DATA(round1) = round( val = CONV decfloat34( '1.2374' ) dec = 2 ).  "1.24 (to decimal places)
-DATA(round3) = round( val = CONV decfloat34( '1234567890123' ) prec = 10 ). "1.234567890E+12 (to precision)
-DATA(rescale1) = rescale( val = CONV decfloat34( '1234.56789' ) dec = 0 ). "1235
+DATA(lv_round1) = round( val = CONV decfloat34( '1.2374' ) dec = 2 ).  "1.24 (to decimal places)
+DATA(lv_round3) = round( val = CONV decfloat34( '1234567890123' ) prec = 10 ). "1.234567890E+12 (to precision)
+DATA(lv_rescale1) = rescale( val = CONV decfloat34( '1234.56789' ) dec = 0 ). "1235
 ```
 
 `round` also accepts a rounding-rule parameter (`cl_abap_math` constants) — see [references/numeric.md](references/numeric.md).
@@ -93,13 +93,13 @@ ABAP operators: `+`, `-`, `*`, `/`, `DIV`, `MOD`, `**`.
 - `**` raises to a power but **produces type `f`** — use `ipow( base = exp = )` to stay in integer/decfloat.
 
 ```abap
-DATA res TYPE i.
-res = 7 DIV 3.          "2   (integer part)
-res = 7 MOD 3.          "1   (remainder)
-res = 1 / 3.            "0   (rounded to integer target!)
-res = 2 / 3.            "1   (0.666 rounds up to 1)
-DATA(power_result) = 2 ** 5.       "type f
-DATA(power_result_int) = ipow( base = 2 exp = 5 ). "32, no type f
+DATA lv_res TYPE i.
+lv_res = 7 DIV 3.          "2   (integer part)
+lv_res = 7 MOD 3.          "1   (remainder)
+lv_res = 1 / 3.            "0   (rounded to integer target!)
+lv_res = 2 / 3.            "1   (0.666 rounds up to 1)
+DATA(lv_power_result) = 2 ** 5.       "type f
+DATA(lv_power_result_int) = ipow( base = 2 exp = 5 ). "32, no type f
 ```
 
 **The calculation type** is determined at runtime from the operands, in decreasing priority:
@@ -118,19 +118,19 @@ Non-numeric operands convert first: `d`, `t`, `x`, `xstring` → `i`; `c`, `n`, 
 
 ```abap
 TRY.
-    res = 2147483647 + 1.             "CX_SY_ARITHMETIC_OVERFLOW
+    lv_res = 2147483647 + 1.             "CX_SY_ARITHMETIC_OVERFLOW
   CATCH cx_sy_arithmetic_overflow.
 ENDTRY.
 
 TRY.
-    res = 1 / 0.                      "CX_SY_ZERODIVIDE
+    lv_res = 1 / 0.                      "CX_SY_ZERODIVIDE
   CATCH cx_sy_zerodivide.
 ENDTRY.
 " 0 / 0 does NOT raise — result is 0.
 
 "EXACT forces a lossless calculation; rounding raises CX_SY_CONVERSION_ROUNDING
-DATA(ok)  = EXACT ty_pl8d2( 1 / 4 ).  "works
-"DATA(bad) = EXACT ty_pl8d2( 1 / 3 ). "raises — rounding required
+DATA(lv_ok)  = EXACT ty_pl8d2( 1 / 4 ).  "works
+"DATA(lv_bad) = EXACT ty_pl8d2( 1 / 3 ). "raises — rounding required
 ```
 
 Calculation assignments `+=`, `-=`, `*=`, `/=` mean `a = a + ( b )` etc.
@@ -153,13 +153,13 @@ DDIC types for tables/CDS: `datn`/`timn` (modern, optimized), `dats`/`tims` (old
 
 ```abap
 "cl_abap_context_info — base type dats/tims mapped to d/t
-DATA(utc_date) = cl_abap_context_info=>get_system_date( ).  "e.g. 20240101
-DATA(utc_time) = cl_abap_context_info=>get_system_time( ).  "e.g. 152450
-DATA(tz)       = cl_abap_context_info=>get_user_time_zone( ). "e.g. UTC (catch cx_abap_context_info_error)
+DATA(lv_utc_date) = cl_abap_context_info=>get_system_date( ).  "e.g. 20240101
+DATA(lv_utc_time) = cl_abap_context_info=>get_system_time( ).  "e.g. 152450
+DATA(lv_tz)       = cl_abap_context_info=>get_user_time_zone( ). "e.g. UTC (catch cx_abap_context_info_error)
 
 "XCO library — chained calls, return type string
-DATA(date_iso) = xco_cp=>sy->date( )->as( xco_cp_time=>format->iso_8601_extended )->value. "2025-01-01
-DATA(ts_now)   = utclong_current( ).                          "type utclong
+DATA(lv_date_iso) = xco_cp=>sy->date( )->as( xco_cp_time=>format->iso_8601_extended )->value. "2025-01-01
+DATA(lv_ts_now)   = utclong_current( ).                          "type utclong
 ```
 
 In **classic** ABAP, `sy-datum` / `sy-uzeit` are fine. In **ABAP Cloud**, use `cl_abap_context_info` or XCO.
@@ -168,38 +168,38 @@ In **classic** ABAP, `sy-datum` / `sy-uzeit` are fine. In **ABAP Cloud**, use `c
 
 ```abap
 "--- Difference (dates: subtract → days; times: subtract → seconds) ---
-DATA d1 TYPE d VALUE '20240101'.
-DATA d2 TYPE d VALUE '20231227'.
-DATA(days) = d1 - d2.                       "5 days
-DATA(secs) = CONV i( CONV t( '115708' ) ).  "43028 seconds since 00:00:00
+DATA lv_d1 TYPE d VALUE '20240101'.
+DATA lv_d2 TYPE d VALUE '20231227'.
+DATA(lv_days) = lv_d1 - lv_d2.                       "5 days
+DATA(lv_secs) = CONV i( CONV t( '115708' ) ).  "43028 seconds since 00:00:00
 
 "--- Time stamp difference (exact seconds, type decfloat34) ---
-DATA(diff) = utclong_diff( high = CONV utclong( '2024-01-01 06:30:00' )
+DATA(lv_diff) = utclong_diff( high = CONV utclong( '2024-01-01 06:30:00' )
                            low  = CONV utclong( '2024-01-01 05:30:00' ) ). "3600
 
 "--- Add / subtract on utclong (no years/months params; negative = subtract) ---
-DATA(later)   = utclong_add( val = utclong_current( ) hours = 1 ).
-DATA(earlier) = utclong_add( val = utclong_current( ) hours = -1 ).
+DATA(lv_later)   = utclong_add( val = utclong_current( ) hours = 1 ).
+DATA(lv_earlier) = utclong_add( val = utclong_current( ) hours = -1 ).
 
 "--- Add / subtract with XCO (supports year/month, ultimo handling) ---
-DATA(plus5) = xco_cp=>sy->date( )->add( iv_day = 5
+DATA(lv_plus5) = xco_cp=>sy->date( )->add( iv_day = 5
                               )->as( xco_cp_time=>format->iso_8601_extended )->value.
 
 "--- Weekday from a date (1 = Monday … 7 = Sunday) ---
-DATA(weekday) = ( 5 + CONV i( d1 ) MOD 7 ) MOD 7 + 1.  "1 = Monday
+DATA(lv_weekday) = ( 5 + CONV i( lv_d1 ) MOD 7 ) MOD 7 + 1.  "1 = Monday
 ```
 
 ### Time-difference-over-midnight idiom (MOD 86400)
 
-`time2 - time1` can be negative; `MOD 86400` normalizes to the positive elapsed seconds across midnight:
+`lv_time2 - lv_time1` can be negative; `MOD 86400` normalizes to the positive elapsed seconds across midnight:
 
 ```abap
-DATA: time1 TYPE t VALUE '210000', time2 TYPE t VALUE '040000'.
-DATA(elapsed) = ( time2 - time1 ) MOD 86400.            "25200 seconds (7 h)
-DATA diff_time TYPE t.
-diff_time(2)   = ( ( time2 - time1 ) MOD 86400 ) DIV 3600.
-diff_time+2(2) = ( ( ( time2 - time1 ) MOD 86400 ) MOD 3600 ) DIV 60.
-diff_time+4(2) = ( ( ( time2 - time1 ) MOD 86400 ) MOD 3600 ) MOD 60. "diff_time = '070000'
+DATA: lv_time1 TYPE t VALUE '210000', lv_time2 TYPE t VALUE '040000'.
+DATA(lv_elapsed) = ( lv_time2 - lv_time1 ) MOD 86400.            "25200 seconds (7 h)
+DATA lv_diff_time TYPE t.
+lv_diff_time(2)   = ( ( lv_time2 - lv_time1 ) MOD 86400 ) DIV 3600.
+lv_diff_time+2(2) = ( ( ( lv_time2 - lv_time1 ) MOD 86400 ) MOD 3600 ) DIV 60.
+lv_diff_time+4(2) = ( ( ( lv_time2 - lv_time1 ) MOD 86400 ) MOD 3600 ) MOD 60. "lv_diff_time = '070000'
 ```
 
 Use `DIV` (not `/`) for hours/minutes — `/` into an integer target rounds (`15.72…` → `16`), `DIV` truncates (`15`).
@@ -209,18 +209,18 @@ Use `DIV` (not `/`) for hours/minutes — `/` into an integer target rounds (`15
 ```abap
 "utclong → local date/time
 CONVERT UTCLONG CONV utclong( '2024-11-03 05:30:00' )
-        INTO DATE DATA(loc_date)   "20241103
-             TIME DATA(loc_time)   "013000
+        INTO DATE DATA(lv_loc_date)   "20241103
+             TIME DATA(lv_loc_time)   "013000
              TIME ZONE 'EST'.
 
 "local date/time → utclong
 CONVERT DATE CONV d( '20240101' ) TIME CONV t( '112458' )
         TIME ZONE 'EST'
-        INTO UTCLONG DATA(utcl).   "2024-01-01 16:24:58.0000000
+        INTO UTCLONG DATA(lv_utcl).   "2024-01-01 16:24:58.0000000
 
 "packed time stamp: GET TIME STAMP, CONVERT TIME STAMP
-GET TIME STAMP FIELD DATA(tsf).    "type timestamp, e.g. 20240101081317
-CONVERT TIME STAMP tsf TIME ZONE 'EST' INTO DATE DATA(dt) TIME DATA(tm).
+GET TIME STAMP FIELD DATA(lv_tsf).    "type timestamp, e.g. 20240101081317
+CONVERT TIME STAMP lv_tsf TIME ZONE 'EST' INTO DATE DATA(lv_dt) TIME DATA(lv_tm).
 ```
 
 An **initial** time zone means no shift. A non-existent zone raises `cx_sy_conversion_no_date_time` (CONVERT UTCLONG) or sets `sy-subrc = 8` (CONVERT TIME STAMP).
@@ -229,7 +229,7 @@ An **initial** time zone means no shift. A non-existent zone raises `cx_sy_conve
 
 ```abap
 TRY.
-    DATA(invalid_date) = EXACT d( '20240231' ).   "raises CX_SY_CONVERSION_NO_DATE (Feb 31 invalid)
+    DATA(lv_invalid_date) = EXACT d( '20240231' ).   "raises CX_SY_CONVERSION_NO_DATE (Feb 31 invalid)
   CATCH cx_sy_conversion_no_date.
 ENDTRY.
 ```
@@ -239,10 +239,10 @@ In SQL/CDS use `is_valid`, `dats_is_valid`, `tims_is_valid`, `tstmp_is_valid` �
 ### Date/time in string templates (formatting)
 
 ```abap
-DATA(s1) = |{ cl_abap_context_info=>get_system_date( ) DATE = ISO }|.    "2024-01-01
-DATA(s2) = |{ cl_abap_context_info=>get_system_time( ) TIME = ISO }|.    "14:37:24
-DATA(s3) = |{ utclong_current( ) TIMESTAMP = ISO }|.                     "2024-01-01T14:39:50,40
-DATA(s4) = |{ utclong_current( ) TIMEZONE = 'CET' COUNTRY = 'DE ' }|.    "localized
+DATA(lv_s1) = |{ cl_abap_context_info=>get_system_date( ) DATE = ISO }|.    "2024-01-01
+DATA(lv_s2) = |{ cl_abap_context_info=>get_system_time( ) TIME = ISO }|.    "14:37:24
+DATA(lv_s3) = |{ utclong_current( ) TIMESTAMP = ISO }|.                     "2024-01-01T14:39:50,40
+DATA(lv_s4) = |{ utclong_current( ) TIMEZONE = 'CET' COUNTRY = 'DE ' }|.    "localized
 ```
 
 Full reference (XCO classes, `cl_abap_datfm`, `cl_abap_timefm`, `cl_abap_utclong`, `cl_abap_tstmp`, Unix time stamps, calendar info) → [references/datetime.md](references/datetime.md).
@@ -252,9 +252,9 @@ Full reference (XCO classes, `cl_abap_datfm`, `cl_abap_timefm`, `cl_abap_utclong
 ## Table functions
 
 ```abap
-DATA(row_count) = lines( itab ).                          "row count
-IF line_exists( itab[ comp1 = 2 ] ).  ... ENDIF.  "membership (table expression required)
-DATA(idx) = line_index( itab[ comp2 = 'd' ] ).    "index of found row; 0 = not found; -1 = no primary index (hashed)
+DATA(lv_row_count) = lines( lt_itab ).                          "row count
+IF line_exists( lt_itab[ comp1 = 2 ] ).  ... ENDIF.  "membership (table expression required)
+DATA(lv_idx) = line_index( lt_itab[ comp2 = 'd' ] ).    "index of found row; 0 = not found; -1 = no primary index (hashed)
 ```
 
 `line_index` needs a key specification (explicit table key or free key). A hashed table has no primary index → returns `-1` for `KEY primary_key`; use a secondary key for an index.

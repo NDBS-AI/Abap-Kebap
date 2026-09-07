@@ -15,22 +15,22 @@
 "   - business errors -> message container + /iwbep/cx_mgw_busi_exception
 METHOD travelset_get_entityset.
 
-  CONSTANTS default_page_size TYPE i VALUE 100.
+  CONSTANTS c_default_page_size TYPE i VALUE 100.
 
   " --- 1. Translate the OData query options into SQL building blocks ---------
   " $filter arrives as an Open SQL WHERE clause on the entity property names.
-  DATA(filter_where_clause) = io_tech_request_context->get_osql_where_clause( ).
+  DATA(lv_filter_where_clause) = io_tech_request_context->get_osql_where_clause( ).
 
-  DATA(requested_top)  = io_tech_request_context->get_top( ).
-  DATA(requested_skip) = io_tech_request_context->get_skip( ).
+  DATA(lv_requested_top)  = io_tech_request_context->get_top( ).
+  DATA(lv_requested_skip) = io_tech_request_context->get_skip( ).
 
   " Cap the page size: a client that sends no $top must not pull the table.
-  DATA(page_size) = COND i( WHEN requested_top > 0
-                            THEN requested_top
-                            ELSE default_page_size ).
+  DATA(lv_page_size) = COND i( WHEN lv_requested_top > 0
+                            THEN lv_requested_top
+                            ELSE c_default_page_size ).
 
   " --- 2. Read exactly the requested page from the database ------------------
-  " filter_where_clause is NOT raw client text: get_osql_where_clause( ) is the
+  " lv_filter_where_clause is NOT raw client text: get_osql_where_clause( ) is the
   " SAP Gateway (IWBEP) framework's $filter-to-SQL translator on
   " /iwbep/if_mgw_req_entityset. It parses the OData $filter expression tree
   " and emits an Open SQL WHERE string bound to this entity's known,
@@ -46,11 +46,11 @@ METHOD travelset_get_entityset.
            total_price,
            currency_code,
            description
-    WHERE (filter_where_clause)
+    WHERE (lv_filter_where_clause)
     ORDER BY travel_id
     INTO CORRESPONDING FIELDS OF TABLE @et_entityset
-    UP TO @page_size ROWS
-    OFFSET @requested_skip.
+    UP TO @lv_page_size ROWS
+    OFFSET @lv_requested_skip.
 
   IF sy-subrc <> 0.
     " No data is a valid, empty result — not an error. Return silently.
@@ -61,10 +61,10 @@ METHOD travelset_get_entityset.
   IF io_tech_request_context->has_inlinecount( ) = abap_true.
     SELECT COUNT(*)
       FROM ztravel_tab
-      WHERE (filter_where_clause)
-      INTO @DATA(total_row_count).
+      WHERE (lv_filter_where_clause)
+      INTO @DATA(lv_total_row_count).
 
-    es_response_context-inlinecount = total_row_count.
+    es_response_context-inlinecount = lv_total_row_count.
   ENDIF.
 
 ENDMETHOD.
@@ -75,19 +75,19 @@ ENDMETHOD.
 " consumer as an OData V2 error payload (HTTP 4xx).
 METHOD travelset_create_entity.
 
-  io_data_provider->read_entry_data( IMPORTING es_data = DATA(new_travel) ).
+  io_data_provider->read_entry_data( IMPORTING es_data = DATA(ls_new_travel) ).
 
-  IF new_travel-begin_date > new_travel-end_date.
-    DATA(message_container) = mo_context->get_message_container( ).
-    message_container->add_message(
+  IF ls_new_travel-begin_date > ls_new_travel-end_date.
+    DATA(lo_message_container) = mo_context->get_message_container( ).
+    lo_message_container->add_message(
       iv_msg_type   = /iwbep/cl_cos_logger=>error
       iv_msg_id     = 'ZTRAVEL_MSG'
       iv_msg_number = '002'                      " 'Begin date &1 after end date &2'
-      iv_msg_v1     = |{ new_travel-begin_date DATE = USER }|
-      iv_msg_v2     = |{ new_travel-end_date DATE = USER }| ).
+      iv_msg_v1     = |{ ls_new_travel-begin_date DATE = USER }|
+      iv_msg_v2     = |{ ls_new_travel-end_date DATE = USER }| ).
 
     RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
-      EXPORTING message_container = message_container.
+      EXPORTING message_container = lo_message_container.
   ENDIF.
 
   " ... persist and fill er_entity with the created instance ...

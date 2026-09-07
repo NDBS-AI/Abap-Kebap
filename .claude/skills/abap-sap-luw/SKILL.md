@@ -130,20 +130,20 @@ Register it for later execution with `CALL FUNCTION ... IN UPDATE TASK`; the act
 
 ```abap
 "--------------------- Synchronous update ---------------------
-DATA(st_a) = VALUE some_type( ... ).
+DATA(ls_a) = VALUE some_type( ... ).
 
 "Registering the update function module (name in uppercase)
 CALL FUNCTION 'ZSOME_UPDATE_FU_MOD' IN UPDATE TASK
-    EXPORTING values = st_a.
+    EXPORTING values = ls_a.
 
 "Triggering the synchronous update
 COMMIT WORK AND WAIT.
 
 "--------------------- Asynchronous update ---------------------
-DATA(st_b) = VALUE some_type( ... ).
+DATA(ls_b) = VALUE some_type( ... ).
 
 CALL FUNCTION 'ZSOME_UPDATE_FU_MOD' IN UPDATE TASK
-    EXPORTING values = st_b.
+    EXPORTING values = ls_b.
 
 "Triggering the asynchronous update
 COMMIT WORK.
@@ -152,10 +152,10 @@ COMMIT WORK.
 "Before update function modules are registered:
 SET UPDATE TASK LOCAL.
 
-DATA(st_c) = VALUE some_type( ... ).
+DATA(ls_c) = VALUE some_type( ... ).
 
 CALL FUNCTION 'ZSOME_UPDATE_FU_MOD' IN UPDATE TASK
-    EXPORTING values = st_c.
+    EXPORTING values = ls_c.
 
 "With local update the update is synchronous whether or not you add AND WAIT.
 COMMIT WORK.
@@ -218,7 +218,7 @@ That is the **SAP lock concept**, independent of automatic database locks, based
 "Request the lock (mode is a parameter, see below)
 CALL FUNCTION 'ENQUEUE_EZ_MY_LOCK'
   EXPORTING
-    mode_zmytab = 'E'        "lock mode
+    mode_z_t_mytab = 'E'        "lock mode
     mandt       = sy-mandt
     key_field   = lv_key
   EXCEPTIONS
@@ -234,7 +234,7 @@ ENDIF.
 "Release explicitly (or let the update release it)
 CALL FUNCTION 'DEQUEUE_EZ_MY_LOCK'
   EXPORTING
-    mode_zmytab = 'E'
+    mode_z_t_mytab = 'E'
     mandt       = sy-mandt
     key_field   = lv_key.
 ```

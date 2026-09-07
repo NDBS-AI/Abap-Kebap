@@ -190,30 +190,30 @@ A Clean-ABAP-style `GET_ENTITYSET` implementation honoring paging and filters is
 
 ```abap
 " ABAP Cloud: HTTP client over a communication arrangement
-DATA(http_destination) = cl_http_destination_provider=>create_by_comm_arrangement(
+DATA(lo_http_destination) = cl_http_destination_provider=>create_by_comm_arrangement(
                            comm_scenario = 'Z_OUTBOUND_TRAVEL'
                            service_id    = 'Z_OUTBOUND_TRAVEL_HTTP' ).
-DATA(http_client) = cl_web_http_client_manager=>create_by_http_destination( http_destination ).
+DATA(lo_http_client) = cl_web_http_client_manager=>create_by_http_destination( lo_http_destination ).
 ```
 
 **Step 3 — Client proxy.** Instead of parsing JSON yourself, instantiate an OData client proxy over the HTTP client and work with typed requests:
 
 ```abap
 " ABAP Cloud / RAP guide variant: proxy from the service consumption model
-DATA(client_proxy) = /iwbep/cl_cp_factory_remote=>create_v4_remote_proxy(
+DATA(lo_client_proxy) = /iwbep/cl_cp_factory_remote=>create_v4_remote_proxy(
   is_proxy_model_key       = VALUE #( repository_id       = 'DEFAULT'
                                       proxy_model_id      = 'ZSC_TRAVEL'
                                       proxy_model_version = '0001' )
-  io_http_client           = http_client
+  io_http_client           = lo_http_client
   iv_relative_service_root = '/sap/opu/odata4/sap/zapi_travel/srvd_a2x/sap/zapi_travel/0001/' ).
 
-DATA(read_request) = client_proxy->create_resource_for_entity_set( 'TRAVEL'
+DATA(lo_read_request) = lo_client_proxy->create_resource_for_entity_set( 'TRAVEL'
                        )->create_request_for_read( ).
-read_request->set_top( 50 ).
+lo_read_request->set_top( 50 ).
 
-DATA travels TYPE STANDARD TABLE OF zsc_travel_type.
-read_request->execute( )->get_business_data( IMPORTING et_business_data = travels ).
-http_client->close( ).
+DATA lt_travels TYPE STANDARD TABLE OF zsc_travel_type.
+lo_read_request->execute( )->get_business_data( IMPORTING et_business_data = lt_travels ).
+lo_http_client->close( ).
 ```
 
 Factory overview (all take the HTTP client plus the relative service root):

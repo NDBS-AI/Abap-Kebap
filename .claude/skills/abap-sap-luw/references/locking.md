@@ -37,13 +37,13 @@ In ABAP Cloud direct usage of the generated FMs is not permitted; the FM calls a
 - Catch `cx_abap_lock_failure` on both calls — an enqueue that cannot be granted (e.g. a foreign lock) surfaces as this exception, not via `sy-subrc`. Do not proceed with the change when it is raised.
 
 ```abap
-DATA(lock_object) = cl_abap_lock_object_factory=>get_instance( iv_name = 'EZ_MY_LOCK' ).
+DATA(lo_lock_object) = cl_abap_lock_object_factory=>get_instance( iv_name = 'EZ_MY_LOCK' ).
 TRY.
-    lock_object->enqueue(
-      it_parameter  = VALUE #( ( name = 'KEY_FIELD' value = REF #( key_value ) ) )
-      it_table_mode = VALUE #( ( table_name = 'ZMYTAB'
+    lo_lock_object->enqueue(
+      it_parameter  = VALUE #( ( name = 'KEY_FIELD' value = REF #( lv_key_value ) ) )
+      it_table_mode = VALUE #( ( table_name = 'Z_T_MYTAB'
                                  mode       = if_abap_lock_object=>cs_mode-<lock mode> ) ) ).
-  CATCH cx_abap_lock_failure INTO DATA(lock_failure).
+  CATCH cx_abap_lock_failure INTO DATA(lo_lock_failure).
     "lock not granted — inform the user, do not proceed
 ENDTRY.
 ```
@@ -68,7 +68,7 @@ Cumulation: with mode `E`, repeated enqueues by the same lock owner stack up; yo
 ```abap
 CALL FUNCTION 'ENQUEUE_EZ_MY_LOCK'
   EXPORTING
-    mode_zmytab    = 'E'         "lock mode for table ZMYTAB (E/S/X)
+    mode_z_t_mytab    = 'E'         "lock mode for table Z_T_MYTAB (E/S/X)
     mandt          = sy-mandt    "client (defaulted)
     key_field1     = lv_key1     "lock argument: key field value(s)
     key_field2     = lv_key2
@@ -103,7 +103,7 @@ Key parameters:
 ```abap
 CALL FUNCTION 'DEQUEUE_EZ_MY_LOCK'
   EXPORTING
-    mode_zmytab = 'E'
+    mode_z_t_mytab = 'E'
     mandt       = sy-mandt
     key_field1  = lv_key1
     key_field2  = lv_key2
@@ -132,14 +132,14 @@ The canonical "edit a business object across several steps" pattern:
 ```abap
 " 1. Acquire the lock BEFORE reading, so nobody changes it under you
 CALL FUNCTION 'ENQUEUE_EZ_MY_LOCK'
-  EXPORTING mode_zmytab = 'E' mandt = sy-mandt key_field = lv_key
+  EXPORTING mode_z_t_mytab = 'E' mandt = sy-mandt key_field = lv_key
   EXCEPTIONS foreign_lock = 1 system_failure = 2 OTHERS = 3.
 IF sy-subrc <> 0.
   MESSAGE e001(zmsg) WITH lv_key.   "object locked by another user — STOP
 ENDIF.
 
 " 2. Read the current consistent state
-SELECT SINGLE key_field, field1, field2 FROM zmytab WHERE key_field = @lv_key INTO @DATA(ls_row).
+SELECT SINGLE key_field, field1, field2 FROM z_t_mytab WHERE key_field = @lv_key INTO @DATA(ls_row).
 
 " 3. Work on it (possibly across dialog steps) ...
 

@@ -21,17 +21,17 @@ Explore them in ADT: put the cursor on a handler method parameter or a declared 
 
 ```abap
 "Short form: name an entity of the composition tree directly
-DATA create_root  TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m.    "root entity
-DATA update_child TYPE TABLE FOR UPDATE zdemo_abap_rap_ch_m.    "child entity
+DATA lt_create_root  TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m.    "root entity
+DATA lt_update_child TYPE TABLE FOR UPDATE zdemo_abap_rap_ch_m.    "child entity
 
 "Long form: root entity name + \\ + entity (alias if one is defined in the BDEF)
-DATA create_root_long  TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m\\root.
-DATA update_child_long TYPE TABLE FOR UPDATE zdemo_abap_rap_ro_m\\child.
+DATA lt_create_root_long  TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m\\root.
+DATA lt_update_child_long TYPE TABLE FOR UPDATE zdemo_abap_rap_ro_m\\child.
 
 "Associations declared in the BDEF, prefixed \ (short and long form)
-DATA create_by_assoc      TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m\_child.
-DATA create_by_assoc_long TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m\\root\_child.
-DATA read_parent_import   TYPE TABLE FOR READ IMPORT zdemo_abap_rap_ch_m\_parent.
+DATA lt_create_by_assoc      TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m\_child.
+DATA lt_create_by_assoc_long TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m\\root\_child.
+DATA lt_read_parent_import   TYPE TABLE FOR READ IMPORT zdemo_abap_rap_ch_m\_parent.
 ```
 
 If the BDEF defines an alias for an entity, the long form must use the alias — the raw entity
@@ -41,41 +41,41 @@ name is not accepted there.
 
 ```abap
 "Modify operations
-DATA create_tab TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m.
-DATA update_tab TYPE TABLE FOR UPDATE zdemo_abap_rap_ro_m.
-DATA delete_tab TYPE TABLE FOR DELETE zdemo_abap_rap_ro_m.
-DATA cba_tab    TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m\_child.   "create by association
+DATA lt_create_tab TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m.
+DATA lt_update_tab TYPE TABLE FOR UPDATE zdemo_abap_rap_ro_m.
+DATA lt_delete_tab TYPE TABLE FOR DELETE zdemo_abap_rap_ro_m.
+DATA lt_cba_tab    TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m\_child.   "create by association
 
 "Actions (name after ~; RESULT type exists only if the BDEF action declares a result)
-DATA action_import TYPE TABLE FOR ACTION IMPORT zdemo_abap_rap_ro_m~multiply_by_2.
-"DATA action_result TYPE TABLE FOR ACTION RESULT zdemo_abap_rap_ro_m~some_action.
+DATA lt_action_import TYPE TABLE FOR ACTION IMPORT zdemo_abap_rap_ro_m~multiply_by_2.
+"DATA lt_action_result TYPE TABLE FOR ACTION RESULT zdemo_abap_rap_ro_m~some_action.
 
 "Read operations
-DATA read_import TYPE TABLE FOR READ IMPORT zdemo_abap_rap_ro_m.
-DATA read_result TYPE TABLE FOR READ RESULT zdemo_abap_rap_ro_m.
-DATA rba_import  TYPE TABLE FOR READ IMPORT zdemo_abap_rap_ro_m\_child.
-DATA rba_result  TYPE TABLE FOR READ RESULT zdemo_abap_rap_ro_m\_child.
-DATA rba_link    TYPE TABLE FOR READ LINK zdemo_abap_rap_ro_m\_child.
+DATA lt_read_import TYPE TABLE FOR READ IMPORT zdemo_abap_rap_ro_m.
+DATA lt_read_result TYPE TABLE FOR READ RESULT zdemo_abap_rap_ro_m.
+DATA lt_rba_import  TYPE TABLE FOR READ IMPORT zdemo_abap_rap_ro_m\_child.
+DATA lt_rba_result  TYPE TABLE FOR READ RESULT zdemo_abap_rap_ro_m\_child.
+DATA lt_rba_link    TYPE TABLE FOR READ LINK zdemo_abap_rap_ro_m\_child.
 
 "Locks
-DATA lock_keys TYPE TABLE FOR KEY OF zdemo_abap_rap_ro_m.
+DATA lt_lock_keys TYPE TABLE FOR KEY OF zdemo_abap_rap_ro_m.
 
 "Events (event handler method parameter; includes keys + %param if parameterized)
 "TYPE TABLE FOR EVENT bdef~event_name
 
 "Change info (managed BOs, only inside implementation classes, with WITH CHANGES)
-"DATA read_changes TYPE TABLE FOR READ CHANGES demo_rap_entity.
+"DATA lt_read_changes TYPE TABLE FOR READ CHANGES demo_rap_entity.
 ```
 
 ### Structured types
 
 ```abap
-DATA create_row TYPE STRUCTURE FOR CREATE zdemo_abap_rap_ro_m.
-DATA update_row TYPE STRUCTURE FOR UPDATE zdemo_abap_rap_ro_m.
-TYPES delete_row TYPE STRUCTURE FOR DELETE zdemo_abap_rap_ro_m.
+DATA ls_create_row TYPE STRUCTURE FOR CREATE zdemo_abap_rap_ro_m.
+DATA ls_update_row TYPE STRUCTURE FOR UPDATE zdemo_abap_rap_ro_m.
+TYPES ty_delete_row TYPE STRUCTURE FOR DELETE zdemo_abap_rap_ro_m.
 
 "Permissions
-DATA permission_request TYPE STRUCTURE FOR PERMISSIONS REQUEST zdemo_abap_rap_ro_m.
+DATA ls_permission_request TYPE STRUCTURE FOR PERMISSIONS REQUEST zdemo_abap_rap_ro_m.
 ```
 
 ### Response types (mapped / failed / reported)
@@ -83,17 +83,17 @@ DATA permission_request TYPE STRUCTURE FOR PERMISSIONS REQUEST zdemo_abap_rap_ro
 `EARLY` (or nothing) refers to the interaction phase; `LATE` to the save phase (e.g. `adjust_numbers` in late numbering).
 
 ```abap
-DATA mapped_resp   TYPE RESPONSE FOR MAPPED zdemo_abap_rap_ro_m.
-DATA failed_resp   TYPE RESPONSE FOR FAILED zdemo_abap_rap_ro_m.
-DATA reported_resp TYPE RESPONSE FOR REPORTED zdemo_abap_rap_ro_m.
-DATA reported_resp_early TYPE RESPONSE FOR REPORTED EARLY zdemo_abap_rap_ro_m.  "same as above
+DATA lt_mapped_resp   TYPE RESPONSE FOR MAPPED zdemo_abap_rap_ro_m.
+DATA lt_failed_resp   TYPE RESPONSE FOR FAILED zdemo_abap_rap_ro_m.
+DATA lt_reported_resp TYPE RESPONSE FOR REPORTED zdemo_abap_rap_ro_m.
+DATA lt_reported_resp_early TYPE RESPONSE FOR REPORTED EARLY zdemo_abap_rap_ro_m.  "same as above
 
-DATA mapped_late   TYPE RESPONSE FOR MAPPED LATE zdemo_abap_rap_ro_m.
-DATA failed_late   TYPE RESPONSE FOR FAILED LATE zdemo_abap_rap_ro_m.
-DATA reported_late TYPE RESPONSE FOR REPORTED LATE zdemo_abap_rap_ro_m.
+DATA lt_mapped_late   TYPE RESPONSE FOR MAPPED LATE zdemo_abap_rap_ro_m.
+DATA lt_failed_late   TYPE RESPONSE FOR FAILED LATE zdemo_abap_rap_ro_m.
+DATA lt_reported_late TYPE RESPONSE FOR REPORTED LATE zdemo_abap_rap_ro_m.
 
 "The RESPONSE FOR types are deep structures containing tables of these types:
-DATA mapped_tab TYPE TABLE FOR MAPPED zdemo_abap_rap_ro_m.        "also ... MAPPED EARLY / LATE
+DATA lt_mapped_tab TYPE TABLE FOR MAPPED zdemo_abap_rap_ro_m.        "also ... MAPPED EARLY / LATE
 ```
 
 ### Types restricted to implementation classes (behavior pools)
@@ -111,8 +111,8 @@ These can only be declared and used inside implementation classes:
 ### Typing your own method parameters
 
 ```abap
-TYPES create_tab_type TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m.
-METHODS process_new_instances IMPORTING new_instances TYPE create_tab_type.
+TYPES tt_create_tab_type TYPE TABLE FOR CREATE zdemo_abap_rap_ro_m.
+METHODS process_new_instances IMPORTING it_new_instances TYPE tt_create_tab_type.
 ```
 
 ## The % components — complete catalog
@@ -169,14 +169,14 @@ There is **no `%result` component**. `RESULT` is a statement addition (READ, EXE
 Component groups nest (`%data` contains `%key`; `%tky` contains `%pky` contains `%key`), so the same key field is reachable through several paths. In `VALUE #( ... )` constructors, make sure each component gets **at most one** assignment:
 
 ```abap
-DATA update_tab TYPE TABLE FOR UPDATE zdemo_abap_rap_ro_m.
-update_tab = VALUE #( ( key_field = 1 ) ).
+DATA lt_update_tab TYPE TABLE FOR UPDATE zdemo_abap_rap_ro_m.
+lt_update_tab = VALUE #( ( key_field = 1 ) ).
 
-DATA(direct_access)  = update_tab[ 1 ]-key_field.
-DATA(via_key)        = update_tab[ 1 ]-%key-key_field.
-DATA(via_tky)        = update_tab[ 1 ]-%tky-key_field.
-DATA(via_tky_pky)    = update_tab[ 1 ]-%tky-%pky-%key-key_field.
-DATA(via_data)       = update_tab[ 1 ]-%data-key_field.
+DATA(lv_direct_access)  = lt_update_tab[ 1 ]-key_field.
+DATA(lv_via_key)        = lt_update_tab[ 1 ]-%key-key_field.
+DATA(lv_via_tky)        = lt_update_tab[ 1 ]-%tky-key_field.
+DATA(lv_via_tky_pky)    = lt_update_tab[ 1 ]-%tky-%pky-%key-key_field.
+DATA(lv_via_data)       = lt_update_tab[ 1 ]-%data-key_field.
 ```
 
 ### Assigning key component groups safely
@@ -222,9 +222,9 @@ Internal tables typed `TYPE TABLE FOR ...` are standard tables with an **empty p
 Specify the key explicitly in table expressions to avoid syntax warnings and linear scans:
 
 ```abap
-DATA(matched_row) = create_tab[ KEY cid COMPONENTS %cid = `cid1`
+DATA(ls_matched_row) = lt_create_tab[ KEY cid COMPONENTS %cid = `cid1`
                                                    %key = VALUE #( key_field = 1 ) ].
-DATA(entity_row)  = create_tab[ KEY entity %key = VALUE #( key_field = 1 ) ].
+DATA(ls_entity_row)  = lt_create_tab[ KEY entity %key = VALUE #( key_field = 1 ) ].
 ```
 
 ## Type mapping for RAP
@@ -266,12 +266,12 @@ Variants include `corresponding` (fields with identical names are mapped implici
 `INSERT`, `UPDATE`, `MODIFY`, `DELETE` accept derived-type work areas with `MAPPING FROM ENTITY`:
 
 ```abap
-INSERT zdemo_abap_rapt1 FROM @create_row MAPPING FROM ENTITY.
-MODIFY zdemo_abap_rapt1 FROM @create_row MAPPING FROM ENTITY.
-DELETE zdemo_abap_rapt1 FROM @create_row MAPPING FROM ENTITY.
+INSERT zdemo_abap_rapt1 FROM @ls_create_row MAPPING FROM ENTITY.
+MODIFY zdemo_abap_rapt1 FROM @ls_create_row MAPPING FROM ENTITY.
+DELETE zdemo_abap_rapt1 FROM @ls_create_row MAPPING FROM ENTITY.
 
 "Update only the fields marked in %control:
-UPDATE zdemo_abap_rapt1 FROM @create_row
+UPDATE zdemo_abap_rapt1 FROM @ls_create_row
   INDICATORS SET STRUCTURE %control MAPPING FROM ENTITY.
 ```
 
@@ -280,12 +280,12 @@ This is the standard pattern in `save_modified` implementations (unmanaged/addit
 ## Dynamic creation of derived types (RTTI)
 
 ```abap
-DATA table_ref TYPE REF TO data.
+DATA lr_table_ref TYPE REF TO data.
 
-DATA(table_type_descr) = cl_abap_tabledescr=>get_bdef_derived_type(
+DATA(lo_table_type_descr) = cl_abap_tabledescr=>get_bdef_derived_type(
                            p_entity = 'ZDEMO_ABAP_RAP_RO_M'
                            p_kind   = abp_bdef_derived_type-create ).
-CREATE DATA table_ref TYPE HANDLE table_type_descr.
+CREATE DATA lr_table_ref TYPE HANDLE lo_table_type_descr.
 ```
 
 `cl_abap_structdescr=>get_bdef_derived_type` does the same for structures; `get_base_type` on a type description object returns the underlying BDEF derived type or dictionary type.

@@ -8,15 +8,15 @@ Self-contained reference implementations. Use them as templates; rename the doma
 
 ```abap
 INTERFACE if_pricing PUBLIC.
-  METHODS compute IMPORTING order TYPE order_data
-                  RETURNING VALUE(result) TYPE decfloat34.
+  METHODS compute IMPORTING is_order TYPE order_data
+                  RETURNING VALUE(rv_result) TYPE decfloat34.
 ENDINTERFACE.
 
 CLASS cl_pricing DEFINITION PUBLIC CREATE PRIVATE.
   PUBLIC SECTION.
     CLASS-METHODS for_country
-      IMPORTING country       TYPE land1
-      RETURNING VALUE(result) TYPE REF TO if_pricing
+      IMPORTING iv_country       TYPE land1
+      RETURNING VALUE(ro_result) TYPE REF TO if_pricing
       RAISING   cx_unknown_country.
 ENDCLASS.
 
@@ -37,18 +37,18 @@ ENDCLASS.
 
 CLASS cl_pricing IMPLEMENTATION.
   METHOD for_country.
-    CASE country.
-      WHEN 'TR'. result = NEW cl_pricing_tr( ).
-      WHEN 'DE'. result = NEW cl_pricing_de( ).
+    CASE iv_country.
+      WHEN 'TR'. ro_result = NEW cl_pricing_tr( ).
+      WHEN 'DE'. ro_result = NEW cl_pricing_de( ).
       WHEN OTHERS.
-        RAISE EXCEPTION TYPE cx_unknown_country EXPORTING country = country.
+        RAISE EXCEPTION TYPE cx_unknown_country EXPORTING country = iv_country.
     ENDCASE.
   ENDMETHOD.
 ENDCLASS.
 
 CLASS cl_pricing_tr IMPLEMENTATION.
   METHOD if_pricing~compute.
-    result = order-amount * '1.20'.   " 20% KDV
+    rv_result = is_order-amount * '1.20'.   " 20% KDV
   ENDMETHOD.
 ENDCLASS.
 ```
@@ -61,31 +61,31 @@ Adding a new country = new implementing class + one new `WHEN`. Caller cannot by
 
 ```abap
 INTERFACE if_rate_provider PUBLIC.
-  METHODS rate IMPORTING currency TYPE waers
-               RETURNING VALUE(result) TYPE decfloat34
+  METHODS rate IMPORTING iv_currency TYPE waers
+               RETURNING VALUE(rv_result) TYPE decfloat34
                RAISING   cx_rate_unavailable.
 ENDINTERFACE.
 
 CLASS cl_order_pricing DEFINITION PUBLIC FINAL.
   PUBLIC SECTION.
     METHODS:
-      constructor IMPORTING rate_provider TYPE REF TO if_rate_provider,
+      constructor IMPORTING io_rate_provider TYPE REF TO if_rate_provider,
       total_in_eur
-        IMPORTING order TYPE order_data
-        RETURNING VALUE(result) TYPE decfloat34
+        IMPORTING is_order TYPE order_data
+        RETURNING VALUE(rv_result) TYPE decfloat34
         RAISING   cx_rate_unavailable.
   PRIVATE SECTION.
-    DATA rate_provider TYPE REF TO if_rate_provider.
+    DATA mo_rate_provider TYPE REF TO if_rate_provider.
 ENDCLASS.
 
 CLASS cl_order_pricing IMPLEMENTATION.
   METHOD constructor.
-    me->rate_provider = rate_provider.
+    me->mo_rate_provider = io_rate_provider.
   ENDMETHOD.
 
   METHOD total_in_eur.
-    DATA(rate) = rate_provider->rate( order-currency ).
-    result = order-amount * rate.
+    DATA(lv_rate) = mo_rate_provider->rate( is_order-currency ).
+    rv_result = is_order-amount * lv_rate.
   ENDMETHOD.
 ENDCLASS.
 
@@ -97,7 +97,7 @@ ENDCLASS.
 
 CLASS ltcl_fake_rate IMPLEMENTATION.
   METHOD if_rate_provider~rate.
-    result = '1.50'.   " always 1.50
+    rv_result = '1.50'.   " always 1.50
   ENDMETHOD.
 ENDCLASS.
 
@@ -158,27 +158,27 @@ The orchestrator is `FINAL` — subclasses can't reorder the steps, only fill th
 
 ```abap
 INTERFACE if_order_listener PUBLIC.
-  METHODS on_changed IMPORTING order TYPE order_data.
+  METHODS on_changed IMPORTING is_order TYPE order_data.
 ENDINTERFACE.
 
 CLASS cl_order DEFINITION PUBLIC FINAL.
   PUBLIC SECTION.
     METHODS:
-      register IMPORTING listener TYPE REF TO if_order_listener,
-      set_amount IMPORTING amount TYPE decfloat34.
+      register IMPORTING io_listener TYPE REF TO if_order_listener,
+      set_amount IMPORTING iv_amount TYPE decfloat34.
   PRIVATE SECTION.
-    DATA: data      TYPE order_data,
-          listeners TYPE TABLE OF REF TO if_order_listener.
+    DATA: ms_data      TYPE order_data,
+          mt_listeners TYPE TABLE OF REF TO if_order_listener.
 ENDCLASS.
 
 CLASS cl_order IMPLEMENTATION.
   METHOD register.
-    APPEND listener TO listeners.
+    APPEND io_listener TO mt_listeners.
   ENDMETHOD.
   METHOD set_amount.
-    data-amount = amount.
-    LOOP AT listeners INTO DATA(listener).
-      listener->on_changed( data ).
+    ms_data-amount = iv_amount.
+    LOOP AT mt_listeners INTO DATA(lo_listener).
+      lo_listener->on_changed( ms_data ).
     ENDLOOP.
   ENDMETHOD.
 ENDCLASS.
@@ -206,39 +206,39 @@ One instance per internal session. `CREATE PRIVATE` blocks `NEW` outside the cla
 ```abap
 CLASS cl_app_log DEFINITION PUBLIC CREATE PRIVATE.
   PUBLIC SECTION.
-    CLASS-METHODS get_instance RETURNING VALUE(result) TYPE REF TO cl_app_log.
-    METHODS add   IMPORTING text TYPE string.
-    METHODS lines RETURNING VALUE(result) TYPE string_table.
+    CLASS-METHODS get_instance RETURNING VALUE(ro_result) TYPE REF TO cl_app_log.
+    METHODS add   IMPORTING iv_text TYPE string.
+    METHODS lines RETURNING VALUE(rt_result) TYPE string_table.
   PRIVATE SECTION.
-    CLASS-DATA instance TYPE REF TO cl_app_log.
-    DATA entries TYPE string_table.
+    CLASS-DATA mo_instance TYPE REF TO cl_app_log.
+    DATA mt_entries TYPE string_table.
 ENDCLASS.
 
 CLASS cl_app_log IMPLEMENTATION.
   METHOD get_instance.
-    IF instance IS NOT BOUND.
-      instance = NEW cl_app_log( ).
+    IF mo_instance IS NOT BOUND.
+      mo_instance = NEW cl_app_log( ).
     ENDIF.
-    result = instance.
+    ro_result = mo_instance.
   ENDMETHOD.
 
   METHOD add.
-    APPEND text TO entries.
+    APPEND iv_text TO mt_entries.
   ENDMETHOD.
 
   METHOD lines.
-    result = entries.
+    rt_result = mt_entries.
   ENDMETHOD.
 ENDCLASS.
 
 " All callers share the same object
-DATA(log_a) = cl_app_log=>get_instance( ).
-log_a->add( `event 1` ).
+DATA(lo_log_a) = cl_app_log=>get_instance( ).
+lo_log_a->add( `event 1` ).
 
-DATA(log_b) = cl_app_log=>get_instance( ).  " same instance as log_a
-log_b->add( `event 2` ).
+DATA(lo_log_b) = cl_app_log=>get_instance( ).  " same instance as lo_log_a
+lo_log_b->add( `event 2` ).
 
-ASSERT log_a->lines( ) = log_b->lines( ).  " same table
+ASSERT lo_log_a->lines( ) = lo_log_b->lines( ).  " same table
 ```
 
 Prefer constructor injection for business collaborators; reserve singleton for truly global concerns (logging, read-only caches).
@@ -255,8 +255,8 @@ Wrap an incompatible API behind an interface your code expects. The adapter clas
 " Existing legacy class with a different signature
 CLASS cl_legacy_fax DEFINITION PUBLIC.
   PUBLIC SECTION.
-    METHODS send_raw IMPORTING xstr TYPE xstring
-                               dest TYPE string.
+    METHODS send_raw IMPORTING iv_xstr TYPE xstring
+                               iv_dest TYPE string.
 ENDCLASS.
 
 CLASS cl_legacy_fax IMPLEMENTATION.
@@ -267,34 +267,34 @@ ENDCLASS.
 
 " Target interface that the rest of the application uses
 INTERFACE if_notifier PUBLIC.
-  METHODS notify IMPORTING message TYPE string
-                           recipient TYPE string.
+  METHODS notify IMPORTING iv_message TYPE string
+                           iv_recipient TYPE string.
 ENDINTERFACE.
 
 " Adapter: bridge between if_notifier and cl_legacy_fax
 CLASS cl_fax_adapter DEFINITION PUBLIC FINAL.
   PUBLIC SECTION.
     INTERFACES if_notifier.
-    METHODS constructor IMPORTING fax TYPE REF TO cl_legacy_fax.
+    METHODS constructor IMPORTING io_fax TYPE REF TO cl_legacy_fax.
   PRIVATE SECTION.
-    DATA fax TYPE REF TO cl_legacy_fax.
+    DATA mo_fax TYPE REF TO cl_legacy_fax.
 ENDCLASS.
 
 CLASS cl_fax_adapter IMPLEMENTATION.
   METHOD constructor.
-    me->fax = fax.
+    me->mo_fax = io_fax.
   ENDMETHOD.
 
   METHOD if_notifier~notify.
-    DATA(xstr) = cl_abap_conv_codepage=>create_out( )->convert( message ).
-    fax->send_raw( xstr = xstr dest = recipient ).
+    DATA(lv_xstr) = cl_abap_conv_codepage=>create_out( )->convert( iv_message ).
+    mo_fax->send_raw( iv_xstr = lv_xstr iv_dest = iv_recipient ).
   ENDMETHOD.
 ENDCLASS.
 
 " Caller only depends on if_notifier — legacy fax is invisible
-DATA(notifier) = CAST if_notifier(
+DATA(lo_notifier) = CAST if_notifier(
   NEW cl_fax_adapter( NEW cl_legacy_fax( ) ) ).
-notifier->notify( message = `Invoice approved` recipient = `+491234567` ).
+lo_notifier->notify( iv_message = `Invoice approved` iv_recipient = `+491234567` ).
 ```
 
 Use when you cannot modify the existing class (package barrier, third-party, generated code) but must integrate it into your domain's interface contract.
@@ -315,7 +315,7 @@ Concise ABAP shapes for the rest of the GoF catalog. Each is a sketch of the *st
 " Abstract builder: the common build steps
 CLASS lcl_itab_builder DEFINITION ABSTRACT CREATE PUBLIC.
   PUBLIC SECTION.
-    DATA itab TYPE REF TO data.
+    DATA mr_itab TYPE REF TO data.
     METHODS: build_type_info ABSTRACT,
              build_components ABSTRACT,
              build_table_type ABSTRACT,
@@ -331,14 +331,14 @@ ENDCLASS.
 " Director/provider: drives the steps in the right order, hides them
 CLASS lcl_itab_provider DEFINITION FINAL CREATE PRIVATE.
   PUBLIC SECTION.
-    CLASS-METHODS create_itab IMPORTING kind TYPE i RETURNING VALUE(result) TYPE REF TO lcl_itab_builder.
+    CLASS-METHODS create_itab IMPORTING iv_kind TYPE i RETURNING VALUE(ro_result) TYPE REF TO lcl_itab_builder.
 ENDCLASS.
 CLASS lcl_itab_provider IMPLEMENTATION.
   METHOD create_itab.
-    DATA(build) = CAST lcl_itab_builder( NEW lcl_builder_std_itab( ) ).
-    build->build_type_info( ).  build->build_components( ).
-    build->build_table_type( ). build->build_data_object( ).
-    result = build.
+    DATA(lo_build) = CAST lcl_itab_builder( NEW lcl_builder_std_itab( ) ).
+    lo_build->build_type_info( ).  lo_build->build_components( ).
+    lo_build->build_table_type( ). lo_build->build_data_object( ).
+    ro_result = lo_build.
   ENDMETHOD.
 ENDCLASS.
 ```
@@ -351,41 +351,41 @@ Use when constructing a complex object takes several ordered steps and you want 
 
 ```abap
 INTERFACE lif_org PUBLIC.
-  METHODS: get_headcount RETURNING VALUE(headcount) TYPE i,
-           get_salary    RETURNING VALUE(total_salary) TYPE decfloat34.
+  METHODS: get_headcount RETURNING VALUE(rv_headcount) TYPE i,
+           get_salary    RETURNING VALUE(rv_total_salary) TYPE decfloat34.
 ENDINTERFACE.
 
 " Leaf — no subordinates
 CLASS lcl_employee DEFINITION.
   PUBLIC SECTION. INTERFACES lif_org.
-  PRIVATE SECTION. DATA salary TYPE decfloat34.
+  PRIVATE SECTION. DATA mv_salary TYPE decfloat34.
 ENDCLASS.
 CLASS lcl_employee IMPLEMENTATION.
-  METHOD lif_org~get_headcount. headcount = 1. ENDMETHOD.
-  METHOD lif_org~get_salary.    total_salary = salary. ENDMETHOD.
+  METHOD lif_org~get_headcount. rv_headcount = 1. ENDMETHOD.
+  METHOD lif_org~get_salary.    rv_total_salary = mv_salary. ENDMETHOD.
 ENDCLASS.
 
 " Composite — delegates to subordinates recursively
 CLASS lcl_manager DEFINITION.
   PUBLIC SECTION.
     INTERFACES lif_org.
-    METHODS add_subordinate IMPORTING node TYPE REF TO lif_org.
+    METHODS add_subordinate IMPORTING io_node TYPE REF TO lif_org.
   PRIVATE SECTION.
-    DATA: salary TYPE decfloat34,
-          subordinates TYPE TABLE OF REF TO lif_org.
+    DATA: mv_salary TYPE decfloat34,
+          mt_subordinates TYPE TABLE OF REF TO lif_org.
 ENDCLASS.
 CLASS lcl_manager IMPLEMENTATION.
-  METHOD add_subordinate. APPEND node TO subordinates. ENDMETHOD.
+  METHOD add_subordinate. APPEND io_node TO mt_subordinates. ENDMETHOD.
   METHOD lif_org~get_headcount.
-    headcount = 1.
-    LOOP AT subordinates INTO DATA(subordinate).
-      headcount += subordinate->get_headcount( ).
+    rv_headcount = 1.
+    LOOP AT mt_subordinates INTO DATA(lo_subordinate).
+      rv_headcount += lo_subordinate->get_headcount( ).
     ENDLOOP.
   ENDMETHOD.
   METHOD lif_org~get_salary.
-    total_salary = salary.
-    LOOP AT subordinates INTO DATA(subordinate).
-      total_salary += subordinate->get_salary( ).
+    rv_total_salary = mv_salary.
+    LOOP AT mt_subordinates INTO DATA(lo_subordinate).
+      rv_total_salary += lo_subordinate->get_salary( ).
     ENDLOOP.
   ENDMETHOD.
 ENDCLASS.
@@ -404,23 +404,23 @@ ENDINTERFACE.
 
 " Receiver — performs the real work
 CLASS lcl_receiver DEFINITION.
-  PUBLIC SECTION. METHODS resize IMPORTING width TYPE i height TYPE i.
+  PUBLIC SECTION. METHODS resize IMPORTING iv_width TYPE i iv_height TYPE i.
 ENDCLASS.
 
 " Concrete command — wraps an operation + its data, delegates to the receiver
 CLASS lcl_cmd_resize DEFINITION.
   PUBLIC SECTION.
     INTERFACES lif_command.
-    METHODS constructor IMPORTING receiver TYPE REF TO lcl_receiver
-                                  width TYPE i height TYPE i.
+    METHODS constructor IMPORTING io_receiver TYPE REF TO lcl_receiver
+                                  iv_width TYPE i iv_height TYPE i.
   PRIVATE SECTION.
-    DATA: rec TYPE REF TO lcl_receiver, wd TYPE i, ht TYPE i,
-          prev_wd TYPE i, prev_ht TYPE i.
+    DATA: mo_rec TYPE REF TO lcl_receiver, mv_wd TYPE i, mv_ht TYPE i,
+          mv_prev_wd TYPE i, mv_prev_ht TYPE i.
 ENDCLASS.
 CLASS lcl_cmd_resize IMPLEMENTATION.
-  METHOD constructor. rec = receiver. wd = width. ht = height. ENDMETHOD.
-  METHOD lif_command~execute. rec->resize( width = wd height = ht ). ENDMETHOD.
-  METHOD lif_command~undo.    rec->resize( width = prev_wd height = prev_ht ). ENDMETHOD.
+  METHOD constructor. mo_rec = io_receiver. mv_wd = iv_width. mv_ht = iv_height. ENDMETHOD.
+  METHOD lif_command~execute. mo_rec->resize( iv_width = mv_wd iv_height = mv_ht ). ENDMETHOD.
+  METHOD lif_command~undo.    mo_rec->resize( iv_width = mv_prev_wd iv_height = mv_prev_ht ). ENDMETHOD.
 ENDCLASS.
 ```
 
@@ -432,29 +432,29 @@ Use when you must queue, log, parameterize, or undo/redo operations — each ope
 
 ```abap
 INTERFACE lif_iterator PUBLIC.
-  METHODS: get_next RETURNING VALUE(item) TYPE string,
-           has_next RETURNING VALUE(result) TYPE abap_boolean,
+  METHODS: get_next RETURNING VALUE(rv_item) TYPE string,
+           has_next RETURNING VALUE(rv_result) TYPE abap_boolean,
            reset.
 ENDINTERFACE.
 
 INTERFACE lif_collection PUBLIC.
-  METHODS: get_iterator RETURNING VALUE(it) TYPE REF TO lif_iterator,
-           get_item_at_position IMPORTING idx TYPE i RETURNING VALUE(item) TYPE string,
-           get_number_of_items RETURNING VALUE(item_count) TYPE i.
+  METHODS: get_iterator RETURNING VALUE(ro_it) TYPE REF TO lif_iterator,
+           get_item_at_position IMPORTING iv_idx TYPE i RETURNING VALUE(rv_item) TYPE string,
+           get_number_of_items RETURNING VALUE(rv_item_count) TYPE i.
 ENDINTERFACE.
 
 CLASS lcl_iterator DEFINITION.
   PUBLIC SECTION.
     INTERFACES lif_iterator.
-    METHODS constructor IMPORTING collection TYPE REF TO lif_collection.
+    METHODS constructor IMPORTING io_collection TYPE REF TO lif_collection.
   PRIVATE SECTION.
-    DATA: coll TYPE REF TO lif_collection, index TYPE i.
+    DATA: mo_coll TYPE REF TO lif_collection, mv_index TYPE i.
 ENDCLASS.
 CLASS lcl_iterator IMPLEMENTATION.
-  METHOD constructor. coll = collection. index = 0. ENDMETHOD.
-  METHOD lif_iterator~has_next. result = xsdbool( index < coll->get_number_of_items( ) ). ENDMETHOD.
-  METHOD lif_iterator~get_next. index += 1. item = coll->get_item_at_position( index ). ENDMETHOD.
-  METHOD lif_iterator~reset. index = 0. ENDMETHOD.
+  METHOD constructor. mo_coll = io_collection. mv_index = 0. ENDMETHOD.
+  METHOD lif_iterator~has_next. rv_result = xsdbool( mv_index < mo_coll->get_number_of_items( ) ). ENDMETHOD.
+  METHOD lif_iterator~get_next. mv_index += 1. rv_item = mo_coll->get_item_at_position( mv_index ). ENDMETHOD.
+  METHOD lif_iterator~reset. mv_index = 0. ENDMETHOD.
 ENDCLASS.
 ```
 
@@ -466,8 +466,8 @@ Use when you need to traverse a collection sequentially without exposing its int
 
 ```abap
 INTERFACE lif_calc PUBLIC.
-  DATA number TYPE i.
-  METHODS calculate IMPORTING value TYPE i RETURNING VALUE(result) TYPE i.
+  DATA mv_number TYPE i.
+  METHODS calculate IMPORTING iv_value TYPE i RETURNING VALUE(rv_result) TYPE i.
 ENDINTERFACE.
 
 CLASS lcl_state_addition DEFINITION.
@@ -475,8 +475,8 @@ CLASS lcl_state_addition DEFINITION.
 ENDCLASS.
 CLASS lcl_state_addition IMPLEMENTATION.
   METHOD lif_calc~calculate.
-    result = lif_calc~number + value.
-    lif_calc~number = result.
+    rv_result = lif_calc~mv_number + iv_value.
+    lif_calc~mv_number = rv_result.
   ENDMETHOD.
 ENDCLASS.
 " lcl_state_subtraction, lcl_state_multiplication implement lif_calc~calculate differently
@@ -484,14 +484,14 @@ ENDCLASS.
 " Context: behavior changes by swapping the state object
 CLASS lcl_math DEFINITION.
   PUBLIC SECTION.
-    METHODS: set_state IMPORTING state TYPE REF TO lif_calc,
-             execute   IMPORTING value TYPE i RETURNING VALUE(result) TYPE i.
-  PRIVATE SECTION. DATA state_ref TYPE REF TO lif_calc.
+    METHODS: set_state IMPORTING io_state TYPE REF TO lif_calc,
+             execute   IMPORTING iv_value TYPE i RETURNING VALUE(rv_result) TYPE i.
+  PRIVATE SECTION. DATA mo_state_ref TYPE REF TO lif_calc.
 ENDCLASS.
 CLASS lcl_math IMPLEMENTATION.
-  METHOD set_state. state_ref = state. ENDMETHOD.
+  METHOD set_state. mo_state_ref = io_state. ENDMETHOD.
   METHOD execute.
-    IF state_ref IS BOUND. result = state_ref->calculate( value ). ENDIF.
+    IF mo_state_ref IS BOUND. rv_result = mo_state_ref->calculate( iv_value ). ENDIF.
   ENDMETHOD.
 ENDCLASS.
 ```
@@ -506,20 +506,20 @@ Use when an object's behavior must change with its internal state and you want t
 CLASS lcl_visited DEFINITION DEFERRED.
 
 INTERFACE lif_visitor PUBLIC.
-  DATA result_string TYPE string.
-  METHODS visit IMPORTING oref TYPE REF TO lcl_visited.
+  DATA mv_result_string TYPE string.
+  METHODS visit IMPORTING io_oref TYPE REF TO lcl_visited.
 ENDINTERFACE.
 
 " The visited object accepts a visitor and hands itself over
 CLASS lcl_visited DEFINITION.
   PUBLIC SECTION.
-    METHODS: get_itab_content_ref RETURNING VALUE(content) TYPE REF TO data,
-             receive_visitor IMPORTING obj TYPE REF TO lif_visitor.
-  PRIVATE SECTION. DATA table_data_ref TYPE REF TO data.
+    METHODS: get_itab_content_ref RETURNING VALUE(rr_content) TYPE REF TO data,
+             receive_visitor IMPORTING io_obj TYPE REF TO lif_visitor.
+  PRIVATE SECTION. DATA mr_table_data_ref TYPE REF TO data.
 ENDCLASS.
 CLASS lcl_visited IMPLEMENTATION.
-  METHOD receive_visitor. obj->visit( me ). ENDMETHOD.
-  METHOD get_itab_content_ref. content = table_data_ref. ENDMETHOD.
+  METHOD receive_visitor. io_obj->visit( me ). ENDMETHOD.
+  METHOD get_itab_content_ref. rr_content = mr_table_data_ref. ENDMETHOD.
 ENDCLASS.
 
 " Each visitor adds a new operation without touching lcl_visited
@@ -528,8 +528,8 @@ CLASS lcl_visitor_json DEFINITION.
 ENDCLASS.
 CLASS lcl_visitor_json IMPLEMENTATION.
   METHOD lif_visitor~visit.
-    DATA(ref) = oref->get_itab_content_ref( ).
-    lif_visitor~result_string = /ui2/cl_json=>serialize( ref->* ).
+    DATA(lr_ref) = io_oref->get_itab_content_ref( ).
+    lif_visitor~mv_result_string = /ui2/cl_json=>serialize( lr_ref->* ).
   ENDMETHOD.
 ENDCLASS.
 ```
@@ -545,18 +545,18 @@ Use when you need to add new operations over a stable object structure without b
 CLASS lcl_travel_facade DEFINITION.
   PUBLIC SECTION.
     METHODS plan_travel
-      IMPORTING from TYPE string to TYPE string
-                arrival TYPE d departure TYPE d
-      RETURNING VALUE(options) TYPE string_table.
+      IMPORTING iv_from TYPE string iv_to TYPE string
+                iv_arrival TYPE d iv_departure TYPE d
+      RETURNING VALUE(rt_options) TYPE string_table.
 ENDCLASS.
 CLASS lcl_travel_facade IMPLEMENTATION.
   METHOD plan_travel.
-    DATA(flights) = NEW lcl_flight_search( ).
-    DATA(hotels)  = NEW lcl_hotel_search( ).
-    DATA(cars)    = NEW lcl_rental_car_search( ).
-    APPEND LINES OF flights->search_flights( from = from to = to arrival = arrival departure = departure ) TO options.
-    APPEND LINES OF hotels->search_hotel( destination = to arrival = arrival departure = departure ) TO options.
-    APPEND LINES OF cars->search_rental_car( destination = to arrival = arrival departure = departure ) TO options.
+    DATA(lo_flights) = NEW lcl_flight_search( ).
+    DATA(lo_hotels)  = NEW lcl_hotel_search( ).
+    DATA(lo_cars)    = NEW lcl_rental_car_search( ).
+    APPEND LINES OF lo_flights->search_flights( from = iv_from to = iv_to arrival = iv_arrival departure = iv_departure ) TO rt_options.
+    APPEND LINES OF lo_hotels->search_hotel( destination = iv_to arrival = iv_arrival departure = iv_departure ) TO rt_options.
+    APPEND LINES OF lo_cars->search_rental_car( destination = iv_to arrival = iv_arrival departure = iv_departure ) TO rt_options.
   ENDMETHOD.
 ENDCLASS.
 ```
@@ -569,7 +569,7 @@ Use when a subsystem requires creating several objects and calling methods in a 
 
 ```abap
 INTERFACE lif_user_info PUBLIC.
-  METHODS get_user_info IMPORTING user_id TYPE string RETURNING VALUE(info) TYPE string.
+  METHODS get_user_info IMPORTING iv_user_id TYPE string RETURNING VALUE(rv_info) TYPE string.
 ENDINTERFACE.
 
 CLASS lcl_proxy DEFINITION DEFERRED.
@@ -587,7 +587,7 @@ CLASS lcl_proxy DEFINITION.
   PUBLIC SECTION.
     INTERFACES lif_user_info.
     METHODS constructor RAISING lcx_error.
-  PRIVATE SECTION. DATA oref TYPE REF TO lcl_user_info.
+  PRIVATE SECTION. DATA mo_oref TYPE REF TO lcl_user_info.
 ENDCLASS.
 CLASS lcl_proxy IMPLEMENTATION.
   METHOD constructor.
@@ -596,10 +596,10 @@ CLASS lcl_proxy IMPLEMENTATION.
     IF sy-subrc <> 0.
       RAISE EXCEPTION TYPE lcx_error.
     ENDIF.
-    oref = NEW lcl_user_info( ).
+    mo_oref = NEW lcl_user_info( ).
   ENDMETHOD.
   METHOD lif_user_info~get_user_info.
-    info = oref->lif_user_info~get_user_info( user_id ).
+    rv_info = mo_oref->lif_user_info~get_user_info( iv_user_id ).
   ENDMETHOD.
 ENDCLASS.
 ```
@@ -612,20 +612,20 @@ Use when you need a stand-in for another object to add access control, logging, 
 
 ```abap
 INTERFACE lif_handler PUBLIC.
-  METHODS: process IMPORTING tdo TYPE REF TO cl_abap_typedescr
-                   RETURNING VALUE(info) TYPE string_table,
-           set_handler IMPORTING iref TYPE REF TO lif_handler.
+  METHODS: process IMPORTING io_tdo TYPE REF TO cl_abap_typedescr
+                   RETURNING VALUE(rt_info) TYPE string_table,
+           set_handler IMPORTING io_iref TYPE REF TO lif_handler.
 ENDINTERFACE.
 
 CLASS lcl_base_handler DEFINITION ABSTRACT.
   PUBLIC SECTION. INTERFACES lif_handler.
-  PROTECTED SECTION. DATA next TYPE REF TO lif_handler.
+  PROTECTED SECTION. DATA mo_next TYPE REF TO lif_handler.
 ENDCLASS.
 CLASS lcl_base_handler IMPLEMENTATION.
-  METHOD lif_handler~set_handler. next = iref. ENDMETHOD.
+  METHOD lif_handler~set_handler. mo_next = io_iref. ENDMETHOD.
   METHOD lif_handler~process.
-    IF next IS INITIAL. APPEND `Cannot handle request` TO info.
-    ELSE.              info = next->process( tdo ).
+    IF mo_next IS INITIAL. APPEND `Cannot handle request` TO rt_info.
+    ELSE.              rt_info = mo_next->process( io_tdo ).
     ENDIF.
   ENDMETHOD.
 ENDCLASS.
@@ -635,10 +635,10 @@ CLASS lcl_elem_handler DEFINITION INHERITING FROM lcl_base_handler.
 ENDCLASS.
 CLASS lcl_elem_handler IMPLEMENTATION.
   METHOD lif_handler~process.
-    IF tdo IS INSTANCE OF cl_abap_elemdescr.
-      APPEND `Handled by elem handler` TO info.
+    IF io_tdo IS INSTANCE OF cl_abap_elemdescr.
+      APPEND `Handled by elem handler` TO rt_info.
     ELSE.
-      info = super->lif_handler~process( tdo ).   "pass down the chain
+      rt_info = super->lif_handler~process( io_tdo ).   "pass down the chain
     ENDIF.
   ENDMETHOD.
 ENDCLASS.
@@ -659,9 +659,9 @@ CLASS desserts     DEFINITION ABSTRACT. PUBLIC SECTION. METHODS serve ABSTRACT. 
 " Abstract factory: creates a whole *family* of related products
 CLASS menu_factory DEFINITION ABSTRACT.
   PUBLIC SECTION.
-    METHODS: create_starters    ABSTRACT RETURNING VALUE(result) TYPE REF TO starters,
-             create_main_dishes ABSTRACT RETURNING VALUE(result) TYPE REF TO main_dishes,
-             create_desserts    ABSTRACT RETURNING VALUE(result) TYPE REF TO desserts.
+    METHODS: create_starters    ABSTRACT RETURNING VALUE(ro_result) TYPE REF TO starters,
+             create_main_dishes ABSTRACT RETURNING VALUE(ro_result) TYPE REF TO main_dishes,
+             create_desserts    ABSTRACT RETURNING VALUE(ro_result) TYPE REF TO desserts.
 ENDCLASS.
 
 " Concrete factory per variant — only ever creates compatible products
@@ -671,9 +671,9 @@ CLASS italian_menu_creator DEFINITION INHERITING FROM menu_factory.
              create_desserts REDEFINITION.
 ENDCLASS.
 CLASS italian_menu_creator IMPLEMENTATION.
-  METHOD create_starters.    result = NEW starters_italian( ).    ENDMETHOD.
-  METHOD create_main_dishes. result = NEW main_dishes_italian( ). ENDMETHOD.
-  METHOD create_desserts.    result = NEW desserts_italian( ).    ENDMETHOD.
+  METHOD create_starters.    ro_result = NEW starters_italian( ).    ENDMETHOD.
+  METHOD create_main_dishes. ro_result = NEW main_dishes_italian( ). ENDMETHOD.
+  METHOD create_desserts.    ro_result = NEW desserts_italian( ).    ENDMETHOD.
 ENDCLASS.
 ```
 
@@ -685,24 +685,24 @@ Use when you must create families of related objects that have to stay compatibl
 
 ```abap
 INTERFACE lif_prototype PUBLIC.
-  METHODS clone RETURNING VALUE(ref) TYPE REF TO lif_prototype.
+  METHODS clone RETURNING VALUE(ro_ref) TYPE REF TO lif_prototype.
 ENDINTERFACE.
 
 CLASS lcl_prototype DEFINITION.
   PUBLIC SECTION.
     INTERFACES lif_prototype.
-    METHODS constructor IMPORTING str TYPE string.
-    DATA: txt TYPE string, itab TYPE string_table.
-  PRIVATE SECTION. DATA private_text TYPE string.
+    METHODS constructor IMPORTING iv_str TYPE string.
+    DATA: mv_txt TYPE string, mt_itab TYPE string_table.
+  PRIVATE SECTION. DATA mv_private_text TYPE string.
 ENDCLASS.
 CLASS lcl_prototype IMPLEMENTATION.
-  METHOD constructor. txt = str. private_text = `#`. ENDMETHOD.
+  METHOD constructor. mv_txt = iv_str. mv_private_text = `#`. ENDMETHOD.
   METHOD lif_prototype~clone.
     " object clones itself — can copy private state, or selectively exclude
-    DATA(obj) = NEW lcl_prototype( txt ).
-    obj->itab = me->itab.
-    obj->private_text = me->private_text.
-    ref = obj.
+    DATA(lo_obj) = NEW lcl_prototype( mv_txt ).
+    lo_obj->mt_itab = me->mt_itab.
+    lo_obj->mv_private_text = me->mv_private_text.
+    ro_ref = lo_obj.
   ENDMETHOD.
 ENDCLASS.
 ```
@@ -717,28 +717,28 @@ Use when creating a new object from scratch is expensive or complex, and you can
 " Memento — captures state; CREATE PRIVATE + friendship keeps it opaque
 CLASS lcl DEFINITION DEFERRED.
 CLASS lcl_memento DEFINITION FINAL CREATE PRIVATE FRIENDS lcl.
-  PUBLIC SECTION. METHODS get_tag RETURNING VALUE(result) TYPE string.
+  PUBLIC SECTION. METHODS get_tag RETURNING VALUE(rv_result) TYPE string.
   PRIVATE SECTION.
-    METHODS constructor IMPORTING state TYPE string tag TYPE string.
-    METHODS get_state RETURNING VALUE(result) TYPE string.
-    DATA: state TYPE string, tag TYPE string.
+    METHODS constructor IMPORTING iv_state TYPE string iv_tag TYPE string.
+    METHODS get_state RETURNING VALUE(rv_result) TYPE string.
+    DATA: mv_state TYPE string, mv_tag TYPE string.
 ENDCLASS.
 CLASS lcl_memento IMPLEMENTATION.
-  METHOD constructor. me->state = state. me->tag = tag. ENDMETHOD.
-  METHOD get_state. result = state. ENDMETHOD.
-  METHOD get_tag.   result = tag.   ENDMETHOD.
+  METHOD constructor. me->mv_state = iv_state. me->mv_tag = iv_tag. ENDMETHOD.
+  METHOD get_state. rv_result = mv_state. ENDMETHOD.
+  METHOD get_tag.   rv_result = mv_tag.   ENDMETHOD.
 ENDCLASS.
 
 " Originator — creates and restores from mementos
 CLASS lcl DEFINITION FINAL.
   PUBLIC SECTION.
-    METHODS: save    RETURNING VALUE(memento) TYPE REF TO lcl_memento,
-             restore IMPORTING memento TYPE REF TO lcl_memento.
-  PRIVATE SECTION. DATA state TYPE string.
+    METHODS: save    RETURNING VALUE(ro_memento) TYPE REF TO lcl_memento,
+             restore IMPORTING io_memento TYPE REF TO lcl_memento.
+  PRIVATE SECTION. DATA mv_state TYPE string.
 ENDCLASS.
 CLASS lcl IMPLEMENTATION.
-  METHOD save.    memento = NEW lcl_memento( state = state tag = `snapshot` ). ENDMETHOD.
-  METHOD restore. state = memento->get_state( ). ENDMETHOD.
+  METHOD save.    ro_memento = NEW lcl_memento( iv_state = mv_state iv_tag = `snapshot` ). ENDMETHOD.
+  METHOD restore. mv_state = io_memento->get_state( ). ENDMETHOD.
 ENDCLASS.
 ```
 
@@ -750,29 +750,29 @@ Use when you need undo/redo or checkpoints — the memento captures an object's 
 
 ```abap
 INTERFACE lif_mediator PUBLIC.
-  METHODS notify IMPORTING oref TYPE REF TO object event TYPE string.
+  METHODS notify IMPORTING io_oref TYPE REF TO object iv_event TYPE string.
 ENDINTERFACE.
 
 INTERFACE lif_member PUBLIC.
-  METHODS set_mediator IMPORTING mediator_oref TYPE REF TO lif_mediator.
+  METHODS set_mediator IMPORTING io_mediator_oref TYPE REF TO lif_mediator.
 ENDINTERFACE.
 
 " Members talk only to the mediator, never to each other
 CLASS lcl_cart DEFINITION.
   PUBLIC SECTION.
     INTERFACES lif_member.
-    METHODS add_product IMPORTING product TYPE string.
-  PRIVATE SECTION. DATA mediator TYPE REF TO lif_mediator.
+    METHODS add_product IMPORTING iv_product TYPE string.
+  PRIVATE SECTION. DATA mo_mediator TYPE REF TO lif_mediator.
 ENDCLASS.
 CLASS lcl_cart IMPLEMENTATION.
-  METHOD lif_member~set_mediator. mediator = mediator_oref. ENDMETHOD.
-  METHOD add_product. mediator->notify( oref = me event = `item_added` ). ENDMETHOD.
+  METHOD lif_member~set_mediator. mo_mediator = io_mediator_oref. ENDMETHOD.
+  METHOD add_product. mo_mediator->notify( io_oref = me iv_event = `item_added` ). ENDMETHOD.
 ENDCLASS.
 
 " Concrete mediator orchestrates: holds refs to all members, routes events
 CLASS lcl_mediator DEFINITION.
   PUBLIC SECTION. INTERFACES lif_mediator.
-  PRIVATE SECTION. DATA: cart TYPE REF TO lcl_cart, stock TYPE REF TO lcl_stock.
+  PRIVATE SECTION. DATA: mo_cart TYPE REF TO lcl_cart, mo_stock TYPE REF TO lcl_stock.
 ENDCLASS.
 ```
 

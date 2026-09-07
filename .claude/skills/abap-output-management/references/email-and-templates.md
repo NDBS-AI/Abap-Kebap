@@ -66,11 +66,11 @@ mail->add_attachment( cl_bcs_mail_binarypart=>create_instance(
 `send( )` transmits via the mail server configured in the destination (through the cloud
 connector where configured). Two result styles appear in SAP material:
 
-1. **BTP documentation:** `DATA(status_monitor) = mail->send( ).` — returns an
+1. **BTP documentation:** `DATA(lo_status_monitor) = lo_mail->send( ).` — returns an
    `if_bcs_mail_status_monitor` instance; the send method "provides the same statuses as
    exporting parameters".
 2. **ABAP cheat sheets / reuse-services sample:**
-   `mail->send( IMPORTING et_status = DATA(status_table) ).` — per-recipient status table with
+   `lo_mail->send( IMPORTING et_status = DATA(lt_status_table) ).` — per-recipient status table with
    status component values `E` (error), `S` (sent), `W` (waiting).
 
 Both are SAP-published; the exact released signature can differ by release — check it in ADT
@@ -99,9 +99,9 @@ SMTP response. Obtain an instance:
 - later via `cl_bcs_mail_message=>create_mail_status_monitor( )`.
 
 ```abap
-status_monitor->get_email_status(
-  IMPORTING es_mail_status         = DATA(mail_status)
-            et_recipients_statuses = DATA(recipient_statuses) ).
+lo_status_monitor->get_email_status(
+  IMPORTING es_mail_status         = DATA(ls_mail_status)
+            et_recipients_statuses = DATA(lt_recipient_statuses) ).
 ```
 
 The Fiori app *Monitor Email Transmissions* is the admin-facing counterpart: read-only list of
@@ -114,10 +114,10 @@ all outgoing email requests, header + sending status per request, spreadsheet ex
 
 ```abap
 TRY.
-    DATA(mail_address) = cl_mail_address=>create_instance(
+    DATA(lo_mail_address) = cl_mail_address=>create_instance(
         iv_address_string = 'someone@example.com' ).
-    DATA(address_is_valid) = mail_address->validate( ).
-  CATCH cx_bcs_mail INTO DATA(address_error).
+    DATA(lv_address_is_valid) = lo_mail_address->validate( ).
+  CATCH cx_bcs_mail INTO DATA(lo_address_error).
     " handle
 ENDTRY.
 ```
@@ -152,25 +152,25 @@ The template itself must be **active** (not inactive, deprecated, or obsolete).
 ### Runtime rendering — cl_smtg_email_templ_renderer
 
 ```abap
-DATA data_keys TYPE if_smtg_email_template=>ty_gt_data_key.
+DATA lt_data_keys TYPE if_smtg_email_template=>ty_gt_data_key.
 
 TRY.
-    DATA(mail) = cl_bcs_mail_message=>create_instance( ).
-    mail->set_sender( 'noreply@yourcompany.com' ).
-    mail->add_recipient( 'recipient@yourcompany.com' ).
+    DATA(lo_mail) = cl_bcs_mail_message=>create_instance( ).
+    lo_mail->set_sender( 'noreply@yourcompany.com' ).
+    lo_mail->add_recipient( 'recipient@yourcompany.com' ).
 
-    DATA(template_renderer) = cl_smtg_email_templ_renderer=>create_instance(
+    DATA(lo_template_renderer) = cl_smtg_email_templ_renderer=>create_instance(
         iv_template_id = 'YOUR_TEMPLATE_ID' ).
 
-    data_keys = VALUE #( ( name = 'Key_field1' value = 'Key_value1' ) ).
+    lt_data_keys = VALUE #( ( name = 'Key_field1' value = 'Key_value1' ) ).
 
-    template_renderer->render_email_message(
-        io_message  = mail
+    lo_template_renderer->render_email_message(
+        io_message  = lo_mail
         iv_language = sy-langu
-        it_data_key = data_keys ).
+        it_data_key = lt_data_keys ).
 
-    mail->send( ).
-  CATCH cx_bcs_mail cx_smtg_email_common INTO DATA(mail_error).
+    lo_mail->send( ).
+  CATCH cx_bcs_mail cx_smtg_email_common INTO DATA(lo_mail_error).
     " handle
 ENDTRY.
 ```

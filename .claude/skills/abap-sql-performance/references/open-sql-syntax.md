@@ -72,7 +72,7 @@ SELECT dbtab~col1, dbtab~col2, col3
 SELECT comp1 AS comp_a, comp2 AS comp_b, comp3 AS comp_c
   FROM dbtab
   WHERE ...
-  INTO CORRESPONDING FIELDS OF TABLE @itab.
+  INTO CORRESPONDING FIELDS OF TABLE @lt_itab.
 
 "Alias name also possible for the data source
 SELECT ds~col1, ds~col2, ds~col3
@@ -96,35 +96,35 @@ See [abap-internal-tables](../../abap-internal-tables/SKILL.md) for the resultin
 SELECT SINGLE comp1, comp2, comp3
   FROM dbtab
   WHERE ...
-  INTO @struc.
+  INTO @ls_struc.
 
 "Multiple rows into an internal table (declared inline)
 SELECT comp1, comp2, comp3
   FROM dbtab
   WHERE ...
-  INTO TABLE @DATA(lv_itab).
+  INTO TABLE @DATA(lt_itab).
 
 "INTO CORRESPONDING FIELDS OF — assign by name, not position
 SELECT FROM dbtab
   FIELDS comp1, comp2, comp3
   WHERE ...
-  INTO CORRESPONDING FIELDS OF TABLE @itab.
+  INTO CORRESPONDING FIELDS OF TABLE @lt_itab.
 
 "APPENDING keeps existing rows (INTO initializes the target)
 SELECT comp1, comp2, comp3 FROM dbtab
   WHERE ...
-  APPENDING TABLE @itab.
+  APPENDING TABLE @lt_itab.
 
 "NEW — anonymous data object as target
 SELECT carrid, connid, cityfrom, cityto
   FROM zdemo_abap_flsch
-  INTO TABLE NEW @DATA(itab_ref).
+  INTO TABLE NEW @DATA(lr_itab_ref).
 
 "INTO a parenthesized list of elementary objects (order = SELECT list order)
 SELECT SINGLE FROM zdemo_abap_carr
   FIELDS carrid, carrname, url
   WHERE carrid = char`LH`
-  INTO ( @id, @DATA(name2), NEW @FINAL(dref) ).
+  INTO ( @lv_id, @DATA(lv_name2), NEW @FINAL(lr_dref) ).
 ```
 
 **Basic rule:** Without `CORRESPONDING ...`, column **position** matters, not name. With `CORRESPONDING ...`,
@@ -137,7 +137,7 @@ column **name** matters, not position.
 SELECT FROM dbtab
   FIELDS *
   WHERE ...
-  INTO @struc.
+  INTO @ls_struc.
     IF sy-subrc = 0.
       ...
     ENDIF.
@@ -147,13 +147,13 @@ ENDSELECT.
 SELECT SINGLE @abap_true
   FROM dbtab
   WHERE ...
-  INTO @DATA(exists).
+  INTO @DATA(lv_exists).
 
 "DISTINCT — remove duplicate rows (not allowed with SINGLE)
 SELECT DISTINCT cityfrom
   FROM zdemo_abap_flsch
   WHERE carrid = 'LH' AND cityto = 'NEW YORK'
-  INTO TABLE @DATA(itab_distinct).
+  INTO TABLE @DATA(lt_itab_distinct).
 ```
 
 > Source: [03_ABAP_SQL.md — Specifying the Target and Related Additions](https://github.com/SAP-samples/abap-cheat-sheets/blob/main/03_ABAP_SQL.md)
@@ -166,7 +166,7 @@ SELECT DISTINCT cityfrom
 "At most n rows. If INTO is the last clause, UP TO follows it.
 SELECT comp1, comp2, comp3 FROM dbtab
   WHERE ...
-  INTO TABLE @DATA(itab_upto)
+  INTO TABLE @DATA(lt_itab_upto)
   UP TO 5 ROWS.
 
 "OFFSET — skip the first n rows of the result set. Requires ORDER BY.
@@ -174,14 +174,14 @@ SELECT carrid, connid, cityfrom, cityto, fltime
   FROM ztest_abap_flsch
   WHERE carrid = 'LH'
   ORDER BY fltime ASCENDING
-  INTO TABLE @DATA(itab)
+  INTO TABLE @DATA(lt_itab)
   OFFSET 2.
 
 "PACKAGE SIZE — opens a SELECT loop, n rows per iteration; close with ENDSELECT
 SELECT FROM dbtab
   FIELDS comp1, comp2, comp3
   WHERE ...
-  INTO TABLE @DATA(itab_pack) PACKAGE SIZE n.
+  INTO TABLE @DATA(lt_itab_pack) PACKAGE SIZE n.
 ...
 ENDSELECT.
 ```
@@ -206,9 +206,9 @@ SELECT comp1, comp2, comp3 FROM dbtab WHERE ... INTO ...
 SELECT comp1, comp2, comp3 FROM cds_view WHERE ... INTO ...
 
 "Internal table as data source — host variable + alias mandatory
-SELECT FROM @itab AS it
+SELECT FROM @lt_itab AS it
   FIELDS *
-  INTO TABLE @DATA(itab_it).
+  INTO TABLE @DATA(lt_itab_it).
 ```
 
 > Source: [03_ABAP_SQL.md — Specifying the FROM Clause](https://github.com/SAP-samples/abap-cheat-sheets/blob/main/03_ABAP_SQL.md)
@@ -295,27 +295,27 @@ SELECT FROM dbtab
     AND comp2 < 123
   INTO ...
 
-SELECT id FROM @itab AS tab
+SELECT id FROM @lt_itab AS tab
   WHERE ( animal = 'bear' AND count = 5 )
     OR ( animal = 'lion' AND count = 20 )
-  INTO TABLE @it.
+  INTO TABLE @lt_it.
 
-SELECT id FROM @itab AS tab
+SELECT id FROM @lt_itab AS tab
   WHERE count > 10
     OR NOT ( animal = 'kangaroo' AND count = 8 )
-  INTO TABLE @it.
+  INTO TABLE @lt_it.
 ```
 
 ### BETWEEN
 
 ```abap
-SELECT id FROM @itab AS tab
+SELECT id FROM @lt_itab AS tab
   WHERE count BETWEEN 1 AND 10
-  INTO TABLE @it.
+  INTO TABLE @lt_it.
 
-SELECT id FROM @itab AS tab
+SELECT id FROM @lt_itab AS tab
   WHERE count NOT BETWEEN 1 AND 10
-  INTO TABLE @it.
+  INTO TABLE @lt_it.
 ```
 
 ### LIKE (+ ESCAPE)
@@ -324,59 +324,59 @@ SELECT id FROM @itab AS tab
 it is matched literally.
 
 ```abap
-SELECT animal FROM @itab AS tab
+SELECT animal FROM @lt_itab AS tab
   WHERE animal LIKE '%ee%'
      OR animal LIKE '_e%'
-  INTO TABLE @DATA(animals).
+  INTO TABLE @DATA(lt_animals).
 
 "ESCAPE: match any sequence followed by a literal % character
-SELECT animal FROM @itab AS tab
+SELECT animal FROM @lt_itab AS tab
   WHERE animal LIKE '%#%' ESCAPE '#'
-  INTO TABLE @animals.
+  INTO TABLE @lt_animals.
 ```
 
 ### IS [NOT] INITIAL
 
 ```abap
-SELECT id FROM @itab AS tab
+SELECT id FROM @lt_itab AS tab
   WHERE count IS INITIAL
-  INTO TABLE @it.
+  INTO TABLE @lt_it.
 
-SELECT id FROM @itab AS tab
+SELECT id FROM @lt_itab AS tab
   WHERE count IS NOT INITIAL
-  INTO TABLE @it.
+  INTO TABLE @lt_it.
 ```
 
 ### IN (value list) and IN (subquery)
 
 ```abap
 "Value list
-SELECT id FROM @itab AS tab
+SELECT id FROM @lt_itab AS tab
   WHERE animal IN ( 'elephant', 'gorilla', 'dog', 'snake' )
-  INTO TABLE @it.
+  INTO TABLE @lt_it.
 
-SELECT id FROM @itab AS tab
+SELECT id FROM @lt_itab AS tab
   WHERE animal NOT IN ( 'chimpanzee', 'dog', 'snake' )
-  INTO TABLE @it.
+  INTO TABLE @lt_it.
 
 "Subquery (scalar — single column in the subquery SELECT list)
-SELECT id FROM @itab AS tab
+SELECT id FROM @lt_itab AS tab
   WHERE count IN ( SELECT key_field FROM zdemo_abap_tab1 WHERE num1 <= 40 )
-  INTO TABLE @it.
+  INTO TABLE @lt_it.
 ```
 
 ### Tuple IN — value tuples and subquery
 
 ```abap
 "Tuple against a list of value tuples (NOT not supported here)
-SELECT id FROM @itab AS tab
+SELECT id FROM @lt_itab AS tab
   WHERE ( id, animal ) IN ( ( 1, 'bear' ), ( 3, 'giraffe' ), ( 987, 'flamingo' ), ( 2, 'dog' ) )
-  INTO TABLE @it.
+  INTO TABLE @lt_it.
 
 "Tuple against a subquery (same element count and order)
-SELECT id FROM @itab AS tab
+SELECT id FROM @lt_itab AS tab
   WHERE ( id, count ) IN ( SELECT key_field, num1 FROM zdemo_abap_tab1 )
-  INTO TABLE @it.
+  INTO TABLE @lt_it.
 ```
 
 ### Comparison against a subquery (ALL / ANY / SOME)
@@ -386,19 +386,19 @@ The additions `ALL`, `ANY`, `SOME` may be omitted only if the subquery result se
 
 ```abap
 "Single-row result set — no addition needed
-SELECT id FROM @itab AS tab
+SELECT id FROM @lt_itab AS tab
   WHERE count = ( SELECT key_field FROM zdemo_abap_tab1 WHERE num1 = 40 )
-  INTO TABLE @it.
+  INTO TABLE @lt_it.
 
 "ALL — true if comparison holds for every row of the result set
-SELECT id FROM @itab AS tab
+SELECT id FROM @lt_itab AS tab
   WHERE count > ALL ( SELECT key_field FROM zdemo_abap_tab1 )
-  INTO TABLE @it.
+  INTO TABLE @lt_it.
 
 "ANY / SOME — true if comparison holds for at least one row
-SELECT id FROM @itab AS tab
+SELECT id FROM @lt_itab AS tab
   WHERE count = ANY ( SELECT key_field FROM zdemo_abap_tab1 WHERE num1 <= 40 )
-  INTO TABLE @it.
+  INTO TABLE @lt_it.
 ```
 
 ### Ranges table — IN @ranges_table
@@ -406,19 +406,19 @@ SELECT id FROM @itab AS tab
 `CP` and `NP` operators are transformed into case-sensitive `LIKE` conditions.
 
 ```abap
-DATA rangestab TYPE RANGE OF i.
-rangestab = VALUE #( ( sign = 'I' option = 'BT' low = 1 high = 10 ) ).
+DATA lt_rangestab TYPE RANGE OF i.
+lt_rangestab = VALUE #( ( sign = 'I' option = 'BT' low = 1 high = 10 ) ).
 
-SELECT id FROM @itab AS tab
-  WHERE count IN @rangestab
-  INTO TABLE @it.
+SELECT id FROM @lt_itab AS tab
+  WHERE count IN @lt_rangestab
+  INTO TABLE @lt_it.
 
 "Lower than 5 OR greater than/equal to 25
-rangestab = VALUE #( ( sign = 'I' option = 'LT' low = 5 )
+lt_rangestab = VALUE #( ( sign = 'I' option = 'LT' low = 5 )
                      ( sign = 'I' option = 'GE' low = 25 ) ).
-SELECT id FROM @itab AS tab
-  WHERE count IN @rangestab
-  INTO TABLE @it.
+SELECT id FROM @lt_itab AS tab
+  WHERE count IN @lt_rangestab
+  INTO TABLE @lt_it.
 ```
 
 ### EXISTS subquery
@@ -444,7 +444,7 @@ SELECT tab2~key_field, tab1~char2
   FROM zdemo_abap_tab2 AS tab2
   LEFT OUTER JOIN zdemo_abap_tab1 AS tab1 ON tab1~char1 = tab2~char1
   WHERE tab1~char1 IS NULL
-  INTO TABLE @DATA(joined_tab).
+  INTO TABLE @DATA(lt_joined_tab).
 ```
 
 ### Dynamic WHERE
@@ -453,17 +453,17 @@ A character-like data object or a standard table with character-like line type c
 expression. Not case-sensitive. Mind the injection risk — see [abap-dynamic-programming](../../abap-dynamic-programming/SKILL.md).
 
 ```abap
-DATA(dynamic_where_clause) = `count > 15`.
-SELECT id FROM @itab AS tab
-  WHERE (dynamic_where_clause)
-  INTO TABLE @it.
+DATA(lv_dynamic_where_clause) = `count > 15`.
+SELECT id FROM @lt_itab AS tab
+  WHERE (lv_dynamic_where_clause)
+  INTO TABLE @lt_it.
 
-DATA(dyn_where_cl_as_tab) = VALUE string_table( ( `animal = 'kangaroo'` )
+DATA(lt_dyn_where_cl_as_tab) = VALUE string_table( ( `animal = 'kangaroo'` )
                                                 ( `OR` )
                                                 ( `count = 4` ) ).
-SELECT id FROM @itab AS tab
-  WHERE (dyn_where_cl_as_tab)
-  INTO TABLE @it.
+SELECT id FROM @lt_itab AS tab
+  WHERE (lt_dyn_where_cl_as_tab)
+  INTO TABLE @lt_it.
 ```
 
 > Source: [31_WHERE_Conditions.md — WHERE Conditions in ABAP SQL Statements](https://github.com/SAP-samples/abap-cheat-sheets/blob/main/31_WHERE_Conditions.md)
@@ -519,12 +519,12 @@ required, and the driver must not be initial.
 
 ```abap
 "Checking that the driver table is not initial
-IF ( 0 < lines( itab2 ) ).
+IF ( 0 < lines( lt_itab2 ) ).
   SELECT comp1, comp2, comp3
     FROM dbtab
-    FOR ALL ENTRIES IN @itab2      "Host variable before internal table
-    WHERE comp1 = @itab2-comp1 ... "Comparison with a driver column
-    INTO TABLE @itab1
+    FOR ALL ENTRIES IN @lt_itab2      "Host variable before internal table
+    WHERE comp1 = @lt_itab2-comp1 ... "Comparison with a driver column
+    INTO TABLE @lt_itab1
 ENDIF.
 ```
 
@@ -561,17 +561,17 @@ INTERSECT
 SELECT carrid, carrname
     FROM zdemo_abap_carr
     ORDER BY carrid
-    INTO TABLE @DATA(itab_w_intersect).
+    INTO TABLE @DATA(lt_itab_w_intersect).
 
 "EXCEPT — rows of the first query not in the second
 SELECT carrid
     FROM zdemo_abap_carr
     EXCEPT
         SELECT it~carrid
-        FROM @itab AS it
+        FROM @lt_itab AS it
             INNER JOIN zdemo_abap_carr ON zdemo_abap_carr~carrid = it~carrid
     ORDER BY carrid ASCENDING
-    INTO TABLE @DATA(itab_w_except).
+    INTO TABLE @DATA(lt_itab_w_except).
 ```
 
 > Source: [03_ABAP_SQL.md — Combining Data of Multiple Data Sources](https://github.com/SAP-samples/abap-cheat-sheets/blob/main/03_ABAP_SQL.md); [ABAP Keyword Documentation — UNION](https://help.sap.com/doc/abapdocu_cp_index_htm/CLOUD/en-US/index.htm?file=abapunion.htm)
@@ -592,7 +592,7 @@ SELECT SINGLE
   CAST( 1 AS D34N ) / CAST( 2 AS D34N ) AS ratio  "/ with type adjustment via CAST
 FROM zdemo_abap_carr
 WHERE carrid = 'AA'
-INTO @DATA(arithmetic_sql_expr).
+INTO @DATA(ls_arithmetic_sql_expr).
 ```
 
 ### CAST
@@ -605,7 +605,7 @@ SELECT SINGLE
   CAST( @( cl_abap_context_info=>get_system_date( ) ) AS CHAR ) AS dat
 FROM zdemo_abap_fli
 WHERE carrid = 'AA'
-INTO @DATA(cast_expr).
+INTO @DATA(ls_cast_expr).
 ```
 
 ### String expression ( && )
@@ -616,7 +616,7 @@ SELECT SINGLE
   carrid && char`_` && carrname AS concat   "result must be <= 255 chars
 FROM zdemo_abap_carr
 WHERE carrid = 'AA'
-INTO @DATA(string_expr).
+INTO @DATA(ls_string_expr).
 ```
 
 ### CASE (simple and searched)
@@ -640,7 +640,7 @@ SELECT SINGLE
   END AS case_complex
 FROM zdemo_abap_carr
 WHERE carrid = 'AA'
-INTO @DATA(case_expr).
+INTO @DATA(ls_case_expr).
 ```
 
 ### Aggregate expressions
@@ -659,7 +659,7 @@ SELECT
 FROM zdemo_abap_flsch
 WHERE carrid = 'LH'
 GROUP BY carrid
-INTO TABLE @DATA(agg_exp).
+INTO TABLE @DATA(lt_agg_exp).
 ```
 
 ### Window expressions ( OVER )
@@ -676,7 +676,7 @@ SELECT carrid, currency,
   MAX( price ) OVER( PARTITION BY carrid ) AS max
   FROM zdemo_abap_fli
   ORDER BY carrid
-  INTO TABLE @DATA(win).
+  INTO TABLE @DATA(lt_win).
 
 "Running count with an explicit frame
 SELECT carrid, currency, fldate,
@@ -689,7 +689,7 @@ SELECT carrid, currency, fldate,
   AVG( price AS DEC( 14,2 ) ) OVER( ORDER BY currency, fldate
        ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING ) AS avg
   FROM zdemo_abap_fli
-  INTO TABLE @DATA(result).
+  INTO TABLE @DATA(lt_result).
 ```
 
 ### Built-in functions (selection)
@@ -712,7 +712,7 @@ SELECT SINGLE
   length( url ) AS length
   FROM zdemo_abap_carr
   WHERE carrid = 'LH'
-  INTO @DATA(string_functions).
+  INTO @DATA(ls_string_functions).
 
 "coalesce — replace null values produced by an outer join
 SELECT tab2~key_field,
@@ -720,7 +720,7 @@ SELECT tab2~key_field,
        coalesce( tab1~char2, '#' ) AS coalesced2
     FROM zdemo_abap_tab2 AS tab2
     LEFT OUTER JOIN zdemo_abap_tab1 AS tab1 ON tab1~char1 = tab2~char1
-    INTO TABLE @DATA(join_w_null).
+    INTO TABLE @DATA(lt_join_w_null).
 ```
 
 Built-in functions are also covered in [abap-builtin-functions](../../abap-builtin-functions/SKILL.md) and
@@ -758,7 +758,7 @@ WITH
 SELECT name, connection, departure, arrival, occupied
   FROM +result
   ORDER BY name, connection
-  INTO TABLE @DATA(result).
+  INTO TABLE @DATA(lt_result).
 ```
 
 > Source: [03_ABAP_SQL.md — Common Table Expressions (CTE)](https://github.com/SAP-samples/abap-cheat-sheets/blob/main/03_ABAP_SQL.md); [ABAP Keyword Documentation — WITH](https://help.sap.com/doc/abapdocu_cp_index_htm/CLOUD/en-US/index.htm?file=abapwith.htm)
@@ -775,15 +775,15 @@ All four set `sy-subrc` (0 = success, 4 = not / not all rows processed) and `sy-
 
 ```abap
 "Single row
-INSERT dbtab FROM @row.
-INSERT INTO dbtab VALUES @row.                 "alternative syntax, same effect
+INSERT dbtab FROM @ls_row.
+INSERT INTO dbtab VALUES @ls_row.                 "alternative syntax, same effect
 INSERT dbtab FROM @( VALUE #( comp1 = ... comp2 = ... ) ).
 
 "Multiple rows from an internal table
-INSERT dbtab FROM TABLE @itab.
+INSERT dbtab FROM TABLE @lt_itab.
 
 "Avoid the duplicate-key runtime error: discard duplicates, set sy-subrc = 4
-INSERT dbtab FROM TABLE @itab ACCEPTING DUPLICATE KEYS.
+INSERT dbtab FROM TABLE @lt_itab ACCEPTING DUPLICATE KEYS.
 
 "From the result set of an embedded subquery
 INSERT dbtab FROM ( SELECT ... ).
@@ -793,8 +793,8 @@ INSERT dbtab FROM ( SELECT ... ).
 
 ```abap
 "Overwrite entire rows
-UPDATE dbtab FROM @row.
-UPDATE dbtab FROM TABLE @itab.
+UPDATE dbtab FROM @ls_row.
+UPDATE dbtab FROM TABLE @lt_itab.
 
 "SET — change specific fields without overwriting the others
 UPDATE dbtab SET comp2 = 'X'.                              "all rows
@@ -802,17 +802,17 @@ UPDATE dbtab SET comp2 = 'X', comp3 = 'Y' WHERE comp4 > 100.
 UPDATE dbtab SET comp2 = 'X' WHERE key_field = 'Y'.        "single row by key
 
 "INDICATORS — change only flagged fields (key fields must be present)
-TYPES ind_wa TYPE dbtab WITH INDICATORS comp_ind TYPE abap_bool.
-DATA ind_tab TYPE TABLE OF ind_wa.
-UPDATE dbtab FROM TABLE @ind_tab INDICATORS SET STRUCTURE comp_ind.
-UPDATE dbtab FROM TABLE @ind_tab INDICATORS NOT SET STRUCTURE comp_ind.
+TYPES ty_ind_wa TYPE dbtab WITH INDICATORS comp_ind TYPE abap_bool.
+DATA lt_ind_tab TYPE TABLE OF ty_ind_wa.
+UPDATE dbtab FROM TABLE @lt_ind_tab INDICATORS SET STRUCTURE comp_ind.
+UPDATE dbtab FROM TABLE @lt_ind_tab INDICATORS NOT SET STRUCTURE comp_ind.
 ```
 
 ### MODIFY (upsert: insert if absent, overwrite if present)
 
 ```abap
-MODIFY dbtab FROM @row.
-MODIFY dbtab FROM TABLE @itab.
+MODIFY dbtab FROM @ls_row.
+MODIFY dbtab FROM TABLE @lt_itab.
 MODIFY dbtab FROM ( SELECT ... ).
 ```
 
@@ -824,8 +824,8 @@ DELETE FROM dbtab.              "all rows
 DELETE FROM dbtab WHERE ....    "by condition
 
 "DELETE ... FROM ... variant (by key in a structure / internal table)
-DELETE dbtab FROM @row.
-DELETE dbtab FROM TABLE @itab.
+DELETE dbtab FROM @ls_row.
+DELETE dbtab FROM TABLE @lt_itab.
 ```
 
 For the slow→fast DML rewrites (UPDATE in a loop → `UPDATE FROM TABLE`), see
@@ -863,11 +863,11 @@ INSERT dbtab FROM TABLE @( VALUE #( ( key_field = 1 comp1 = ... )
 "VALUE + BASE — keep non-modified components on UPDATE
 "Read every column explicitly (all of them are needed as BASE for the partial UPDATE below —
 "this is not a case for a narrower field list since the row is rebuilt component-for-component)
-SELECT SINGLE key_field, comp1, comp2, comp3, comp4 FROM dbtab WHERE key_field = ... INTO @DATA(read_line).
-UPDATE dbtab FROM @( VALUE #( BASE read_line comp2 = ... comp4 = ... ) ).
+SELECT SINGLE key_field, comp1, comp2, comp3, comp4 FROM dbtab WHERE key_field = ... INTO @DATA(ls_read_line).
+UPDATE dbtab FROM @( VALUE #( BASE ls_read_line comp2 = ... comp4 = ... ) ).
 
 "CORRESPONDING with MAPPING / EXCEPT
-INSERT dbtab FROM TABLE @( CORRESPONDING #( another_itab MAPPING key_field = key comp1 = compZ EXCEPT comp2 ) ).
+INSERT dbtab FROM TABLE @( CORRESPONDING #( lt_another_itab MAPPING key_field = key comp1 = compZ EXCEPT comp2 ) ).
 ```
 
 > Source: [03_ABAP_SQL.md — Using Constructor Expressions in ABAP SQL Statements](https://github.com/SAP-samples/abap-cheat-sheets/blob/main/03_ABAP_SQL.md)
@@ -882,18 +882,18 @@ literals (`char\`X\``, `int8\`...\``, `datn\`20240102\``, etc.) are passed to an
 without ABAP-side conversion.
 
 ```abap
-DATA number TYPE i VALUE 3.
+DATA lv_number TYPE i VALUE 3.
 SELECT FROM zdemo_abap_flsch
   FIELDS
   cityfrom,                                              "column
   zdemo_abap_flsch~cityto,                               "column with selector
   'Lufthansa' AS name,                                   "untyped literal
   char`X` AS flag,                                       "typed literal
-  @number AS num,                                        "host variable
+  @lv_number AS num,                                     "host variable
   @( cl_abap_context_info=>get_system_date( ) ) as date  "host expression
   WHERE carrid = 'LH'
     AND countryfr = char`DE`
-  INTO TABLE @DATA(it)
+  INTO TABLE @DATA(lt_it)
   UP TO 3 ROWS.
 ```
 
@@ -908,9 +908,9 @@ The data source (and other tokens) can be specified dynamically with parentheses
 the injection-risk discussion.
 
 ```abap
-DATA(dbtab) = 'ZDEMO_ABAP_FLSCH'.
+DATA(lv_dbtab) = 'ZDEMO_ABAP_FLSCH'.
 SELECT carrid, connid, cityfrom, cityto
-  FROM (dbtab)
+  FROM (lv_dbtab)
   WHERE ...
   INTO ...
 ```
@@ -926,7 +926,7 @@ not) filter the client column in `WHERE`.
 
 ```abap
 "Using the current client implicitly
-SELECT carrid, carrname, url FROM zdemo_abap_carr INTO TABLE @DATA(itab1).
+SELECT carrid, carrname, url FROM zdemo_abap_carr INTO TABLE @DATA(lt_itab1).
 "SELECT carrid, carrname, url FROM zdemo_abap_carr WHERE mandt = '123' ...  "syntax error
 ```
 
@@ -935,9 +935,9 @@ is **not** allowed in ABAP Cloud, where you are limited to your own client.
 
 ```abap
 "---- classic ABAP only ----
-SELECT carrid, carrname, url FROM zdemo_abap_carr USING CLIENT '000' INTO TABLE @DATA(itab3).
-SELECT carrid, carrname, url FROM zdemo_abap_carr USING CLIENTS IN @client_range INTO TABLE @DATA(itab5).
-SELECT carrid, carrname, url FROM zdemo_abap_carr USING ALL CLIENTS INTO TABLE @DATA(itab7).
+SELECT carrid, carrname, url FROM zdemo_abap_carr USING CLIENT '000' INTO TABLE @DATA(lt_itab3).
+SELECT carrid, carrname, url FROM zdemo_abap_carr USING CLIENTS IN @lt_client_range INTO TABLE @DATA(lt_itab5).
+SELECT carrid, carrname, url FROM zdemo_abap_carr USING ALL CLIENTS INTO TABLE @DATA(lt_itab7).
 ```
 
 Native SQL / AMDP have no implicit client handling — in ABAP Cloud, AMDP must be client-safe. See

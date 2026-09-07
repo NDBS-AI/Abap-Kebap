@@ -115,11 +115,11 @@ ENDCLASS.
 
 CLASS zcl_register_holiday_bc IMPLEMENTATION.
   METHOD main.
-    DATA(business_configuration) =
+    DATA(lo_business_configuration) =
       mbc_cp_api=>business_configuration_api( '/Y123456/HOLIDAY_CALENDAR' ).
 
     TRY.
-        business_configuration->create(
+        lo_business_configuration->create(
           iv_name            = 'Holiday Calendar'
           iv_description     = 'A calendar for holidays'
           iv_service_binding = '/Y123456/CAL_I_HOLIDAY_SB'
@@ -127,9 +127,9 @@ CLASS zcl_register_holiday_bc IMPLEMENTATION.
           iv_service_version = 0001
           iv_root_entity_set = 'HolidayRoot'
           iv_transport       = 'X02K900025' ).
-      CATCH cx_mbc_api_exception INTO DATA(api_error).
-        LOOP AT api_error->if_xco_news~get_messages( ) INTO DATA(message).
-          " message->get_text( ) carries the error text.
+      CATCH cx_mbc_api_exception INTO DATA(lo_api_error).
+        LOOP AT lo_api_error->if_xco_news~get_messages( ) INTO DATA(ls_message).
+          " ls_message->get_text( ) carries the error text.
         ENDLOOP.
     ENDTRY.
   ENDMETHOD.
@@ -153,7 +153,7 @@ Customizing content is created in a development system and transported onward; t
 **1. Instantiate the transport API** with factory `mbc_cp_api=>rap_tdat_cts`, mapping CDS entities to their tables:
 
 ```abap
-DATA(transport_api) = mbc_cp_api=>rap_tdat_cts(
+DATA(lo_transport_api) = mbc_cp_api=>rap_tdat_cts(
   tdat_name              = '/ITAPC1/CODE'
   table_entity_relations = VALUE #(
     ( entity = '/ITAPC1/I_Status'     table = '/ITAPC1/STATUS' )
@@ -208,10 +208,10 @@ METHOD get_global_authorizations.
   AUTHORITY-CHECK OBJECT 'S_TABU_NAM'
     ID 'TABLE' FIELD '/ITAPC1/I_STATUS'
     ID 'ACTVT' FIELD '02'.
-  DATA(is_authorized) = COND #( WHEN sy-subrc = 0 THEN if_abap_behv=>auth-allowed
+  DATA(lv_is_authorized) = COND #( WHEN sy-subrc = 0 THEN if_abap_behv=>auth-allowed
                                 ELSE if_abap_behv=>auth-unauthorized ).
-  result-%update      = is_authorized.
-  result-%action-edit = is_authorized.
+  result-%update      = lv_is_authorized.
+  result-%action-edit = lv_is_authorized.
 ENDMETHOD.
 ```
 
@@ -238,25 +238,25 @@ Runtime activation with `CL_SCPR_CD_BCSET_ACTIVATION` — four documented steps:
 ```abap
 TRY.
     " 1. Access the activation handler
-    DATA(activate_handler) =
+    DATA(lo_activate_handler) =
       cl_scpr_cd_bcset_activation=>of( 'ZMY_BC_SET' )->get_activate_handler( ).
 
     " 2. (Optional) customize activation options — default: all active system languages
-    DATA(activation_options) =
+    DATA(lo_activation_options) =
       cl_scpr_cd_bcset_activation=>options( )->get_activate_options( ).
-    activation_options->add_activation_languages( VALUE #( ( langu = 'E' ) ( langu = 'F' ) ) ).
+    lo_activation_options->add_activation_languages( VALUE #( ( langu = 'E' ) ( langu = 'F' ) ) ).
 
     " 3. Activate: local( ) deploys to the tables locally — NOT captured on a transport
-    DATA(activation_result) =
-      activate_handler->local( )->add_activation_options( activation_options )->start( ).
+    DATA(lo_activation_result) =
+      lo_activate_handler->local( )->add_activation_options( lo_activation_options )->start( ).
 
     " 4. Evaluate the result
-    IF activation_result->is_bcset_activation_successful( ) = abap_false.
-      DATA(activation_messages) = activation_result->get_messages( ).  " BAPIRETTAB
+    IF lo_activation_result->is_bcset_activation_successful( ) = abap_false.
+      DATA(lt_activation_messages) = lo_activation_result->get_messages( ).  " BAPIRETTAB
     ENDIF.
-  CATCH cx_scpr_object_not_permitted INTO DATA(activation_error).
+  CATCH cx_scpr_object_not_permitted INTO DATA(lo_activation_error).
     " BC_SET_NOT_FOUND or BC_SET_NOT_PERMITTED (object restrictions / language version)
-    DATA(error_text) = activation_error->get_text( ).
+    DATA(lv_error_text) = lo_activation_error->get_text( ).
 ENDTRY.
 ```
 

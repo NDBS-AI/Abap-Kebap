@@ -40,12 +40,12 @@ The top 1–5 statements are almost always where the time went. If the slowest s
 ```abap
 " Before (N+1)
 LOOP AT lt_invoices INTO DATA(ls_inv).
-  SELECT SINGLE name1 FROM kna1 INTO @DATA(name) WHERE kunnr = @ls_inv-kunnr.
+  SELECT SINGLE name1 FROM kna1 INTO @DATA(lv_name) WHERE kunnr = @ls_inv-kunnr.
 ENDLOOP.
 
 " After (1 SELECT)
 SELECT kunnr, name1 FROM kna1
-  INTO TABLE @DATA(customers)
+  INTO TABLE @DATA(lt_customers)
   FOR ALL ENTRIES IN @lt_invoices
   WHERE kunnr = @lt_invoices-kunnr.
 ```

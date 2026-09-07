@@ -60,120 +60,120 @@ CLASS zcl_application_log_query DEFINITION
     INTERFACES if_rap_query_provider.
 
   PRIVATE SECTION.
-    TYPES log_entries_type TYPE STANDARD TABLE OF zi_applicationlogentry
+    TYPES tt_log_entries TYPE STANDARD TABLE OF zi_applicationlogentry
       WITH EMPTY KEY.
 
     METHODS read_log_entries
-      IMPORTING log_handle         TYPE if_bali_log=>ty_handle
-      RETURNING VALUE(log_entries) TYPE log_entries_type
+      IMPORTING iv_log_handle         TYPE if_bali_log=>ty_handle
+      RETURNING VALUE(rt_log_entries) TYPE tt_log_entries
       RAISING   cx_bali_runtime.
 
     METHODS derive_criticality
-      IMPORTING severity           TYPE symsgty
-      RETURNING VALUE(criticality) TYPE i.
+      IMPORTING iv_severity           TYPE symsgty
+      RETURNING VALUE(rv_criticality) TYPE i.
 ENDCLASS.
 
 
 CLASS zcl_application_log_query IMPLEMENTATION.
 
   METHOD if_rap_query_provider~select.
-    DATA log_entries TYPE log_entries_type.
+    DATA lt_log_entries TYPE tt_log_entries.
 
     " --- 1. Read the request: paging, filter, sort ---------------------
-    DATA(paging)    = io_request->get_paging( ).
-    DATA(offset)    = paging->get_offset( ).
-    DATA(page_size) = paging->get_page_size( ).
+    DATA(lo_paging)    = io_request->get_paging( ).
+    DATA(lv_offset)    = lo_paging->get_offset( ).
+    DATA(lv_page_size) = lo_paging->get_page_size( ).
 
     TRY.
-        DATA(filter_ranges) = io_request->get_filter( )->get_as_ranges( ).
-        DATA(filter_sql)    = io_request->get_filter( )->get_as_sql_string( ).
-      CATCH cx_rap_query_filter_no_range INTO DATA(no_range_error).
+        DATA(lt_filter_ranges) = io_request->get_filter( )->get_as_ranges( ).
+        DATA(lv_filter_sql)    = io_request->get_filter( )->get_as_sql_string( ).
+      CATCH cx_rap_query_filter_no_range INTO DATA(lo_no_range_error).
         " Filter not convertible to ranges (e.g. OR across elements):
         " this provider needs the key ranges, so report the problem.
         RAISE EXCEPTION TYPE zcx_application_log_query
-          EXPORTING previous = no_range_error.
+          EXPORTING previous = lo_no_range_error.
     ENDTRY.
 
-    DATA order_by_clause TYPE string.
-    LOOP AT io_request->get_sort_elements( ) INTO DATA(sort_element).
-      order_by_clause =
-        |{ order_by_clause } { sort_element-element_name }| &&
-        COND #( WHEN sort_element-descending = abap_true
+    DATA lv_order_by_clause TYPE string.
+    LOOP AT io_request->get_sort_elements( ) INTO DATA(ls_sort_element).
+      lv_order_by_clause =
+        |{ lv_order_by_clause } { ls_sort_element-element_name }| &&
+        COND #( WHEN ls_sort_element-descending = abap_true
                 THEN ` DESCENDING` ELSE ` ASCENDING` ).
     ENDLOOP.
 
     " --- 2. Call the backing API driven by the key filter ---------------
     " The consumer must filter on LOG_HANDLE (element names are uppercase).
-    READ TABLE filter_ranges WITH KEY name = 'LOG_HANDLE'
-      INTO DATA(handle_filter).
-    IF sy-subrc <> 0 OR handle_filter-range IS INITIAL.
+    READ TABLE lt_filter_ranges WITH KEY name = 'LOG_HANDLE'
+      INTO DATA(ls_handle_filter).
+    IF sy-subrc <> 0 OR ls_handle_filter-range IS INITIAL.
       io_response->set_total_number_of_records( 0 ).
-      io_response->set_data( log_entries ).
+      io_response->set_data( lt_log_entries ).
       RETURN.
     ENDIF.
 
     TRY.
-        LOOP AT handle_filter-range INTO DATA(handle_range)
+        LOOP AT ls_handle_filter-range INTO DATA(ls_handle_range)
              WHERE sign = 'I' AND option = 'EQ'.
-          DATA(requested_handle) = CONV if_bali_log=>ty_handle(
-                                     handle_range-low ).
-          APPEND LINES OF read_log_entries( requested_handle )
-            TO log_entries.
+          DATA(lv_requested_handle) = CONV if_bali_log=>ty_handle(
+                                     ls_handle_range-low ).
+          APPEND LINES OF read_log_entries( lv_requested_handle )
+            TO lt_log_entries.
         ENDLOOP.
-      CATCH cx_bali_runtime INTO DATA(log_read_error).
+      CATCH cx_bali_runtime INTO DATA(lo_log_read_error).
         RAISE EXCEPTION TYPE zcx_application_log_query
-          EXPORTING previous = log_read_error.
+          EXPORTING previous = lo_log_read_error.
     ENDTRY.
 
     " --- 3. Apply $filter and $orderby to the in-memory result ----------
-    IF filter_sql IS NOT INITIAL OR order_by_clause IS NOT INITIAL.
-      SELECT log_handle, log_item_number, severity, criticality, detail_level, timestamp, message_text FROM @log_entries AS entries
-        WHERE (filter_sql)
-        ORDER BY (order_by_clause)
-        INTO TABLE @log_entries.
+    IF lv_filter_sql IS NOT INITIAL OR lv_order_by_clause IS NOT INITIAL.
+      SELECT log_handle, log_item_number, severity, criticality, detail_level, timestamp, message_text FROM @lt_log_entries AS entries
+        WHERE (lv_filter_sql)
+        ORDER BY (lv_order_by_clause)
+        INTO TABLE @lt_log_entries.
     ENDIF.
 
     " --- 4. Total count BEFORE paging, then slice the page --------------
-    DATA(total_count) = lines( log_entries ).
+    DATA(lv_total_count) = lines( lt_log_entries ).
 
-    IF page_size <> if_rap_query_paging=>page_size_unlimited.
-      DATA(first_row_beyond_page) = offset + page_size + 1.
-      DELETE log_entries FROM first_row_beyond_page.
+    IF lv_page_size <> if_rap_query_paging=>page_size_unlimited.
+      DATA(lv_first_row_beyond_page) = lv_offset + lv_page_size + 1.
+      DELETE lt_log_entries FROM lv_first_row_beyond_page.
     ENDIF.
-    IF offset > 0.
-      DELETE log_entries TO offset.
+    IF lv_offset > 0.
+      DELETE lt_log_entries TO lv_offset.
     ENDIF.
 
     " --- 5. Answer exactly what was requested ---------------------------
     IF io_request->is_total_numb_of_rec_requested( ).
-      io_response->set_total_number_of_records( total_count ).
+      io_response->set_total_number_of_records( lv_total_count ).
     ENDIF.
     IF io_request->is_data_requested( ).
-      io_response->set_data( log_entries ).
+      io_response->set_data( lt_log_entries ).
     ENDIF.
   ENDMETHOD.
 
   METHOD read_log_entries.
-    DATA(log) = cl_bali_log_db=>get_instance( )->load_log(
-                  handle           = log_handle
+    DATA(lo_log) = cl_bali_log_db=>get_instance( )->load_log(
+                  handle           = iv_log_handle
                   read_only_header = abap_true ).
 
-    LOOP AT log->get_all_items( ) INTO DATA(log_item).
+    LOOP AT lo_log->get_all_items( ) INTO DATA(ls_log_item).
       APPEND VALUE #(
-        log_handle      = log_handle
-        log_item_number = log_item-log_item_number
-        severity        = log_item-item->severity
-        criticality     = derive_criticality( log_item-item->severity )
-        detail_level    = log_item-item->detail_level
-        timestamp       = log_item-item->timestamp
-        message_text    = log_item-item->get_message_text( ) )
-        TO log_entries.
+        log_handle      = iv_log_handle
+        log_item_number = ls_log_item-log_item_number
+        severity        = ls_log_item-item->severity
+        criticality     = derive_criticality( ls_log_item-item->severity )
+        detail_level    = ls_log_item-item->detail_level
+        timestamp       = ls_log_item-item->timestamp
+        message_text    = ls_log_item-item->get_message_text( ) )
+        TO rt_log_entries.
     ENDLOOP.
   ENDMETHOD.
 
   METHOD derive_criticality.
     " Fiori criticality: 1 = error, 2 = warning, 3 = success/neutral
-    criticality = SWITCH #( severity
+    rv_criticality = SWITCH #( iv_severity
                             WHEN 'E' OR 'A' THEN 1
                             WHEN 'W' OR 'X' THEN 2
                             WHEN 'S' OR 'I' THEN 3

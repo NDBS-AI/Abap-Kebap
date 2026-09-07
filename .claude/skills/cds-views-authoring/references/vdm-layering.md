@@ -2,6 +2,14 @@
 
 SAP's Virtual Data Model prescribes a layered structure for CDS views. Following it makes views reusable; ignoring it makes them throwaway.
 
+> **Naming note:** the `Z_I_`/`Z_C_`/`Z_P_` letters below are SAP's classic three-tier
+> VDM scheme, where `C_` means **composite**. The shipped ABAP naming convention
+> ([naming-conventions.md](../../abap-clean-style/references/naming-conventions.md))
+> collapses CDS views into two customer-Z rows instead — interface/basic (`_i_`) and
+> projection/consumption (`_c_`) — for projects with no separate composite tier. Pick
+> whichever fits your project's actual layer count; never double the leading `Z`/`Y`
+> either way.
+
 ## The three primary layers
 
 ### Basic / Interface views (`Z_I_*`)

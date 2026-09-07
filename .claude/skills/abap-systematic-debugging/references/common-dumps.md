@@ -37,9 +37,9 @@ Each entry: what the dump is *really* saying, the first 1–2 things to check, t
 - **First check:** Stack frame above the dump line. Where was the reference *supposed* to be set?
 - **Common causes:**
   - Factory returned `NULL` without raising — caller didn't check `IS BOUND`
-  - `READ TABLE … REFERENCE INTO ref` with `sy-subrc <> 0` — `ref` is unbound; the dump fires on the next `ref->…` access
-  - Method that may legitimately return unset reference; signature should be `RETURNING VALUE(result) TYPE REF TO …` with the caller checking `IS BOUND`
-- **Dump fields:** Variable section will show `<ref> = "OBJECT REFERENCE: <not assigned>"`.
+  - `READ TABLE … REFERENCE INTO lr_ref` with `sy-subrc <> 0` — `lr_ref` is unbound; the dump fires on the next `lr_ref->…` access
+  - Method that may legitimately return unset reference; signature should be `RETURNING VALUE(ro_result) TYPE REF TO …` with the caller checking `IS BOUND`
+- **Dump fields:** Variable section will show `<lr_ref> = "OBJECT REFERENCE: <not assigned>"`.
 
 ### `OBJECTS_OBJREF_NOT_VALID`
 - **Meaning:** Reference variable still points but the referenced object has been freed.

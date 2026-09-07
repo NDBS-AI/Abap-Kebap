@@ -70,18 +70,18 @@ When to use: any time SAP provides one. Standard, safe through upgrade, multiple
 Use the `TYPE` addition of `GET BADI` when the BAdI name is not known at compile time — for example, in framework code that dispatches different BAdIs at runtime based on configuration or a parameter.
 
 ```abap
-DATA badi_name TYPE string VALUE 'ZBADI_MY_BADI'.  " name comes from config / parameter
-DATA badi_ref  TYPE REF TO cl_badi_base.           " static type MUST be CL_BADI_BASE
+DATA lv_badi_name TYPE string VALUE 'ZBADI_MY_BADI'.  " name comes from config / parameter
+DATA lo_badi_ref  TYPE REF TO cl_badi_base.           " static type MUST be CL_BADI_BASE
 
 " Dynamic instantiation — BAdI name is resolved at runtime
-GET BADI badi_ref TYPE (badi_name) FILTERS operator = '-'.
+GET BADI lo_badi_ref TYPE (lv_badi_name) FILTERS operator = '-'.
 
 " Dynamic method call — method name also from a variable
-DATA method_name TYPE string VALUE 'CALCULATE'.
-CALL BADI badi_ref->(method_name)
+DATA lv_method_name TYPE string VALUE 'CALCULATE'.
+CALL BADI lo_badi_ref->(lv_method_name)
   EXPORTING num1 = 10
             num2 = 8
-  RECEIVING result = DATA(result).
+  RECEIVING rv_result = DATA(lv_result).
 ```
 
 Rules:
@@ -101,15 +101,15 @@ Both `GET BADI` and `CALL BADI` can raise catchable exceptions. Always handle th
 
 ```abap
 TRY.
-    GET BADI badi_ref TYPE (badi_name) FILTER-TABLE filter_tab.
-    CALL BADI badi_ref->(method_name)
+    GET BADI lo_badi_ref TYPE (lv_badi_name) FILTER-TABLE lt_filter_tab.
+    CALL BADI lo_badi_ref->(lv_method_name)
       EXPORTING num1 = 10 num2 = 5
-      RECEIVING result = DATA(res).
+      RECEIVING rv_result = DATA(lv_res).
   CATCH cx_badi_filter_error            " bad filter / name
         cx_badi_initial_reference       " ref not bound
         cx_sy_dyn_call_param_missing    " wrong params
-        INTO DATA(error).
-    " log / handle, e.g. error->get_text( )
+        INTO DATA(lo_error).
+    " log / handle, e.g. lo_error->get_text( )
 ENDTRY.
 ```
 

@@ -92,9 +92,9 @@ Load this skill when:
 - `CASE TYPE OF` is a code smell in business logic (switch-on-type pattern). Replace with polymorphism. Exception: framework code that genuinely dispatches on RTTI.
 
 **LOOP AT.**
-- `LOOP AT itab REFERENCE INTO DATA(invoice_ref)` — modifies in place, no copy.
-- `LOOP AT itab ASSIGNING FIELD-SYMBOL(<invoice>)` — fastest, modifies in place.
-- `LOOP AT itab INTO DATA(invoice)` — copies to a work area. Use only when you need a copy.
+- `LOOP AT lt_invoices REFERENCE INTO DATA(lr_invoice)` — modifies in place, no copy.
+- `LOOP AT lt_invoices ASSIGNING FIELD-SYMBOL(<fs_invoice>)` — fastest, modifies in place.
+- `LOOP AT lt_invoices INTO DATA(ls_invoice)` — copies to a work area. Use only when you need a copy.
 - Use `WHERE` instead of `IF … CONTINUE` to skip — clearer intent, often faster.
 
 **WHILE / DO.** Bounded loops; if you find yourself writing `WHILE x EQ abap_true … x = abap_false`, you have an `IF`. `DO` is unconditional (exit via `EXIT`/`TIMES`); `WHILE` repeats while a logical expression is true. In both, `sy-index` counts passes; in `LOOP AT` it is `sy-tabix` instead.

@@ -6,11 +6,11 @@ A scannable do / don't table covering the rules most often violated in reviews. 
 
 | Don't | Do | Why |
 |---|---|---|
-| `lv_x`, `lt_tmp`, `ls_data` | `customer_id`, `overdue_invoices`, `invoice_header` | Reveal intent, not type-prefix |
+| `lv_x`, `lt_tmp`, `ls_data` (prefix + placeholder, no business meaning) | `lv_customer_id`, `lt_overdue_invoices`, `ls_invoice_header` — see [naming-conventions.md](naming-conventions.md) for the full scope+type grid | Keep the shipped prefix, but the name after it must reveal intent |
 | `cl_invoice_helper` | `cl_invoice_overdue_finder` | "Helper" / "Util" / "Manager" are noise |
 | `do_processing( )` | `calculate_total( )`, `notify_subscribers( )` | Verb says exactly what happens |
 | `flag_x` | `is_overdue`, `has_changes` | Predicates read as English |
-| `lv_kunnr` (DDIC short) outside KNA1 context | `customer_id` | DDIC short names leak schema into business code |
+| `lv_kunnr` (bare DDIC short name leaking schema into business code) | `lv_customer_id` (still prefixed per the shipped convention, business-named instead of the raw DDIC field) | DDIC short names leak schema; the scope+type prefix is not the problem |
 
 ## Control flow
 
@@ -64,7 +64,7 @@ A scannable do / don't table covering the rules most often violated in reviews. 
 |---|---|
 | 80-line method with two responsibilities | Two methods, each at one level of abstraction |
 | 4 `EXPORTING` parameters | Return a structure or split the method |
-| `EXPORTING` when there is exactly one result | `RETURNING VALUE(result) TYPE …` |
+| `EXPORTING` when there is exactly one result | `RETURNING VALUE(rv_result) TYPE …` |
 | `PUBLIC SECTION` with helpers | Private; expose only the real API |
 | Default `PUBLIC OPEN` class | `FINAL` until inheritance is actually needed |
 | `CHANGING wa` when you mean "compute new value" | `IMPORTING wa  RETURNING new_wa` |

@@ -25,8 +25,8 @@ FORM fetch_invoices.
 ENDFORM.
 
 FORM compute_total CHANGING p_total TYPE decfloat34.
-  LOOP AT gt_invoices INTO DATA(ls).
-    p_total = p_total + ls-amount.
+  LOOP AT gt_invoices INTO DATA(ls_invoice).
+    p_total = p_total + ls_invoice-amount.
   ENDLOOP.
 ENDFORM.
 
@@ -44,10 +44,10 @@ CLASS lcl_summary DEFINITION FINAL.
     METHODS run.
   PRIVATE SECTION.
     METHODS:
-      fetch         RETURNING VALUE(result) TYPE invoice_t,
-      compute_total IMPORTING invoices TYPE invoice_t
-                    RETURNING VALUE(result) TYPE decfloat34,
-      display       IMPORTING total TYPE decfloat34.
+      fetch         RETURNING VALUE(rt_result) TYPE invoice_t,
+      compute_total IMPORTING it_invoices     TYPE invoice_t
+                    RETURNING VALUE(rv_result) TYPE decfloat34,
+      display       IMPORTING iv_total TYPE decfloat34.
 ENDCLASS.
 
 CLASS lcl_summary IMPLEMENTATION.
@@ -57,18 +57,18 @@ CLASS lcl_summary IMPLEMENTATION.
 
   METHOD fetch.
     SELECT carrid, connid, fldate, amount, created_at FROM zinvoice
-      INTO TABLE @result
+      INTO TABLE @rt_result
       WHERE created_at >= @( sy-datum - 30 ).
   ENDMETHOD.
 
   METHOD compute_total.
-    result = REDUCE #( INIT total = 0
-                       FOR <invoice> IN invoices
-                       NEXT total = total + <invoice>-amount ).
+    rv_result = REDUCE #( INIT lv_total = 0
+                       FOR <fs_invoice> IN it_invoices
+                       NEXT lv_total = lv_total + <fs_invoice>-amount ).
   ENDMETHOD.
 
   METHOD display.
-    cl_demo_output=>display( |Total: { total }| ).
+    cl_demo_output=>display( |Total: { iv_total }| ).
   ENDMETHOD.
 ENDCLASS.
 
@@ -102,8 +102,8 @@ SELECT k~kunnr,
   GROUP BY k~kunnr, k~name1
   INTO TABLE @DATA(lt_open).
 
-LOOP AT lt_open INTO DATA(ls).
-  WRITE: / ls-kunnr, ls-name1, ls-open_amount CURRENCY 'EUR'.
+LOOP AT lt_open INTO DATA(ls_open).
+  WRITE: / ls_open-kunnr, ls_open-name1, ls_open-open_amount CURRENCY 'EUR'.
 ENDLOOP.
 ```
 
@@ -153,10 +153,10 @@ Consumption (in any ABAP):
 ```abap
 SELECT CustomerId, Name, OpenAmount, Currency
   FROM Z_C_OpenInvoiceByCustomer
-  INTO TABLE @DATA(open_summary).
+  INTO TABLE @DATA(lt_open_summary).
 
-LOOP AT open_summary INTO DATA(row).
-  WRITE: / row-CustomerId, row-Name, row-OpenAmount CURRENCY row-Currency.
+LOOP AT lt_open_summary INTO DATA(ls_row).
+  WRITE: / ls_row-CustomerId, ls_row-Name, ls_row-OpenAmount CURRENCY ls_row-Currency.
 ENDLOOP.
 ```
 
@@ -183,8 +183,8 @@ DEFINE add_log.
 END-OF-DEFINITION.
 
 add_log 'Starting batch' 'I'.
-SELECT id, payload FROM zsomething INTO TABLE @DATA(lt).
-add_log |Read { lines( lt ) } rows| 'I'.
+SELECT id, payload FROM zsomething INTO TABLE @DATA(lt_rows).
+add_log |Read { lines( lt_rows ) } rows| 'I'.
 " …
 add_log |Failed at step 3: { lo_ex->get_text( ) }| 'E'.
 ```
@@ -193,27 +193,27 @@ add_log |Failed at step 3: { lo_ex->get_text( ) }| 'E'.
 ```abap
 CLASS lcl_logger DEFINITION FINAL.
   PUBLIC SECTION.
-    METHODS add IMPORTING msg TYPE string sev TYPE log_severity DEFAULT 'I'.
-    METHODS lines RETURNING VALUE(result) TYPE log_t.
+    METHODS add IMPORTING iv_msg TYPE string iv_sev TYPE log_severity DEFAULT 'I'.
+    METHODS lines RETURNING VALUE(rt_result) TYPE log_t.
   PRIVATE SECTION.
-    DATA log TYPE log_t.
+    DATA mt_log TYPE log_t.
 ENDCLASS.
 
 CLASS lcl_logger IMPLEMENTATION.
   METHOD add.
-    APPEND VALUE #( ts = sy-uzeit msg = msg sev = sev ) TO log.
+    APPEND VALUE #( ts = sy-uzeit msg = iv_msg sev = iv_sev ) TO mt_log.
   ENDMETHOD.
   METHOD lines.
-    result = log.
+    rt_result = mt_log.
   ENDMETHOD.
 ENDCLASS.
 
-DATA(logger) = NEW lcl_logger( ).
-logger->add( msg = 'Starting batch' ).
-SELECT id, payload FROM zsomething INTO TABLE @DATA(lt).
-logger->add( msg = |Read { lines( lt ) } rows| ).
+DATA(lo_logger) = NEW lcl_logger( ).
+lo_logger->add( iv_msg = 'Starting batch' ).
+SELECT id, payload FROM zsomething INTO TABLE @DATA(lt_rows).
+lo_logger->add( iv_msg = |Read { lines( lt_rows ) } rows| ).
 " …
-logger->add( msg = |Failed at step 3: { lo_ex->get_text( ) }| sev = 'E' ).
+lo_logger->add( iv_msg = |Failed at step 3: { lo_ex->get_text( ) }| iv_sev = 'E' ).
 ```
 
 **What changed:**

@@ -95,15 +95,15 @@ Business errors travel through the message container and
 `/iwbep/cx_mgw_busi_exception`:
 
 ```abap
-DATA(message_container) = mo_context->get_message_container( ).
-message_container->add_message(
+DATA(lo_message_container) = mo_context->get_message_container( ).
+lo_message_container->add_message(
   iv_msg_type   = /iwbep/cl_cos_logger=>error
   iv_msg_id     = 'ZTRAVEL_MSG'
   iv_msg_number = '001'
   iv_msg_v1     = |{ travel_id }| ).
 
 RAISE EXCEPTION TYPE /iwbep/cx_mgw_busi_exception
-  EXPORTING message_container = message_container.
+  EXPORTING message_container = lo_message_container.
 ```
 
 - `/iwbep/cx_mgw_busi_exception` → HTTP 4xx with your message payload (client's fault).

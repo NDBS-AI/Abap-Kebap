@@ -156,17 +156,17 @@ CLASS lhc_customer IMPLEMENTATION.
       ENTITY Customer
       FIELDS ( CustomerId Name )
       WITH CORRESPONDING #( keys )
-      RESULT DATA(customers).
+      RESULT DATA(lt_customers).
 
-    LOOP AT customers ASSIGNING FIELD-SYMBOL(<customer>).
-      IF strlen( <customer>-Name ) < 3.
-        APPEND VALUE #( %tky = <customer>-%tky ) TO failed-customer.
-        APPEND VALUE #( %tky = <customer>-%tky
+    LOOP AT lt_customers ASSIGNING FIELD-SYMBOL(<fs_customer>).
+      IF strlen( <fs_customer>-Name ) < 3.
+        APPEND VALUE #( %tky = <fs_customer>-%tky ) TO failed-customer.
+        APPEND VALUE #( %tky = <fs_customer>-%tky
                         %msg = new_message(
                                  id       = 'ZCUST_MSG'
                                  number   = '001'
                                  severity = if_abap_behv_message=>severity-error
-                                 v1       = <customer>-Name )
+                                 v1       = <fs_customer>-Name )
                         %element-Name = if_abap_behv=>mk-on )
           TO reported-customer.
       ENDIF.
@@ -178,17 +178,17 @@ CLASS lhc_customer IMPLEMENTATION.
       ENTITY Customer
       FIELDS ( CustomerId )
       WITH CORRESPONDING #( keys )
-      RESULT DATA(customers).
+      RESULT DATA(lt_customers).
 
     MODIFY ENTITIES OF Z_C_Customer IN LOCAL MODE
       ENTITY Customer
       UPDATE
         FIELDS ( LastChangedAt LastChangedBy )
-      WITH VALUE #( FOR <customer> IN customers
-                    ( %tky          = <customer>-%tky
+      WITH VALUE #( FOR <fs_customer> IN lt_customers
+                    ( %tky          = <fs_customer>-%tky
                       LastChangedAt = cl_abap_tstmp=>utclong2tstmp( utclong_current( ) )
                       LastChangedBy = cl_abap_context_info=>get_user_technical_name( ) ) )
-      REPORTED DATA(update_reported).
+      REPORTED DATA(lt_update_reported).
   ENDMETHOD.
 
   METHOD block.
@@ -196,17 +196,17 @@ CLASS lhc_customer IMPLEMENTATION.
     MODIFY ENTITIES OF Z_C_Customer IN LOCAL MODE
       ENTITY Customer
       UPDATE FIELDS ( Blocked )
-      WITH VALUE #( FOR key IN keys ( %tky = key-%tky Blocked = abap_true ) )
-      FAILED   DATA(failed_modify)
-      REPORTED DATA(reported_modify).
+      WITH VALUE #( FOR ls_key IN keys ( %tky = ls_key-%tky Blocked = abap_true ) )
+      FAILED   DATA(lt_failed_modify)
+      REPORTED DATA(lt_reported_modify).
 
     READ ENTITIES OF Z_C_Customer IN LOCAL MODE
       ENTITY Customer
       ALL FIELDS WITH CORRESPONDING #( keys )
-      RESULT DATA(blocked).
+      RESULT DATA(lt_blocked).
 
-    result = VALUE #( FOR <blocked_customer> IN blocked
-                      ( %tky = <blocked_customer>-%tky %param = <blocked_customer> ) ).
+    result = VALUE #( FOR <fs_blocked_customer> IN lt_blocked
+                      ( %tky = <fs_blocked_customer>-%tky %param = <fs_blocked_customer> ) ).
   ENDMETHOD.
 
 ENDCLASS.
@@ -238,26 +238,26 @@ CLASS lsc_zr_onlineshop IMPLEMENTATION.
     " are typed tables available in save_modified. Each row includes
     " the CDS entity fields plus %control (which fields were changed).
 
-    DATA new_orders TYPE STANDARD TABLE OF zaonlineshop.
+    DATA lt_new_orders TYPE STANDARD TABLE OF zaonlineshop.
 
     IF create-onlineshop IS NOT INITIAL.
-      new_orders = CORRESPONDING #( create-onlineshop MAPPING FROM ENTITY ).
-      INSERT zaonlineshop FROM TABLE @new_orders.
+      lt_new_orders = CORRESPONDING #( create-onlineshop MAPPING FROM ENTITY ).
+      INSERT zaonlineshop FROM TABLE @lt_new_orders.
     ENDIF.
 
     IF update-onlineshop IS NOT INITIAL.
       " Use %control to only update fields the consumer explicitly set
-      LOOP AT update-onlineshop ASSIGNING FIELD-SYMBOL(<order_update>)
+      LOOP AT update-onlineshop ASSIGNING FIELD-SYMBOL(<fs_order_update>)
            WHERE %control-OverallStatus = if_abap_behv=>mk-on.
         UPDATE zaonlineshop
-          SET overall_status = @<order_update>-OverallStatus
-          WHERE order_uuid = @<order_update>-OrderUUID.
+          SET overall_status = @<fs_order_update>-OverallStatus
+          WHERE order_uuid = @<fs_order_update>-OrderUUID.
       ENDLOOP.
     ENDIF.
 
     IF delete-onlineshop IS NOT INITIAL.
-      LOOP AT delete-onlineshop INTO DATA(order_to_delete).
-        DELETE FROM zaonlineshop WHERE order_uuid = @order_to_delete-OrderUUID.
+      LOOP AT delete-onlineshop INTO DATA(ls_order_to_delete).
+        DELETE FROM zaonlineshop WHERE order_uuid = @ls_order_to_delete-OrderUUID.
       ENDLOOP.
     ENDIF.
   ENDMETHOD.
@@ -287,18 +287,18 @@ MODIFY ENTITIES OF Z_C_Customer
   ENTITY Customer
   CREATE FIELDS ( Name City Country )
   WITH VALUE #( ( %cid = 'CUST1' Name = 'Acme' City = 'Berlin' Country = 'DE' ) )
-  MAPPED   DATA(mapped_create)
-  FAILED   DATA(failed_create)
-  REPORTED DATA(reported_create).
+  MAPPED   DATA(lt_mapped_create)
+  FAILED   DATA(lt_failed_create)
+  REPORTED DATA(lt_reported_create).
 
 COMMIT ENTITIES RESPONSE OF Z_C_Customer
-  FAILED   DATA(failed_commit)
-  REPORTED DATA(reported_commit).
+  FAILED   DATA(lt_failed_commit)
+  REPORTED DATA(lt_reported_commit).
 
-IF failed_commit IS INITIAL.
-  WRITE: / 'Customer created with id', mapped_create-customer[ 1 ]-%key-CustomerId.
+IF lt_failed_commit IS INITIAL.
+  WRITE: / 'Customer created with id', lt_mapped_create-customer[ 1 ]-%key-CustomerId.
 ELSE.
-  " inspect failed_commit-customer
+  " inspect lt_failed_commit-customer
 ENDIF.
 ```
 

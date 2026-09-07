@@ -190,8 +190,8 @@ Service Binding (`Z_OPEN_SALES_SB.srvb`): Type **OData V4 — UI**, target **Ser
 " available in ABAP Cloud — out->write is the released output channel).
 SELECT CustomerId, CustomerName, OpenAmount, Currency, OrderCount
   FROM Z_P_OpenSalesOrderByCustomer( p_lookback_days = 90 )
-  INTO TABLE @DATA(open_summary)
+  INTO TABLE @DATA(lt_open_summary)
   WHERE OpenAmount > 100000.
 
-out->write( open_summary ).
+out->write( lt_open_summary ).
 ```

@@ -83,15 +83,15 @@ The `run_inst` contract:
 The flow, minimal:
 
 ```abap
-DATA worker_instances TYPE cl_abap_parallel=>t_in_inst_tab.
+DATA lt_worker_instances TYPE cl_abap_parallel=>t_in_inst_tab.
 
-APPEND NEW zcl_discount_worker( first_order_package )  TO worker_instances.
-APPEND NEW zcl_discount_worker( second_order_package ) TO worker_instances.
+APPEND NEW zcl_discount_worker( lt_first_order_package )  TO lt_worker_instances.
+APPEND NEW zcl_discount_worker( lt_second_order_package ) TO lt_worker_instances.
 
-DATA(parallel_runner) = NEW cl_abap_parallel( p_num_tasks = 4 ).
+DATA(lo_parallel_runner) = NEW cl_abap_parallel( p_num_tasks = 4 ).
 
-parallel_runner->run_inst( EXPORTING p_in_tab  = worker_instances
-                           IMPORTING p_out_tab = DATA(task_results) ).
+lo_parallel_runner->run_inst( EXPORTING p_in_tab  = lt_worker_instances
+                           IMPORTING p_out_tab = DATA(lt_task_results) ).
 " run_inst has returned: all tasks are finished (or failed/timed out).
 ```
 
@@ -106,32 +106,32 @@ CLASS lcl_square_worker DEFINITION.
   PUBLIC SECTION.
     INTERFACES if_abap_parallel.
 
-    TYPES numbers TYPE STANDARD TABLE OF i WITH EMPTY KEY.
+    TYPES tt_numbers TYPE STANDARD TABLE OF i WITH EMPTY KEY.
 
     METHODS constructor
-      IMPORTING numbers_to_square TYPE numbers.
+      IMPORTING it_numbers_to_square TYPE tt_numbers.
     METHODS get_squared_numbers
-      RETURNING VALUE(result) TYPE numbers.
+      RETURNING VALUE(rt_result) TYPE tt_numbers.
 
   PRIVATE SECTION.
-    DATA numbers_to_square TYPE numbers.
-    DATA squared_numbers   TYPE numbers.
+    DATA mt_numbers_to_square TYPE tt_numbers.
+    DATA mt_squared_numbers   TYPE tt_numbers.
 ENDCLASS.
 
 CLASS lcl_square_worker IMPLEMENTATION.
   METHOD constructor.
-    me->numbers_to_square = numbers_to_square.
+    me->mt_numbers_to_square = it_numbers_to_square.
   ENDMETHOD.
 
   METHOD if_abap_parallel~do.
     " Runs inside an aRFC task in its own session: only instance state
     " is available here; the caller's session data is out of reach.
-    squared_numbers = VALUE #( FOR number IN numbers_to_square
-                               ( number * number ) ).
+    mt_squared_numbers = VALUE #( FOR lv_number IN mt_numbers_to_square
+                               ( lv_number * lv_number ) ).
   ENDMETHOD.
 
   METHOD get_squared_numbers.
-    result = squared_numbers.
+    rt_result = mt_squared_numbers.
   ENDMETHOD.
 ENDCLASS.
 ```
@@ -140,42 +140,42 @@ Orchestration — package the workload, fan out, merge:
 
 ```abap
 METHOD square_in_parallel.
-  CONSTANTS package_size TYPE i VALUE 10000.
+  CONSTANTS c_package_size TYPE i VALUE 10000.
 
-  DATA worker_instances TYPE cl_abap_parallel=>t_in_inst_tab.
-  DATA current_package  TYPE lcl_square_worker=>numbers.
+  DATA lt_worker_instances TYPE cl_abap_parallel=>t_in_inst_tab.
+  DATA lt_current_package  TYPE lcl_square_worker=>tt_numbers.
 
   " 1. Cut the workload into packages big enough to be worth a task
-  LOOP AT all_numbers INTO DATA(current_number).
-    APPEND current_number TO current_package.
-    IF lines( current_package ) = package_size.
-      APPEND NEW lcl_square_worker( current_package ) TO worker_instances.
-      CLEAR current_package.
+  LOOP AT it_all_numbers INTO DATA(lv_current_number).
+    APPEND lv_current_number TO lt_current_package.
+    IF lines( lt_current_package ) = c_package_size.
+      APPEND NEW lcl_square_worker( lt_current_package ) TO lt_worker_instances.
+      CLEAR lt_current_package.
     ENDIF.
   ENDLOOP.
-  IF current_package IS NOT INITIAL.
-    APPEND NEW lcl_square_worker( current_package ) TO worker_instances.
+  IF lt_current_package IS NOT INITIAL.
+    APPEND NEW lcl_square_worker( lt_current_package ) TO lt_worker_instances.
   ENDIF.
 
   " 2. Fan out - cap the number of tasks explicitly
-  DATA(parallel_runner) = NEW cl_abap_parallel( p_num_tasks = 4 ).
+  DATA(lo_parallel_runner) = NEW cl_abap_parallel( p_num_tasks = 4 ).
 
-  parallel_runner->run_inst( EXPORTING p_in_tab  = worker_instances
-                             IMPORTING p_out_tab = DATA(task_results) ).
+  lo_parallel_runner->run_inst( EXPORTING p_in_tab  = lt_worker_instances
+                             IMPORTING p_out_tab = DATA(lt_task_results) ).
 
   " 3. Fan in - same count and order as the input table
-  LOOP AT task_results INTO DATA(task_result).
-    IF task_result-inst IS INITIAL.
+  LOOP AT lt_task_results INTO DATA(ls_task_result).
+    IF ls_task_result-inst IS INITIAL.
       " Task failed (e.g. "Time limit exceeded") - decide: retry the
       " package sequentially, collect for a rerun, or raise.
       handle_failed_package( package_index = sy-tabix
-                             message_info  = task_result-message ).
+                             message_info  = ls_task_result-message ).
       CONTINUE.
     ENDIF.
 
-    DATA(finished_worker) = CAST lcl_square_worker( task_result-inst ).
-    APPEND LINES OF finished_worker->get_squared_numbers( )
-           TO all_squared_numbers.
+    DATA(lo_finished_worker) = CAST lcl_square_worker( ls_task_result-inst ).
+    APPEND LINES OF lo_finished_worker->get_squared_numbers( )
+           TO rt_all_squared_numbers.
   ENDLOOP.
 ENDMETHOD.
 ```
@@ -213,9 +213,9 @@ ENDCLASS.
 
 CLASS zcl_render_worker IMPLEMENTATION.
   METHOD do.
-    CALL TRANSFORMATION id SOURCE XML p_in RESULT input = DATA(work_unit).
-    " ... process work_unit ...
-    CALL TRANSFORMATION id SOURCE output = work_unit RESULT XML p_out.
+    CALL TRANSFORMATION id SOURCE XML p_in RESULT input = DATA(ls_work_unit).
+    " ... process ls_work_unit ...
+    CALL TRANSFORMATION id SOURCE output = ls_work_unit RESULT XML p_out.
   ENDMETHOD.
 ENDCLASS.
 ```
@@ -295,14 +295,14 @@ Decision path and a worked handler example: [rap-actions-validations-determinati
 | Task | Code |
 |---|---|
 | Worker class | `INTERFACES if_abap_parallel.` + state in attributes + logic in `if_abap_parallel~do( )` (no parameters) |
-| Input table | `DATA workers TYPE cl_abap_parallel=>t_in_inst_tab.` + `APPEND NEW zcl_worker( package ) TO workers.` |
-| Fan out (default sizing: 50% of free dialog WPs, all servers) | `NEW cl_abap_parallel( )->run_inst( EXPORTING p_in_tab = workers IMPORTING p_out_tab = DATA(results) ).` |
+| Input table | `DATA lt_workers TYPE cl_abap_parallel=>t_in_inst_tab.` + `APPEND NEW zcl_worker( lt_package ) TO lt_workers.` |
+| Fan out (default sizing: 50% of free dialog WPs, all servers) | `NEW cl_abap_parallel( )->run_inst( EXPORTING p_in_tab = lt_workers IMPORTING p_out_tab = DATA(lt_results) ).` |
 | Fan out, capped | `NEW cl_abap_parallel( p_num_tasks = 4 )->run_inst( ... )` |
 | Local server only | `NEW cl_abap_parallel( p_local_server = abap_true )` |
 | Share of free dialog WPs | `NEW cl_abap_parallel( p_percentage = 25 )` |
-| Merge results | `LOOP AT results INTO DATA(row). DATA(worker) = CAST zcl_worker( row-inst ). ... ENDLOOP.` |
+| Merge results | `LOOP AT lt_results INTO DATA(ls_row). DATA(lo_worker) = CAST zcl_worker( ls_row-inst ). ... ENDLOOP.` |
 | Detect failed task | Row with `inst` initial / `message` filled (e.g. "Time limit exceeded"); input order = output order, so `sy-tabix` maps back to the package |
-| Sequential debugging | `run_inst( EXPORTING p_in_tab = workers p_debug = abap_true IMPORTING ... )` |
+| Sequential debugging | `run_inst( EXPORTING p_in_tab = lt_workers p_debug = abap_true IMPORTING ... )` |
 | xstring variant | Subclass `cl_abap_parallel`, `METHODS do REDEFINITION` (`p_in`/`p_out` xstring), call `run( p_in_tab = xstring_tab )` |
 | Same payload to every task (`run`) | `p_in_all TYPE xstring` on `run` |
 

@@ -97,19 +97,19 @@ PERFORM calculate_total USING ls_inv CHANGING lv_total.
 CLASS lcl_invoice_calc DEFINITION.
   PUBLIC SECTION.
     METHODS calculate_total
-      IMPORTING invoice       TYPE invoice
-      RETURNING VALUE(result) TYPE decfloat34.
+      IMPORTING is_invoice       TYPE invoice
+      RETURNING VALUE(rv_result) TYPE decfloat34.
 ENDCLASS.
 
 CLASS lcl_invoice_calc IMPLEMENTATION.
   METHOD calculate_total.
-    result = invoice-amount + invoice-tax.
+    rv_result = is_invoice-amount + is_invoice-tax.
   ENDMETHOD.
 ENDCLASS.
 
 " call site
-DATA(calc) = NEW lcl_invoice_calc( ).
-DATA(total) = calc->calculate_total( ls_inv ).
+DATA(lo_calc) = NEW lcl_invoice_calc( ).
+DATA(lv_total) = lo_calc->calculate_total( ls_inv ).
 ```
 
 **Don't:**
@@ -123,7 +123,7 @@ Macros have no scope, no debugger support, no IDE awareness. **Avoid writing *ne
 ```abap
 " Before
 DEFINE add_log_line.
-  APPEND VALUE #( msg = &1 severity = &2 ) TO log_lines.
+  APPEND VALUE #( msg = &1 severity = &2 ) TO mt_log_lines.
 END-OF-DEFINITION.
 
 add_log_line 'Started' 'I'.
@@ -131,13 +131,13 @@ add_log_line 'Done' 'I'.
 
 " After
 METHODS add_log_line
-  IMPORTING msg TYPE string severity TYPE log_severity.
+  IMPORTING iv_msg TYPE string iv_severity TYPE log_severity.
 
 METHOD add_log_line.
-  APPEND VALUE #( msg = msg severity = severity ) TO log_lines.
+  APPEND VALUE #( msg = iv_msg severity = iv_severity ) TO mt_log_lines.
 ENDMETHOD.
 
-add_log_line( msg = 'Started' severity = 'I' ).
+add_log_line( iv_msg = 'Started' iv_severity = 'I' ).
 ```
 
 ### 3. Procedural DB SELECT → CDS view (when appropriate)

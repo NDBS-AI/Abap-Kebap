@@ -49,7 +49,7 @@ The ABAP Keyword Documentation topic *Language Elements in ABAP Versions* gives 
 
 This is the short list; the full table is in [references/cloud-restrictions.md](references/cloud-restrictions.md). In ABAP for Cloud Development you **cannot**:
 
-- **Access non-released SAP DDIC** — e.g. `DATA carrier TYPE scarr` or `SELECT … FROM spfli` is invalid. Released DDIC (data elements like `timestampl`, `land1`; table types like `string_table`, `xstring_table`; type pool `ABAP` with `abap_true`) and released CDS entities (e.g. `I_Timezone`) are fine. See [abap-dictionary-ddic](../abap-dictionary-ddic/SKILL.md).
+- **Access non-released SAP DDIC** — e.g. `DATA ls_carrier TYPE scarr` or `SELECT … FROM spfli` is invalid. Released DDIC (data elements like `timestampl`, `land1`; table types like `string_table`, `xstring_table`; type pool `ABAP` with `abap_true`) and released CDS entities (e.g. `I_Timezone`) are fine. See [abap-dictionary-ddic](../abap-dictionary-ddic/SKILL.md).
 - **Use Native SQL / `EXEC SQL`** — no direct database access. Use ABAP SQL on released CDS entities / your own DDIC, or AMDP only where released. See [abap-sql-performance](../abap-sql-performance/SKILL.md).
 - **Use `CLIENT SPECIFIED` / `USING CLIENT`** — explicit client handling is outside the restricted scope. Client handling is implicit.
 - **`MODIFY`/`UPDATE`/`DELETE` on SAP-owned tables** — write through released APIs / RAP behavior, never directly.
@@ -61,30 +61,30 @@ This is the short list; the full table is in [references/cloud-restrictions.md](
 
 ```abap
 " Valid in ABAP for Cloud Development:
-DATA dobj1     TYPE timestampl.            " released DDIC data element
-DATA it1       TYPE string_table.          " released table type
-DATA flag      TYPE abap_boolean.          " type pool ABAP
-flag = abap_true.
-DATA s1        TYPE i_timezone.            " released CDS entity
-SELECT SINGLE TimeZoneID, TimeZoneName FROM i_timezone WHERE TimeZoneID = 'EST' INTO @DATA(tz).
+DATA lv_dobj1  TYPE timestampl.            " released DDIC data element
+DATA lt_it1    TYPE string_table.          " released table type
+DATA lv_flag   TYPE abap_boolean.          " type pool ABAP
+lv_flag = abap_true.
+DATA ls_s1     TYPE i_timezone.            " released CDS entity
+SELECT SINGLE TimeZoneID, TimeZoneName FROM i_timezone WHERE TimeZoneID = 'EST' INTO @DATA(ls_tz).
 
 " Released class, e.g. random integer:
-DATA(num) = cl_abap_random_int=>create( seed = cl_abap_random=>seed( )
+DATA(lv_num) = cl_abap_random_int=>create( seed = cl_abap_random=>seed( )
                                          min  = 1 max = 100 )->get_next( ).
 
 " XCO: current user date in user time zone, ISO 8601:
-DATA(today) = xco_cp=>sy->date( xco_cp_time=>time_zone->user
+DATA(lv_today) = xco_cp=>sy->date( xco_cp_time=>time_zone->user
                        )->as( xco_cp_time=>format->iso_8601_extended )->value.
 ```
 
 ```abap
 " INVALID in ABAP for Cloud Development:
-DATA s2 TYPE scarr.                                  " non-released DB table
-SELECT carrid FROM spfli INTO TABLE @DATA(flights).  " non-released table
-DATA d = sy-datum.                                   " use cl_abap_context_info
-MOVE a TO b.                                         " use b = a.
-WRITE 'hi'.                                          " classic list — forbidden
-DATA(ixml_instance) = cl_ixml=>create( ).             " classic, not released
+DATA ls_s2 TYPE scarr.                                  " non-released DB table
+SELECT carrid FROM spfli INTO TABLE @DATA(lt_flights).  " non-released table
+DATA lv_d = sy-datum.                                   " use cl_abap_context_info
+MOVE lv_a TO lv_b.                                      " use lv_b = lv_a.
+WRITE 'hi'.                                             " classic list — forbidden
+DATA(lo_ixml_instance) = cl_ixml=>create( ).             " classic, not released
 ```
 
 ## The Released-API Concept
@@ -103,11 +103,11 @@ SELECT ReleasedObjectType, ReleasedObjectName, ReleaseState
   FROM i_apisforclouddevelopment
   WHERE releasestate = 'RELEASED' AND ReleasedObjectType = 'CLAS'
   ORDER BY ReleasedObjectName
-  INTO TABLE @DATA(released_classes).
+  INTO TABLE @DATA(lt_released_classes).
 
 " Find the cloud successor for an object you cannot use anymore:
 SELECT SINGLE PredecessorObjectType, PredecessorObjectName, SuccessorObjectType, SuccessorObjectName FROM I_APIsWithCloudDevSuccessor
-  WHERE PredecessorObjectName = 'TADIR' INTO @DATA(successor).
+  WHERE PredecessorObjectName = 'TADIR' INTO @DATA(ls_successor).
 ```
 
 **Typing caution (C1 stability):** even a C1 class may be *extended* in future. If you type a variable manually instead of with the API's own released type, you may get a syntax warning. Example: `CL_ABAP_PROB_DISTRIBUTION` wants `if_abap_prob_types=>int_range`; typing your range table as `TYPE RANGE OF i` (which today happens to match) triggers a warning because the API type could change. **Use the API's released type, not a hand-rolled equivalent.**
@@ -158,11 +158,11 @@ ABAP Cloud ships released classes for working with LLMs: the **ABAP AI SDK, powe
 
 ```abap
 TRY.
-    FINAL(ai_api)     = cl_aic_islm_compl_api_factory=>get( )->create_instance( 'ZDEMO_ABAP_INT_SCEN' ).
-    FINAL(result)     = ai_api->execute_for_string( `Tell me a joke.` ).
-    FINAL(completion) = result->get_completion( ).
-  CATCH cx_aic_api_factory cx_aic_completion_api INTO FINAL(error).
-    FINAL(error_text) = error->get_text( ).
+    FINAL(lo_ai_api)     = cl_aic_islm_compl_api_factory=>get( )->create_instance( 'ZDEMO_ABAP_INT_SCEN' ).
+    FINAL(lo_result)     = lo_ai_api->execute_for_string( `Tell me a joke.` ).
+    FINAL(lv_completion) = lo_result->get_completion( ).
+  CATCH cx_aic_api_factory cx_aic_completion_api INTO FINAL(lo_error).
+    FINAL(lv_error_text) = lo_error->get_text( ).
 ENDTRY.
 ```
 

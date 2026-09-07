@@ -19,15 +19,15 @@ Conventions used below: `val` is the input string, `sub` a substring, `pcre` a P
 | `distance` | `( val1 val2 [max] )` | `i` | Levenshtein distance (string similarity). `max` caps the computation. |
 
 ```abap
-DATA(len_str_a) = strlen( `abc   ` ).      "6
-DATA(len_c_a)   = numofchar( `abc   ` ).   "3
-DATA(xstr) = CONV xstring( `480065006C006C006F00` ).
-DATA(len_x) = xstrlen( xstr ).
+DATA(lv_len_str_a) = strlen( `abc   ` ).      "6
+DATA(lv_len_c_a)   = numofchar( `abc   ` ).   "3
+DATA(lv_xstr) = CONV xstring( `480065006C006C006F00` ).
+DATA(lv_len_x) = xstrlen( lv_xstr ).
 
-DATA(str) = `Pieces of cakes.`.
-count( val = str sub = `e` ).               "3
-count_any_of( val = str sub = `x523z4e` ).  "3
-count_any_not_of( val = str sub = `fP` ).   "14
+DATA(lv_str) = `Pieces of cakes.`.
+count( val = lv_str sub = `e` ).               "3
+count_any_of( val = lv_str sub = `x523z4e` ).  "3
+count_any_not_of( val = lv_str sub = `fP` ).   "14
 
 distance( val1 = `abap` val2 = `axbap` ).             "1
 distance( val1 = `abap` val2 = `zabapzzzz` max = 5 ). "5 (capped)
@@ -93,15 +93,15 @@ cmin( val1 = `zzz` val2 = `zza` val3 = `zzzz` ).    "zza
 | `segment` | `( val index sep )` | `string` | The `index`-th segment delimited by `sep`. |
 
 ```abap
-DATA(s1) = `Lorem ipsum dolor sit amet`.
-substring( val = s1 off = 6 ).             "ipsum dolor sit amet
-substring( val = s1 off = 6 len = 5 ).     "ipsum
+DATA(lv_s1) = `Lorem ipsum dolor sit amet`.
+substring( val = lv_s1 off = 6 ).             "ipsum dolor sit amet
+substring( val = lv_s1 off = 6 len = 5 ).     "ipsum
 
-DATA(s2) = `aa1bb2aa3bb4`.
-substring_after(  val = s2 sub = `aa` ).   "1bb2aa3bb4 (first occurrence)
-substring_before( val = s2 sub = `b2` ).   "aa1b
-substring_from(   val = s2 sub = `a3` ).   "a3bb4
-substring_to(     val = s2 sub = `3b` ).   "aa1bb2aa3b
+DATA(lv_s2) = `aa1bb2aa3bb4`.
+substring_after(  val = lv_s2 sub = `aa` ).   "1bb2aa3bb4 (first occurrence)
+substring_before( val = lv_s2 sub = `b2` ).   "aa1b
+substring_from(   val = lv_s2 sub = `a3` ).   "a3bb4
+substring_to(     val = lv_s2 sub = `3b` ).   "aa1bb2aa3b
 
 match( val = `ABAP` pcre = `.b` case = abap_false ).  "AB
 segment( val = `Hallo,world,123` index = 2 sep = `,` ). "world
@@ -123,17 +123,17 @@ All return type `i`; **-1** when nothing is found (the comparison operators set 
 | `find_any_not_of` | `( val sub [occ] )` | `i` | Offset of first character not in `sub` (always case-sensitive). |
 
 ```abap
-DATA(str) = `Pieces of cakes.`.
-find( val = str sub = `ca` ).                 "10
-find( val = str sub = `xy` ).                 "-1
-find( val = str sub = `OF` case = abap_false ). "7
-find( val = str sub = `c` occ = 2 ).          "10
-find( val = str sub = `e` occ = -1 ).         "13 (first from the end)
+DATA(lv_str) = `Pieces of cakes.`.
+find( val = lv_str sub = `ca` ).                 "10
+find( val = lv_str sub = `xy` ).                 "-1
+find( val = lv_str sub = `OF` case = abap_false ). "7
+find( val = lv_str sub = `c` occ = 2 ).          "10
+find( val = lv_str sub = `e` occ = -1 ).         "13 (first from the end)
 
-find_end( val = str sub = `of` ).             "9
-find_any_of( val = str sub = `x523z4e` ).     "2  (the 'e')
-find_any_of( val = str sub = `zwq85t` ).      "-1
-find_any_not_of( val = str sub = `P` ).       "1
+find_end( val = lv_str sub = `of` ).             "9
+find_any_of( val = lv_str sub = `x523z4e` ).     "2  (the 'e')
+find_any_of( val = lv_str sub = `zwq85t` ).      "-1
+find_any_not_of( val = lv_str sub = `P` ).       "1
 ```
 
 ---
@@ -146,14 +146,14 @@ find_any_not_of( val = str sub = `P` ).       "1
 | `translate` | `( val from to )` | `string` | Maps each char in `from` to the same-position char in `to`; chars with no counterpart in `to` are removed. |
 
 ```abap
-DATA(str) = `abap ABAP abap`.
-replace( val = str sub = `ap` with = `#` ).                       "ab# ABAP abap (first)
-replace( val = str sub = `AB` with = `#` case = abap_false ).     "#ap ABAP abap
-replace( val = str sub = `ab` with = `#` occ = 0 case = abap_false ). "#ap #AP #ap (all)
-replace( val = str sub = `ab` with = `#` occ = -1 ).              "abap ABAP #ap
-replace( val = str with = `#` off = 5 len = 3 ).                  "abap #P abap
-replace( val = str with = `#` off = strlen( str ) ).             "appends: abap ABAP abap#
-replace( val = str pcre = `.\Z` with = `#` ).                     "replace last char
+DATA(lv_str) = `abap ABAP abap`.
+replace( val = lv_str sub = `ap` with = `#` ).                       "ab# ABAP abap (first)
+replace( val = lv_str sub = `AB` with = `#` case = abap_false ).     "#ap ABAP abap
+replace( val = lv_str sub = `ab` with = `#` occ = 0 case = abap_false ). "#ap #AP #ap (all)
+replace( val = lv_str sub = `ab` with = `#` occ = -1 ).              "abap ABAP #ap
+replace( val = lv_str with = `#` off = 5 len = 3 ).                  "abap #P abap
+replace( val = lv_str with = `#` off = strlen( lv_str ) ).             "appends: abap ABAP abap#
+replace( val = lv_str pcre = `.\Z` with = `#` ).                     "replace last char
 
 translate( val = `___abc_def_` from = `_` to = `#` ).            "###abc#def#
 translate( val = `___abc_def_` from = `hi_` to = `?!` ).          "drops chars without a 'to'
@@ -171,10 +171,10 @@ Wrap with `xsdbool` to store the result, or use directly in `IF`.
 | `matches` | `( val pcre [case] )` | True if the (search range of the) argument matches the pattern. |
 
 ```abap
-DATA(has_ws) = xsdbool( contains( val = `abc def` pcre = `\s` ) ).        "X
+DATA(lv_has_ws) = xsdbool( contains( val = `abc def` pcre = `\s` ) ).        "X
 
 "Illustrative only - NOT a production validator; use cl_mail_address=>create_instance( ... )->validate( ) for a real address check
-DATA(looks_like_email) = xsdbool( matches( val = `jon.doe@email.com`
+DATA(lv_looks_like_email) = xsdbool( matches( val = `jon.doe@email.com`
                                             pcre = `\w+(\.\w+)*@(\w+\.)+(\w{2,4})` ) ). "X
 ```
 
@@ -187,9 +187,9 @@ DATA(looks_like_email) = xsdbool( matches( val = `jon.doe@email.com`
 | `concat_lines_of` | `( table [sep] )` | `string` | Joins all lines of a character-like internal table. |
 
 ```abap
-DATA(itab) = VALUE string_table( ( `abc` ) ( `def` ) ( `ghi` ) ).
-concat_lines_of( table = itab ).             "abcdefghi
-concat_lines_of( table = itab sep = `,` ).   "abc,def,ghi
+DATA(lt_itab) = VALUE string_table( ( `abc` ) ( `def` ) ( `ghi` ) ).
+concat_lines_of( table = lt_itab ).             "abcdefghi
+concat_lines_of( table = lt_itab sep = `,` ).   "abc,def,ghi
 ```
 
 (Splitting back out is the `SPLIT` statement or the `segment` function above.)
@@ -230,7 +230,7 @@ Options follow the embedded expression inside `{ }`. Values shown are illustrati
 |{ '1234' ALPHA = IN WIDTH = 10 }|.                 "0000001234
 |{ '00001234' ALPHA = OUT }|.                       "1234
 |{ 12345678 CURRENCY = 'EUR' }|.                    "123456.78
-|{ decimal_number NUMBER = USER }|.                 "-123.456,789 (example)
+|{ lv_decimal_number NUMBER = USER }|.               "-123.456,789 (example)
 |{ cl_abap_context_info=>get_system_date( ) DATE = ISO }|.  "2024-01-01
 |{ utclong_current( ) TIMESTAMP = ISO }|.
 |{ utclong_current( ) TIMEZONE = 'CET' COUNTRY = 'DE ' }|.

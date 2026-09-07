@@ -64,7 +64,7 @@ AT SELECTION-SCREEN OUTPUT.
   CALL FUNCTION 'VRM_SET_VALUES'
     EXPORTING
       id     = CONV vrm_id( 'P_LIST' )
-      values = VALUE vrm_values( FOR index = 1 UNTIL index > 10 ( key = index text = |Value { index }| ) ).
+      values = VALUE vrm_values( FOR lv_index = 1 UNTIL lv_index > 10 ( key = lv_index text = |Value { lv_index }| ) ).
 ```
 
 The technical parameter name shows on screen unless you maintain **Selection Texts** (Text Elements → Selection Texts tab) or a `SELECTION-SCREEN COMMENT`.
@@ -85,23 +85,23 @@ The technical parameter name shows on screen unless you maintain **Selection Tex
 For `CP`/`NP` patterns use wildcards `*` / `+`. The selection table has a **header line** (historical); address its body with `s[]`.
 
 ```abap
-DATA: BEGIN OF demo_structure, carrid TYPE c LENGTH 3, num TYPE i, END OF demo_structure.
-DATA itab LIKE TABLE OF demo_structure WITH EMPTY KEY.
+DATA: BEGIN OF gs_demo_structure, carrid TYPE c LENGTH 3, num TYPE i, END OF gs_demo_structure.
+DATA gt_itab LIKE TABLE OF gs_demo_structure WITH EMPTY KEY.
 
-SELECT-OPTIONS sel1 FOR demo_structure-num.                  "static FOR target
-DATA dyn_spec TYPE c LENGTH 12.
-SELECT-OPTIONS sel2 FOR (dyn_spec).                          "dynamic DDIC type (c length 45 cols)
+SELECT-OPTIONS sel1 FOR gs_demo_structure-num.                  "static FOR target
+DATA gv_dyn_spec TYPE c LENGTH 12.
+SELECT-OPTIONS sel2 FOR (gv_dyn_spec).                          "dynamic DDIC type (c length 45 cols)
 
-SELECT-OPTIONS sel_dfl3 FOR demo_structure-num DEFAULT 5 TO 10 OPTION BT SIGN I.
-SELECT-OPTIONS sel_dfl5 FOR demo_structure-carrid DEFAULT 'A*' OPTION CP SIGN I.
+SELECT-OPTIONS sel_dfl3 FOR gs_demo_structure-num DEFAULT 5 TO 10 OPTION BT SIGN I.
+SELECT-OPTIONS sel_dfl5 FOR gs_demo_structure-carrid DEFAULT 'A*' OPTION CP SIGN I.
 
 START-OF-SELECTION.
-  SELECT carrid, num FROM @itab AS tab WHERE num IN @sel1 INTO @demo_structure.
-    WRITE / |{ demo_structure-carrid } { demo_structure-num }|.
+  SELECT carrid, num FROM @gt_itab AS tab WHERE num IN @sel1 INTO @gs_demo_structure.
+    WRITE / |{ gs_demo_structure-carrid } { gs_demo_structure-num }|.
   ENDSELECT.
 
-  LOOP AT sel_dfl3 ASSIGNING FIELD-SYMBOL(<st>).
-    WRITE / |low: { <st>-low }, high: { <st>-high }, option: { <st>-option }, sign: { <st>-sign }|.
+  LOOP AT sel_dfl3 ASSIGNING FIELD-SYMBOL(<fs_st>).
+    WRITE / |low: { <fs_st>-low }, high: { <fs_st>-high }, option: { <fs_st>-option }, sign: { <fs_st>-sign }|.
   ENDLOOP.
 ```
 
@@ -218,12 +218,12 @@ SUBMIT prog WITH param1 = 'ABAP' AND RETURN.                       "single value
 SUBMIT prog WITH sel1 = 'A' SIGN 'I' AND RETURN.                   "ranges single
 SUBMIT prog WITH sel1 BETWEEN 'A' AND 'M' SIGN 'I' AND RETURN.     "ranges interval
 SUBMIT prog WITH sel1 IN rangetab AND RETURN.                      "pass a ranges table
-SUBMIT prog WITH SELECTION-TABLE seltab AND RETURN.                "RSPARAMS table
+SUBMIT prog WITH SELECTION-TABLE gt_seltab AND RETURN.             "RSPARAMS table
 
 "RSPARAMS row: selname (uppercase name), kind ('P' param / 'S' select-option),
 "sign, option, low, high. For parameters, put the value in LOW.
-DATA seltab TYPE TABLE OF rsparams WITH EMPTY KEY.
-seltab = VALUE #( ( selname = 'PARAM2' kind = 'P' low = 'Test' )
+DATA gt_seltab TYPE TABLE OF rsparams WITH EMPTY KEY.
+gt_seltab = VALUE #( ( selname = 'PARAM2' kind = 'P' low = 'Test' )
                   ( selname = 'SEL1'   kind = 'S' low = 'A' high = 'M' option = 'BT' sign = 'I' ) ).
 ```
 
@@ -293,14 +293,14 @@ BACK.                        "cursor to first line of a logical unit (e.g. a RES
 ```abap
 START-OF-SELECTION.
   FORMAT HOTSPOT.
-  LOOP AT itab INTO DATA(wa).
-    addition_result = wa-num1 + wa-num2.
-    WRITE / |{ wa-num1 } + { wa-num2 } = ...|.
-    HIDE addition_result.           "restored automatically for the clicked line
+  LOOP AT gt_itab INTO DATA(gs_wa).
+    gv_addition_result = gs_wa-num1 + gs_wa-num2.
+    WRITE / |{ gs_wa-num1 } + { gs_wa-num2 } = ...|.
+    HIDE gv_addition_result.           "restored automatically for the clicked line
   ENDLOOP.
 
 AT LINE-SELECTION.
-  WRITE (*) addition_result.
+  WRITE (*) gv_addition_result.
 ```
 
 ### Reading / modifying buffered lines
@@ -339,15 +339,15 @@ Minimal:
 
 ```abap
 TRY.
-    cl_salv_table=>factory( IMPORTING r_salv_table = DATA(alv)
-                            CHANGING  t_table      = itab ).
-    alv->display( ).
-  CATCH cx_salv_msg INTO DATA(err).
-    MESSAGE err->get_text( ) TYPE 'I' DISPLAY LIKE 'E'.
+    cl_salv_table=>factory( IMPORTING r_salv_table = DATA(lo_alv)
+                            CHANGING  t_table      = gt_itab ).
+    lo_alv->display( ).
+  CATCH cx_salv_msg INTO DATA(lo_err).
+    MESSAGE lo_err->get_text( ) TYPE 'I' DISPLAY LIKE 'E'.
 ENDTRY.
 ```
 
-Common follow-ups: `alv->get_display_settings( )->set_list_header( 'Title' )`; `alv->get_columns( )->get_column( 'COL1' )`; `alv->set_data( CHANGING t_table = itab )` then `alv->refresh( )` to rebuild output; events via `cl_salv_events_table` (`double_click`, `link_click`) and `cl_salv_events` (`added_function`). The `factory` `list_display` parameter shows ALV as a classic list; other parameters embed it in a container (e.g. on a dynpro).
+Common follow-ups: `lo_alv->get_display_settings( )->set_list_header( 'Title' )`; `lo_alv->get_columns( )->get_column( 'COL1' )`; `lo_alv->set_data( CHANGING t_table = gt_itab )` then `lo_alv->refresh( )` to rebuild output; events via `cl_salv_events_table` (`double_click`, `link_click`) and `cl_salv_events` (`added_function`). The `factory` `list_display` parameter shows ALV as a classic list; other parameters embed it in a container (e.g. on a dynpro).
 
 > SALV is still SAP GUI. New apps target RAP + Fiori — see [abap-modernization-playbook](../../abap-modernization-playbook/SKILL.md).
 

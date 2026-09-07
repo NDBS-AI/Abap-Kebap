@@ -92,7 +92,7 @@ Rules (from the [DEFINE CUSTOM ENTITY keyword docs](https://help.sap.com/doc/aba
 - Elements are typed with DDIC data elements (`balloghndl`, `symsgty`) or built-in types (`abap.char(n)`, `abap.sstring(n)`, `abap.curr`, `abap.utclong`, ...). At least one `key` element.
 - `root` and input parameters are allowed (`[define] [root] custom entity name [parameter_list] element_list`).
 - UI/semantic annotations (`@UI.lineItem`, `@Semantics.amount.currencyCode`, `@UI.hidden`) go directly on the elements — same annotation vocabulary as views.
-- A custom entity **cannot** be used as a data source in other CDS entities or in ABAP SQL. It **can** be used as a global structured type in ABAP (`DATA log_entries TYPE TABLE OF zi_applicationlogentry.`) — the query classes in the samples type their result tables exactly this way.
+- A custom entity **cannot** be used as a data source in other CDS entities or in ABAP SQL. It **can** be used as a global structured type in ABAP (`DATA lt_log_entries TYPE TABLE OF zi_applicationlogentry.`) — the query classes in the samples type their result tables exactly this way.
 
 ### The query implementation class
 
@@ -108,33 +108,33 @@ Inside `select` you must honor what the consumer requested — paging, filter, s
 
 ```abap
 METHOD if_rap_query_provider~select.
-  DATA log_entries TYPE TABLE OF zi_applicationlogentry.
+  DATA lt_log_entries TYPE TABLE OF zi_applicationlogentry.
 
   " Paging: page_size_unlimited (-1) means no $top was requested
-  DATA(paging)    = io_request->get_paging( ).
-  DATA(page_size) = paging->get_page_size( ).
-  DATA(offset)    = paging->get_offset( ).
+  DATA(lo_paging)    = io_request->get_paging( ).
+  DATA(lv_page_size) = lo_paging->get_page_size( ).
+  DATA(lv_offset)    = lo_paging->get_offset( ).
 
   " Filter: ranges for driving the API call, SQL string for post-filtering
   TRY.
-      DATA(filter_ranges) = io_request->get_filter( )->get_as_ranges( ).
-    CATCH cx_rap_query_filter_no_range INTO DATA(no_range_error).
+      DATA(lt_filter_ranges) = io_request->get_filter( )->get_as_ranges( ).
+    CATCH cx_rap_query_filter_no_range INTO DATA(lo_no_range_error).
       " Filter not convertible to ranges (e.g. OR across elements)
   ENDTRY.
-  DATA(filter_sql) = io_request->get_filter( )->get_as_sql_string( ).
+  DATA(lv_filter_sql) = io_request->get_filter( )->get_as_sql_string( ).
 
-  " ... call the API, fill log_entries (see examples/) ...
+  " ... call the API, fill lt_log_entries (see examples/) ...
 
   " Apply the OData filter to the in-memory result — SELECT from itab
-  SELECT log_handle, log_item_number, severity, criticality, detail_level, timestamp, message_text FROM @log_entries AS entries
-    WHERE (filter_sql)
-    INTO TABLE @log_entries.
+  SELECT log_handle, log_item_number, severity, criticality, detail_level, timestamp, message_text FROM @lt_log_entries AS entries
+    WHERE (lv_filter_sql)
+    INTO TABLE @lt_log_entries.
 
   IF io_request->is_total_numb_of_rec_requested( ).
-    io_response->set_total_number_of_records( lines( log_entries ) ).
+    io_response->set_total_number_of_records( lines( lt_log_entries ) ).
   ENDIF.
   IF io_request->is_data_requested( ).
-    io_response->set_data( log_entries ).
+    io_response->set_data( lt_log_entries ).
   ENDIF.
 ENDMETHOD.
 ```

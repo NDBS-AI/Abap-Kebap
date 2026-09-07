@@ -31,7 +31,7 @@ METHOD if_apj_dt_exec_object~get_parameters.
       kind    = if_apj_dt_exec_object=>parameter
       sign    = 'I'
       option  = 'EQ'
-      low     = default_inventory_uuid ) ).
+      low     = lv_default_inventory_uuid ) ).
 ENDMETHOD.
 ```
 
@@ -68,10 +68,10 @@ A catalog entry can have multiple templates. Only templates can be scheduled in 
 The released design-time API, used by the sample's setup class so the demo is runnable right after import:
 
 ```abap
-DATA(design_time_api) = cl_apj_dt_create_content=>get_instance( ).
+DATA(lo_design_time_api) = cl_apj_dt_create_content=>get_instance( ).
 
 TRY.
-    design_time_api->create_job_cat_entry(
+    lo_design_time_api->create_job_cat_entry(
         iv_catalog_name       = 'ZINVENTORY_CATALOG'      " cl_apj_dt_create_content=>ty_catalog_name
         iv_class_name         = 'ZCL_INVENTORY_JOB'       " cl_apj_dt_create_content=>ty_class_name
         iv_text               = 'Inventory calculation'
@@ -79,14 +79,14 @@ TRY.
         iv_transport_request  = transport_request
         iv_package            = package_name ).
 
-    design_time_api->create_job_template_entry(
+    lo_design_time_api->create_job_template_entry(
         iv_template_name     = 'ZINVENTORY_TEMPLATE'      " cl_apj_dt_create_content=>ty_template_name
         iv_catalog_name      = 'ZINVENTORY_CATALOG'
         iv_text              = 'Inventory calculation'
         it_parameters        = template_parameters        " if_apj_dt_exec_object=>tt_templ_val
         iv_transport_request = transport_request
         iv_package           = package_name ).
-  CATCH cx_apj_dt_content INTO DATA(design_time_error).
+  CATCH cx_apj_dt_content INTO DATA(lo_design_time_error).
     " e.g. object already exists — inspect if_t100_message~t100key
 ENDTRY.
 ```
@@ -100,8 +100,8 @@ Per SAP Help ("Maintaining Application Jobs Using an API") the runtime API lets 
 ### schedule_job
 
 ```abap
-DATA(job_start_info) = VALUE cl_apj_rt_api=>ty_start_info( start_immediately = abap_true ).
-DATA(job_parameters) = VALUE cl_apj_rt_api=>tt_job_parameter_value(
+DATA(ls_job_start_info) = VALUE cl_apj_rt_api=>ty_start_info( start_immediately = abap_true ).
+DATA(lt_job_parameters) = VALUE cl_apj_rt_api=>tt_job_parameter_value(
     ( name    = 'INVENT'
       t_value = VALUE #( ( sign = 'I' option = 'EQ' low = inventory_uuid ) ) ) ).
 
@@ -109,18 +109,18 @@ TRY.
     cl_apj_rt_api=>schedule_job(
       EXPORTING iv_job_template_name   = 'ZINVENTORY_TEMPLATE'
                 iv_job_text            = |Calculate inventory { product_id }|
-                is_start_info          = job_start_info
-                it_job_parameter_value = job_parameters
-      IMPORTING ev_jobname             = DATA(job_name)
-                ev_jobcount            = DATA(job_count) ).
-  CATCH cx_apj_rt INTO DATA(job_scheduling_error).
-    " job_scheduling_error->bapimsg-message carries the underlying message
+                is_start_info          = ls_job_start_info
+                it_job_parameter_value = lt_job_parameters
+      IMPORTING ev_jobname             = DATA(lv_job_name)
+                ev_jobcount            = DATA(lv_job_count) ).
+  CATCH cx_apj_rt INTO DATA(lo_job_scheduling_error).
+    " lo_job_scheduling_error->bapimsg-message carries the underlying message
 ENDTRY.
 ```
 
 **Start-info caveats (from the SAP sample, verbatim intent):**
 
-- `start_immediately = abap_true` **must not be used in on-premise systems** — it performs a `COMMIT WORK` internally, which dumps inside a RAP save sequence. Use `job_start_info-timestamp` (via `GET TIME STAMP FIELD`) instead.
+- `start_immediately = abap_true` **must not be used in on-premise systems** — it performs a `COMMIT WORK` internally, which dumps inside a RAP save sequence. Use `ls_job_start_info-timestamp` (via `GET TIME STAMP FIELD`) instead.
 - Periodic scheduling uses the class constants `cl_apj_rt_api=>period_minutes`, `period_hours`, `period_days`, `period_weeks`, `period_months` together with the start info (SAP Help: "Examples of Periodic Application Jobs").
 
 ### get_job_status
@@ -129,8 +129,8 @@ ENDTRY.
 cl_apj_rt_api=>get_job_status(
   EXPORTING iv_jobname         = entity-JobName
             iv_jobcount        = entity-JobCount
-  IMPORTING ev_job_status      = DATA(job_status)        " 'R' running, 'F' finished, 'A' aborted
-            ev_job_status_text = DATA(job_status_text) ).
+  IMPORTING ev_job_status      = DATA(lv_job_status)        " 'R' running, 'F' finished, 'A' aborted
+            ev_job_status_text = DATA(lv_job_status_text) ).
 ```
 
 Raises `cx_apj_rt` when the job is unknown (the sample checks `t100key` msgid `APJ_RT` / msgno `003` and treats it as "no job yet").

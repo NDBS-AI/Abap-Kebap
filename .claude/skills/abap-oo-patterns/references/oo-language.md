@@ -58,7 +58,7 @@ CLASS zcl_demo DEFINITION PUBLIC FINAL CREATE PUBLIC.
     INTERFACES if_pricing.            "interfaces only in the public section
   PROTECTED SECTION.
   PRIVATE SECTION.
-    DATA log TYPE string_table.
+    DATA mt_log TYPE string_table.
 ENDCLASS.
 ```
 
@@ -70,32 +70,32 @@ ENDCLASS.
 
 ```abap
 PUBLIC SECTION.
-  TYPES some_type TYPE c LENGTH 3.
-  DATA: inst_number TYPE i,                      "instance attribute
-        dobj_r_only TYPE c LENGTH 5 READ-ONLY.   "read-only attribute
-  CLASS-DATA stat_number TYPE i.                 "static attribute
-  CONSTANTS const_num TYPE i VALUE 123.          "constant
+  TYPES ty_some_type TYPE c LENGTH 3.
+  DATA: mv_inst_number TYPE i,                      "instance attribute
+        mv_dobj_r_only TYPE c LENGTH 5 READ-ONLY.   "read-only attribute
+  CLASS-DATA mv_stat_number TYPE i.                 "static attribute
+  CONSTANTS c_const_num TYPE i VALUE 123.           "constant
 ```
 
 ## Methods — instance vs static
 
 - `METHODS` → instance methods; can access all attributes and trigger all events.
 - `CLASS-METHODS` → static methods; can access only static attributes/events. Callable without an instance via `class=>meth( )`.
-- Parameter interface: `IMPORTING`, `EXPORTING`, `CHANGING`, `RETURNING VALUE(result)` (exactly one, must be passed by value, completely typed — makes the method *functional* and usable in expressions), `RAISING` for class-based exceptions.
+- Parameter interface: `IMPORTING`, `EXPORTING`, `CHANGING`, `RETURNING VALUE(rv_result)` (exactly one, must be passed by value, completely typed — makes the method *functional* and usable in expressions), `RAISING` for class-based exceptions.
 - Pass by reference is the default (`param` or `REFERENCE(param)`); pass by value is `VALUE(param)`. Input parameters passed by reference cannot be modified.
 - Optional inputs: `OPTIONAL` (initial if not supplied) or `DEFAULT val`. Check with `IF param IS SUPPLIED.`
 
 ```abap
-METHODS: inst_meth2 IMPORTING text TYPE string,
-         inst_meth4 IMPORTING input TYPE string
-                    RETURNING VALUE(result) TYPE string,
-         inst_meth5 IMPORTING dividend TYPE i
-                    EXPORTING quotient TYPE i
-                    CHANGING  protocol TYPE string
+METHODS: inst_meth2 IMPORTING iv_text TYPE string,
+         inst_meth4 IMPORTING iv_input TYPE string
+                    RETURNING VALUE(rv_result) TYPE string,
+         inst_meth5 IMPORTING iv_dividend TYPE i
+                    EXPORTING ev_quotient TYPE i
+                    CHANGING  cv_protocol TYPE string
                     RAISING   cx_sy_zerodivide.
-CLASS-METHODS: stat_meth3 IMPORTING VALUE(number) TYPE i,   "pass by value
-               stat_meth7 IMPORTING limit TYPE i DEFAULT 123
-                                    offset TYPE i OPTIONAL.
+CLASS-METHODS: stat_meth3 IMPORTING VALUE(iv_number) TYPE i,   "pass by value
+               stat_meth7 IMPORTING iv_limit TYPE i DEFAULT 123
+                                    iv_offset TYPE i OPTIONAL.
 ```
 
 Generic typing exists (`TYPE any`, `TYPE any table`, `TYPE data`, `TYPE REF TO object`) but gives only *runtime* type safety — document expectations. There is no parametric generics (`<T>`).
@@ -113,14 +113,14 @@ A class has **exactly one** instance constructor and **one** static constructor.
 
 ```abap
 PUBLIC SECTION.
-  METHODS constructor IMPORTING text TYPE string OPTIONAL.
+  METHODS constructor IMPORTING iv_text TYPE string OPTIONAL.
   CLASS-METHODS class_constructor.
 ...
 METHOD class_constructor.       "runs once, before first use of the class
-  static_timestamp = utclong_current( ).
+  mv_static_timestamp = utclong_current( ).
 ENDMETHOD.
 METHOD constructor.             "runs on every NEW
-  instance_timestamp = utclong_current( ).
+  mv_instance_timestamp = utclong_current( ).
 ENDMETHOD.
 ```
 
@@ -129,10 +129,10 @@ On instantiating a subclass, all superclass constructors run too; a redefined/de
 ## Creating objects and `me`
 
 ```abap
-DATA ref1 TYPE REF TO some_class.
-ref1 = NEW #( ).                    "type from the declared variable
-DATA(ref2) = NEW some_class( ).     "inline, explicit type
-DATA(r3)  = NEW another_class( ip1 = … ip2 = … ).   "mandatory ctor params
+DATA lo_ref1 TYPE REF TO some_class.
+lo_ref1 = NEW #( ).                    "type from the declared variable
+DATA(lo_ref2) = NEW some_class( ).     "inline, explicit type
+DATA(lo_ref3)  = NEW another_class( ip1 = … ip2 = … ).   "mandatory ctor params
 "CREATE OBJECT is the older form; still required for *dynamic* creation.
 ```
 
@@ -145,7 +145,7 @@ METHOD meth.
   DATA(member_string) = me->str.     "the member in the private section
 ENDMETHOD.
 METHOD pass_me_ref.
-  oref = me.                         "return the object itself
+  ro_oref = me.                      "return the object itself
 ENDMETHOD.
 ```
 
@@ -199,10 +199,10 @@ Interfaces are a public-only template of components (no implementation, no visib
 
 ```abap
 INTERFACE lif PUBLIC.            "PUBLIC only for global interfaces
-  DATA str TYPE string.
-  CONSTANTS const_number TYPE i VALUE 1.
-  METHODS inst_meth IMPORTING num TYPE i.
-  CLASS-METHODS stat_meth RETURNING VALUE(result) TYPE string.
+  DATA mv_str TYPE string.
+  CONSTANTS c_const_number TYPE i VALUE 1.
+  METHODS inst_meth IMPORTING iv_num TYPE i.
+  CLASS-METHODS stat_meth RETURNING VALUE(rv_result) TYPE string.
 ENDINTERFACE.
 
 CLASS lcl DEFINITION.
@@ -213,7 +213,7 @@ ENDCLASS.
 
 CLASS lcl IMPLEMENTATION.
   METHOD lif~inst_meth.               "implement with the intf~ prefix
-    DATA(sum) = num + lif~const_number.
+    DATA(lv_sum) = iv_num + lif~c_const_number.
   ENDMETHOD.
   METHOD lif~stat_meth.
   ENDMETHOD.
@@ -251,11 +251,11 @@ ENDINTERFACE.
 An interface reference can point to an object of **any** class implementing the interface — the basis of interface-based polymorphism.
 
 ```abap
-DATA i_ref TYPE REF TO lif.
-i_ref = NEW lcl( ).
-i_ref->inst_meth( 1 ).                "i_ref->attr / i_ref->meth( )
+DATA lo_i_ref TYPE REF TO lif.
+lo_i_ref = NEW lcl( ).
+lo_i_ref->inst_meth( 1 ).                "lo_i_ref->attr / lo_i_ref->meth( )
 ... lcl=>lif~stat_meth( ) ...          "static via class
-... lif=>const_number ...              "constant via interface
+... lif=>c_const_number ...              "constant via interface
 ```
 
 ## Polymorphism and casting (upcast / downcast)
@@ -266,26 +266,26 @@ A reference variable has a **static type** (its declaration) and a **dynamic typ
 - **Downcast** (narrowing) — superclass/interface ref → subclass ref. Checked at runtime; **must** be explicit with `CAST #( )` (or the older `?=`). A bad downcast raises `CX_SY_MOVE_CAST_ERROR`.
 
 ```abap
-DATA(oref_sub) = NEW lcl_sub( ).
+DATA(lo_oref_sub) = NEW lcl_sub( ).
 
 "Upcast — automatic
-DATA super_ref TYPE REF TO lcl_super.
-super_ref = oref_sub.
+DATA lo_super_ref TYPE REF TO lcl_super.
+lo_super_ref = lo_oref_sub.
 
 "Downcast — explicit, may fail at runtime
 TRY.
-    DATA(back) = CAST lcl_sub( super_ref ).
-  CATCH cx_sy_move_cast_error INTO DATA(cast_error).
+    DATA(lo_back) = CAST lcl_sub( lo_super_ref ).
+  CATCH cx_sy_move_cast_error INTO DATA(lo_cast_error).
     "...
 ENDTRY.
 
 "Guard a downcast with a type check
-IF super_ref IS INSTANCE OF lcl_sub.
-  back = CAST #( super_ref ).
+IF lo_super_ref IS INSTANCE OF lcl_sub.
+  lo_back = CAST #( lo_super_ref ).
 ENDIF.
 
-CASE TYPE OF super_ref.
-  WHEN TYPE lcl_sub.   back = CAST #( super_ref ).
+CASE TYPE OF lo_super_ref.
+  WHEN TYPE lcl_sub.   lo_back = CAST #( lo_super_ref ).
   WHEN OTHERS.         "...
 ENDCASE.
 ```
@@ -303,7 +303,7 @@ Events let an object trigger handler methods in other objects without knowing th
 ```abap
 CLASS lcl_greetings DEFINITION.
   PUBLIC SECTION.
-    DATA greets TYPE string.
+    DATA mv_greets TYPE string.
     EVENTS: morning, evening.
     METHODS: morning_greets FOR EVENT morning OF lcl_greetings,
              evening_greets FOR EVENT evening OF lcl_greetings,
@@ -318,14 +318,14 @@ CLASS lcl_greetings IMPLEMENTATION.
       RAISE EVENT evening.
     ENDIF.
   ENDMETHOD.
-  METHOD morning_greets.  greets = `Good morning`.  ENDMETHOD.
-  METHOD evening_greets.  greets = `Good evening`.  ENDMETHOD.
+  METHOD morning_greets.  mv_greets = `Good morning`.  ENDMETHOD.
+  METHOD evening_greets.  mv_greets = `Good evening`.  ENDMETHOD.
 ENDCLASS.
 
 " Registering and triggering
-DATA(ref) = NEW lcl_greetings( ).
-SET HANDLER ref->morning_greets ref->evening_greets FOR ref.
-ref->greetings( ).
+DATA(lo_ref) = NEW lcl_greetings( ).
+SET HANDLER lo_ref->morning_greets lo_ref->evening_greets FOR lo_ref.
+lo_ref->greetings( ).
 ```
 
 Events carrying parameters and a static event:

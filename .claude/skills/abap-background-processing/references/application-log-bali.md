@@ -26,17 +26,17 @@ ADT: *New → Other → Application Log Object* — a JSON artifact of type `APL
 Or programmatically with the released object handler (used by the sample's setup class):
 
 ```abap
-DATA(subobjects) = VALUE if_bali_object_handler=>ty_tab_subobject(
+DATA(lt_subobjects) = VALUE if_bali_object_handler=>ty_tab_subobject(
     ( subobject = 'ZINVENTORY_SUB' subobject_text = 'Calculation' ) ).
 
 TRY.
     cl_bali_object_handler=>get_instance( )->create_object(
         iv_object            = 'ZINVENTORY_LOG'
         iv_object_text       = 'Inventory job log'
-        it_subobjects        = subobjects
+        it_subobjects        = lt_subobjects
         iv_package           = package_name
         iv_transport_request = transport_request ).
-  CATCH cx_bali_objects INTO DATA(object_creation_error).
+  CATCH cx_bali_objects INTO DATA(lo_object_creation_error).
     " the sample treats message BL 602 ("already exists") as success
 ENDTRY.
 ```
@@ -45,21 +45,21 @@ ENDTRY.
 
 ```abap
 " 1. Create a log with a header (object + subobject + free-text external id)
-DATA(application_log) = cl_bali_log=>create_with_header(
+DATA(lo_application_log) = cl_bali_log=>create_with_header(
     header = cl_bali_header_setter=>create( object      = 'ZINVENTORY_LOG'
                                             subobject   = 'ZINVENTORY_SUB'
                                             external_id = CONV #( inventory_uuid ) ) ).
 
 " 2. Create items and add them
-DATA(log_item) = cl_bali_free_text_setter=>create(
+DATA(lo_log_item) = cl_bali_free_text_setter=>create(
     severity = if_bali_constants=>c_severity_status
     text     = |Recalculation started for { inventory_uuid }| ).   " max 200 characters
-log_item->set_detail_level( '1' ).
-application_log->add_item( item = log_item ).
+lo_log_item->set_detail_level( '1' ).
+lo_application_log->add_item( item = lo_log_item ).
 
 " 3. Persist
 cl_bali_log_db=>get_instance( )->save_log(
-    log                         = application_log
+    log                         = lo_application_log
     assign_to_current_appl_job = abap_true ).   " attach to the running application job
 ```
 
@@ -85,23 +85,23 @@ Notes:
 
 ## Reading a log
 
-A log is addressed by its **handle** (`if_bali_log=>ty_handle`, DDIC type `balloghndl`). Get it from a live log with `application_log->get_handle( )` — the samples persist it on the business entity (field `LogHandle`) during the save phase, so the UI can find the log later.
+A log is addressed by its **handle** (`if_bali_log=>ty_handle`, DDIC type `balloghndl`). Get it from a live log with `lo_application_log->get_handle( )` — the samples persist it on the business entity (field `LogHandle`) during the save phase, so the UI can find the log later.
 
 ```abap
 TRY.
-    DATA(log) = cl_bali_log_db=>get_instance( )->load_log(
+    DATA(lo_log) = cl_bali_log_db=>get_instance( )->load_log(
         handle           = log_handle
         read_only_header = abap_true ).
 
-    LOOP AT log->get_all_items( ) INTO DATA(loaded_item).
-      " loaded_item-log_item_number
-      " loaded_item-item->severity / ->category / ->detail_level / ->timestamp
-      " loaded_item-item->get_message_text( )
+    LOOP AT lo_log->get_all_items( ) INTO DATA(ls_loaded_item).
+      " ls_loaded_item-log_item_number
+      " ls_loaded_item-item->severity / ->category / ->detail_level / ->timestamp
+      " ls_loaded_item-item->get_message_text( )
     ENDLOOP.
 
     " single item by number:
-    DATA(single_item) = log->get_item( log_item_number ).
-  CATCH cx_bali_runtime INTO DATA(log_read_error).
+    DATA(lo_single_item) = lo_log->get_item( log_item_number ).
+  CATCH cx_bali_runtime INTO DATA(lo_log_read_error).
     " e.g. handle unknown or no authorization
 ENDTRY.
 ```

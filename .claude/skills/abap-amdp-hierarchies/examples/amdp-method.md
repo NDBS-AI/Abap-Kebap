@@ -31,23 +31,23 @@ CLASS zcl_demo_abap DEFINITION
     "AMDP scalar function for AMDP method
     METHODS get_max_fltime
       AMDP OPTIONS READ-ONLY CDS SESSION CLIENT DEPENDENT
-      IMPORTING VALUE(carrid)     TYPE zdemo_abap_flsch_ve-carrid
-      RETURNING VALUE(max_fltime) TYPE zdemo_abap_flsch_ve-fltime.
+      IMPORTING VALUE(iv_carrid)     TYPE zdemo_abap_flsch_ve-carrid
+      RETURNING VALUE(rv_max_fltime) TYPE zdemo_abap_flsch_ve-fltime.
 
     "AMDP procedure whose implementation calls an AMDP scalar function
-    TYPES: BEGIN OF flight_struc_type,
+    TYPES: BEGIN OF ty_flight_struc_type,
              carrid   TYPE zdemo_abap_flsch_ve-carrid,
              connid   TYPE zdemo_abap_flsch_ve-connid,
              cityfrom TYPE zdemo_abap_flsch_ve-cityfrom,
              cityto   TYPE zdemo_abap_flsch_ve-cityto,
              fltime   TYPE zdemo_abap_flsch_ve-fltime,
-           END OF flight_struc_type,
-           flight_tab_type TYPE TABLE OF flight_struc_type WITH EMPTY KEY.
+           END OF ty_flight_struc_type,
+           tt_flight_tab_type TYPE TABLE OF ty_flight_struc_type WITH EMPTY KEY.
 
     METHODS select_entries_w_max_fltime
       AMDP OPTIONS READ-ONLY CDS SESSION CLIENT DEPENDENT
-      IMPORTING VALUE(carrid)     TYPE zdemo_abap_flsch_ve-carrid
-      EXPORTING VALUE(flight_tab) TYPE flight_tab_type.
+      IMPORTING VALUE(iv_carrid)      TYPE zdemo_abap_flsch_ve-carrid
+      EXPORTING VALUE(et_flight_tab)  TYPE tt_flight_tab_type.
 
     "AMDP scalar function for CDS scalar function
     CLASS-METHODS execute_scalar_func FOR SCALAR FUNCTION zdemo_abap_scalar_func.
@@ -62,29 +62,29 @@ CLASS zcl_demo_abap IMPLEMENTATION.
   METHOD if_oo_adt_classrun~main.
 
     "--- Call the AMDP scalar function like a normal ABAP method ---
-    DATA(oref) = NEW zcl_demo_abap( ).
-    DATA(max_fltime_lh) = oref->get_max_fltime( carrid = 'LH' ).
-    out->write( max_fltime_lh ).
+    DATA(lo_oref) = NEW zcl_demo_abap( ).
+    DATA(lv_max_fltime_lh) = lo_oref->get_max_fltime( iv_carrid = 'LH' ).
+    out->write( lv_max_fltime_lh ).
 
     "--- Use the AMDP scalar function inside ABAP SQL (host expression) ---
-    DATA carrid_tab TYPE TABLE OF zdemo_abap_flsch_ve-carrid WITH EMPTY KEY.
-    carrid_tab = VALUE #( ( 'LH' ) ( 'AZ' ) ( 'DL' ) ).
+    DATA lt_carrid_tab TYPE TABLE OF zdemo_abap_flsch_ve-carrid WITH EMPTY KEY.
+    lt_carrid_tab = VALUE #( ( 'LH' ) ( 'AZ' ) ( 'DL' ) ).
 
-    LOOP AT carrid_tab INTO DATA(carrid).
+    LOOP AT lt_carrid_tab INTO DATA(lv_carrid).
       SELECT carrid, connid, cityfrom, cityto, fltime
              FROM zdemo_abap_flsch_ve
-             WHERE carrid = @carrid AND
-                   fltime = @( NEW zcl_demo_abap( )->get_max_fltime( carrid = carrid ) )
-             INTO TABLE @DATA(selection_result).
-      out->write( selection_result ).
+             WHERE carrid = @lv_carrid AND
+                   fltime = @( NEW zcl_demo_abap( )->get_max_fltime( iv_carrid = lv_carrid ) )
+             INTO TABLE @DATA(lt_selection_result).
+      out->write( lt_selection_result ).
     ENDLOOP.
 
     "--- Call the AMDP procedure that itself calls the scalar function ---
-    LOOP AT carrid_tab INTO carrid.
+    LOOP AT lt_carrid_tab INTO lv_carrid.
       NEW zcl_demo_abap( )->select_entries_w_max_fltime(
-           EXPORTING carrid = carrid
-           IMPORTING flight_tab = DATA(flights) ).
-      out->write( flights ).
+           EXPORTING iv_carrid = lv_carrid
+           IMPORTING et_flight_tab = DATA(lt_flights) ).
+      out->write( lt_flights ).
     ENDLOOP.
 
     "--- Use the CDS scalar function (backed by execute_scalar_func) in ABAP SQL ---
@@ -100,8 +100,8 @@ CLASS zcl_demo_abap IMPLEMENTATION.
                 num   = num1,
                 total = num2 ) AS rate
        ORDER BY key_field
-       INTO TABLE @DATA(res_dbtab).
-    out->write( res_dbtab ).
+       INTO TABLE @DATA(lt_res_dbtab).
+    out->write( lt_res_dbtab ).
 
   ENDMETHOD.
 
@@ -113,9 +113,9 @@ CLASS zcl_demo_abap IMPLEMENTATION.
          USING zdemo_abap_flsch_ve
                zcl_demo_abap=>get_max_fltime.
 
-    flight_tab = select carrid, connid, cityfrom, cityto, fltime
+    et_flight_tab = select carrid, connid, cityfrom, cityto, fltime
                         from zdemo_abap_flsch_ve
-                        where fltime = "ZCL_DEMO_ABAP=>GET_MAX_FLTIME"( carrid => :carrid );
+                        where fltime = "ZCL_DEMO_ABAP=>GET_MAX_FLTIME"( iv_carrid => :iv_carrid );
 
   ENDMETHOD.
 
@@ -137,9 +137,9 @@ CLASS zcl_demo_abap IMPLEMENTATION.
          USING zdemo_abap_flsch_ve.
 
     SELECT MAX(fltime)
-           INTO max_fltime
+           INTO rv_max_fltime
            FROM zdemo_abap_flsch_ve
-           WHERE carrid = :carrid;
+           WHERE carrid = :iv_carrid;
 
   ENDMETHOD.
 
@@ -154,8 +154,8 @@ ENDCLASS.
 
 Things to notice:
 - `INTERFACES if_amdp_marker_hdb` makes it an AMDP class.
-- The method bodies are **SQLScript**, not ABAP. Method parameters are referenced with a leading colon (`:carrid`).
-- An AMDP procedure calls another AMDP function via its quoted DB name `"ZCL_DEMO_ABAP=>GET_MAX_FLTIME"( carrid => :carrid )`, with the callee listed in `USING`.
+- The method bodies are **SQLScript**, not ABAP. Method parameters are referenced with a leading colon (`:iv_carrid`).
+- An AMDP procedure calls another AMDP function via its quoted DB name `"ZCL_DEMO_ABAP=>GET_MAX_FLTIME"( iv_carrid => :iv_carrid )`, with the callee listed in `USING`.
 - `OPTIONS READ-ONLY` everywhere; `AMDP OPTIONS READ-ONLY CDS SESSION CLIENT DEPENDENT` on declarations adapts client handling for ABAP Cloud.
 
 ### Companion CDS scalar function + implementation reference
@@ -267,7 +267,7 @@ Key points for `FOR TABLE FUNCTION`:
 ```abap
 SELECT client, field1, field2
   FROM some_ddl_source( param = 'abc' )
-  INTO TABLE @DATA(result).
+  INTO TABLE @DATA(lt_result).
 ```
 
 A CDS table function can also be used as a source inside other CDS entities, and represents a globally available structured type (not usable for typing in the ABAP Dictionary).

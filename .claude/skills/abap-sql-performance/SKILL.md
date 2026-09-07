@@ -51,14 +51,14 @@ FAE is ABAP's "SELECT … WHERE column IN (list)" — it lets you read child row
 
 ```abap
 " 1. Check the driver table is not empty — else FAE = no WHERE = read everything
-IF parents IS INITIAL.
+IF lt_parents IS INITIAL.
   RETURN.   " or whatever no-data action you want
 ENDIF.
 
 " 2. Deduplicate the driver — duplicate keys waste database work
 "    (each driver row is evaluated; the result set itself is de-duplicated automatically)
-SORT parents BY id.
-DELETE ADJACENT DUPLICATES FROM parents COMPARING id.
+SORT lt_parents BY id.
+DELETE ADJACENT DUPLICATES FROM lt_parents COMPARING id.
 " (or use a SORTED / HASHED table to start with)
 
 " 3. Select with the driver — include the key fields in the SELECT list
@@ -66,12 +66,12 @@ DELETE ADJACENT DUPLICATES FROM parents COMPARING id.
 "    distinct child rows can collapse into one and be lost)
 SELECT parent_id, child_id, amount
   FROM child_table
-  FOR ALL ENTRIES IN @parents
-  WHERE parent_id = @parents-id
-  INTO TABLE @DATA(children).
+  FOR ALL ENTRIES IN @lt_parents
+  WHERE parent_id = @lt_parents-id
+  INTO TABLE @DATA(lt_children).
 
 " 4. The result is unsorted — sort if order matters
-SORT children BY parent_id child_id.
+SORT lt_children BY parent_id child_id.
 ```
 
 See [references/fae-checklist.md](references/fae-checklist.md) for the full one-page checklist.
@@ -99,7 +99,7 @@ SELECT comp1, comp2, comp3
   WHERE EXISTS
     ( SELECT comp1 FROM dbtab2
       WHERE comp1 = tab1~comp1 AND comp2 = tab1~comp2 )
-  INTO TABLE @DATA(result).
+  INTO TABLE @DATA(lt_result).
 ```
 
 Use EXISTS when:
@@ -126,10 +126,10 @@ Use `PACKAGE SIZE n` when reading a large result set that would overflow memory 
 SELECT carrid, connid, cityfrom, cityto
   FROM zdemo_abap_flsch
   WHERE carrid BETWEEN 'AA' AND 'LH'
-  INTO TABLE @DATA(chunk) PACKAGE SIZE 100.
+  INTO TABLE @DATA(lt_chunk) PACKAGE SIZE 100.
 
-  " Process this chunk — chunk is replaced on each iteration
-  LOOP AT chunk INTO DATA(row).
+  " Process this chunk — lt_chunk is replaced on each iteration
+  LOOP AT lt_chunk INTO DATA(ls_row).
     " ... business logic per row ...
   ENDLOOP.
 
@@ -149,19 +149,19 @@ ENDSELECT.
 ```abap
 " Pattern: chunked driver → FAE per chunk
 SELECT id FROM ztransaction_header
-  INTO TABLE @DATA(driver_chunk) PACKAGE SIZE 500.
+  INTO TABLE @DATA(lt_driver_chunk) PACKAGE SIZE 500.
 
-  IF driver_chunk IS INITIAL.
+  IF lt_driver_chunk IS INITIAL.
     CONTINUE.
   ENDIF.
-  SORT driver_chunk BY id.
-  DELETE ADJACENT DUPLICATES FROM driver_chunk COMPARING id.
+  SORT lt_driver_chunk BY id.
+  DELETE ADJACENT DUPLICATES FROM lt_driver_chunk COMPARING id.
 
   SELECT header_id, line_no, amount
     FROM ztransaction_item
-    FOR ALL ENTRIES IN @driver_chunk
-    WHERE header_id = @driver_chunk-id
-    INTO TABLE @DATA(items).
+    FOR ALL ENTRIES IN @lt_driver_chunk
+    WHERE header_id = @lt_driver_chunk-id
+    INTO TABLE @DATA(lt_items).
 
   " ... process items for this chunk ...
 
@@ -174,17 +174,17 @@ ENDSELECT.
 
 ```abap
 " Read by key, no order needed — fastest, but key must be unique
-DATA orders TYPE HASHED TABLE OF zorder WITH UNIQUE KEY id.
+DATA lt_orders TYPE HASHED TABLE OF zorder WITH UNIQUE KEY id.
 
 " Need ordered iteration AND keyed lookup
-DATA invoices TYPE SORTED TABLE OF zinvoice
+DATA lt_invoices TYPE SORTED TABLE OF zinvoice
   WITH NON-UNIQUE KEY customer_id sortkey.
 
 " Default workhorse — append/iterate; no keyed lookup needs
-DATA log_lines TYPE STANDARD TABLE OF zlog.
+DATA lt_log_lines TYPE STANDARD TABLE OF zlog.
 
 " Generic secondary key — modern ABAP, mix benefits of both
-DATA items TYPE STANDARD TABLE OF zitem
+DATA lt_items TYPE STANDARD TABLE OF zitem
   WITH NON-UNIQUE SORTED KEY by_customer COMPONENTS customer_id.
 ```
 
@@ -195,14 +195,14 @@ The cost of sorting a 1M-row STANDARD TABLE before a binary search dwarfs the co
 ```abap
 " Bad
 SELECT customer_id, amount FROM zinvoice
-  WHERE open = 'X' INTO TABLE @DATA(invoices).
-DATA totals TYPE TABLE OF customer_total.
-LOOP AT invoices INTO DATA(inv).
-  READ TABLE totals ASSIGNING FIELD-SYMBOL(<row>) WITH KEY customer_id = inv-customer_id.
+  WHERE open = 'X' INTO TABLE @DATA(lt_invoices).
+DATA lt_totals TYPE TABLE OF customer_total.
+LOOP AT lt_invoices INTO DATA(ls_inv).
+  READ TABLE lt_totals ASSIGNING FIELD-SYMBOL(<fs_row>) WITH KEY customer_id = ls_inv-customer_id.
   IF sy-subrc <> 0.
-    APPEND VALUE #( customer_id = inv-customer_id total = 0 ) TO totals ASSIGNING <row>.
+    APPEND VALUE #( customer_id = ls_inv-customer_id total = 0 ) TO lt_totals ASSIGNING <fs_row>.
   ENDIF.
-  <row>-total = <row>-total + inv-amount.
+  <fs_row>-total = <fs_row>-total + ls_inv-amount.
 ENDLOOP.
 
 " Good — one statement, runs in DB
@@ -210,7 +210,7 @@ SELECT customer_id, SUM( amount ) AS total
   FROM zinvoice
   WHERE open = 'X'
   GROUP BY customer_id
-  INTO TABLE @DATA(totals).
+  INTO TABLE @DATA(lt_totals).
 ```
 
 The DB has indexed access, columnar storage (on HANA), and a query optimizer. ABAP has none of those. When the operation is expressible in SQL, write it there.
@@ -253,7 +253,7 @@ WITH
 SELECT name, connection, departure, arrival, occupied
   FROM +result
   ORDER BY name, connection
-  INTO TABLE @DATA(result).
+  INTO TABLE @DATA(lt_result).
 ```
 
 > Source: [ABAP Keyword Documentation — WITH](https://help.sap.com/doc/abapdocu_cp_index_htm/CLOUD/en-US/index.htm?file=abapwith.htm); [abap-cheat-sheets/03_ABAP_SQL.md — Common Table Expressions](https://github.com/SAP-samples/abap-cheat-sheets/blob/main/03_ABAP_SQL.md)
@@ -288,7 +288,7 @@ See [references/sql-rewrites.md](references/sql-rewrites.md) for a one-page tabl
 | FAE without empty-check | Driver empty → full table read | Add the empty-check |
 | FAE without DISTINCT / sort | Duplicate driver rows re-evaluated on the DB for nothing | De-dup the driver first |
 | BYPASSING BUFFER for "safety" | 10–100x slower lookups | Remove the bypass; trust the buffer |
-| `SELECT … INTO TABLE @itab` without WHERE | Unbounded growth, dump TIME_OUT | Always include a real WHERE |
+| `SELECT … INTO TABLE @lt_itab` without WHERE | Unbounded growth, dump TIME_OUT | Always include a real WHERE |
 | Aggregation in ABAP `LOOP` | Row-by-row vs single SQL statement | Push to SQL with `SUM`, `GROUP BY` |
 | `INNER JOIN` of 5+ tables on the DB side, expecting "the DB is fast" | Query optimizer struggles; high plan cost | Pre-filter to small driver, then FAE the rest |
 | `READ TABLE … WITH KEY` on STANDARD TABLE without `BINARY SEARCH` | O(n) instead of O(log n) | Declare as SORTED, or add secondary key |

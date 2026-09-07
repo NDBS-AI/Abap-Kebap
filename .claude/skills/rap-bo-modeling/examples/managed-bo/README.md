@@ -173,17 +173,17 @@ CLASS lhc_customer IMPLEMENTATION.
       ENTITY Customer
       FIELDS ( CustomerId Name )
       WITH CORRESPONDING #( keys )
-      RESULT DATA(customers).
+      RESULT DATA(lt_customers).
 
-    LOOP AT customers ASSIGNING FIELD-SYMBOL(<customer>).
-      IF <customer>-Name IS INITIAL OR strlen( <customer>-Name ) < 3.
-        APPEND VALUE #( %tky = <customer>-%tky ) TO failed-customer.
-        APPEND VALUE #( %tky               = <customer>-%tky
+    LOOP AT lt_customers ASSIGNING FIELD-SYMBOL(<fs_customer>).
+      IF <fs_customer>-Name IS INITIAL OR strlen( <fs_customer>-Name ) < 3.
+        APPEND VALUE #( %tky = <fs_customer>-%tky ) TO failed-customer.
+        APPEND VALUE #( %tky               = <fs_customer>-%tky
                         %msg               = new_message(
                                                 id       = 'ZCUST_MSG'
                                                 number   = '001'
                                                 severity = if_abap_behv_message=>severity-error
-                                                v1       = <customer>-Name )
+                                                v1       = <fs_customer>-Name )
                         %element-Name      = if_abap_behv=>mk-on )
           TO reported-customer.
       ENDIF.
@@ -194,49 +194,49 @@ CLASS lhc_customer IMPLEMENTATION.
     READ ENTITIES OF Z_C_Customer IN LOCAL MODE
       ENTITY Customer
       FIELDS ( CustomerId ) WITH CORRESPONDING #( keys )
-      RESULT DATA(customers).
+      RESULT DATA(lt_customers).
 
-    DATA(change_timestamp) = cl_abap_tstmp=>utclong2tstmp( utclong_current( ) ).
-    DATA(user)             = cl_abap_context_info=>get_user_technical_name( ).
+    DATA(lv_change_timestamp) = cl_abap_tstmp=>utclong2tstmp( utclong_current( ) ).
+    DATA(lv_user)             = cl_abap_context_info=>get_user_technical_name( ).
 
     MODIFY ENTITIES OF Z_C_Customer IN LOCAL MODE
       ENTITY Customer
       UPDATE FIELDS ( LastChangedAt LastChangedBy LocalLastChangedAt )
-      WITH VALUE #( FOR <customer> IN customers
-                    ( %tky               = <customer>-%tky
-                      LastChangedAt      = change_timestamp
-                      LastChangedBy      = user
-                      LocalLastChangedAt = change_timestamp ) )
-      REPORTED DATA(update_reported).
+      WITH VALUE #( FOR <fs_customer> IN lt_customers
+                    ( %tky               = <fs_customer>-%tky
+                      LastChangedAt      = lv_change_timestamp
+                      LastChangedBy      = lv_user
+                      LocalLastChangedAt = lv_change_timestamp ) )
+      REPORTED DATA(lt_update_reported).
   ENDMETHOD.
 
   METHOD block.
     MODIFY ENTITIES OF Z_C_Customer IN LOCAL MODE
       ENTITY Customer
       UPDATE FIELDS ( Blocked )
-      WITH VALUE #( FOR key IN keys ( %tky = key-%tky Blocked = abap_true ) )
-      FAILED   DATA(failed_modify)
-      REPORTED DATA(reported_modify).
+      WITH VALUE #( FOR ls_key IN keys ( %tky = ls_key-%tky Blocked = abap_true ) )
+      FAILED   DATA(lt_failed_modify)
+      REPORTED DATA(lt_reported_modify).
 
     READ ENTITIES OF Z_C_Customer IN LOCAL MODE
       ENTITY Customer ALL FIELDS WITH CORRESPONDING #( keys )
-      RESULT DATA(blocked).
+      RESULT DATA(lt_blocked).
 
-    result = VALUE #( FOR <blocked_customer> IN blocked
-                      ( %tky = <blocked_customer>-%tky %param = <blocked_customer> ) ).
+    result = VALUE #( FOR <fs_blocked_customer> IN lt_blocked
+                      ( %tky = <fs_blocked_customer>-%tky %param = <fs_blocked_customer> ) ).
   ENDMETHOD.
 
   METHOD get_instance_authorizations.
     " example: only allow block to users with auth object ZCUST_ADM
-    LOOP AT keys INTO DATA(key).
-      DATA auth_block TYPE abp_behv_auth.
+    LOOP AT keys INTO DATA(ls_key).
+      DATA lv_auth_block TYPE abp_behv_auth.
       AUTHORITY-CHECK OBJECT 'ZCUST_ADM' ID 'ACTVT' FIELD '02'.
-      auth_block = COND #( WHEN sy-subrc = 0
+      lv_auth_block = COND #( WHEN sy-subrc = 0
                            THEN if_abap_behv=>auth-allowed
                            ELSE if_abap_behv=>auth-unauthorized ).
 
-      APPEND VALUE #( %tky      = key-%tky
-                      %action-block = auth_block )
+      APPEND VALUE #( %tky      = ls_key-%tky
+                      %action-block = lv_auth_block )
         TO result.
     ENDLOOP.
   ENDMETHOD.
@@ -340,7 +340,7 @@ ENDCLASS.
 
 CLASS ltcl_customer_create IMPLEMENTATION.
   METHOD create_with_short_name_fails.
-    DATA(env) = cl_cds_test_environment=>create_for_multiple_cds(
+    DATA(lo_env) = cl_cds_test_environment=>create_for_multiple_cds(
                   i_for_entities = VALUE #( ( name = 'Z_C_CUSTOMER' ) ) ).
 
     " arrange — clear table, set test fixtures …
@@ -350,19 +350,19 @@ CLASS ltcl_customer_create IMPLEMENTATION.
       CREATE FIELDS ( CustomerId Name City Country )
       WITH VALUE #( ( %cid = 'C1' CustomerId = '0000000042'
                       Name = 'AB' City = 'X' Country = 'DE' ) )
-      MAPPED DATA(mapped).
+      MAPPED DATA(lt_mapped).
 
     " validate_name is a BDEF `validation … on save`, so failed/reported are
     " only populated once the save sequence runs — commit before asserting.
     COMMIT ENTITIES RESPONSE OF Z_C_Customer
-      FAILED   DATA(failed_commit)
-      REPORTED DATA(reported_commit).
+      FAILED   DATA(lt_failed_commit)
+      REPORTED DATA(lt_reported_commit).
 
     cl_abap_unit_assert=>assert_not_initial(
-      act = failed_commit-customer
+      act = lt_failed_commit-customer
       msg = 'Expected create with 2-char name to fail the on-save validation' ).
 
-    env->destroy( ).
+    lo_env->destroy( ).
   ENDMETHOD.
 ENDCLASS.
 ```

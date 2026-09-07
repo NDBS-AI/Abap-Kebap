@@ -44,12 +44,12 @@ outbound service (type HTTP — also required for OData)
 ```
 
 ```abap
-DATA(http_destination) = cl_http_destination_provider=>create_by_comm_arrangement(
+DATA(lo_http_destination) = cl_http_destination_provider=>create_by_comm_arrangement(
                            comm_scenario = 'Z_OUTBOUND_TRAVEL'      " scenario ID
                            service_id    = 'Z_OUTBOUND_TRAVEL_HTTP' " outbound service ID
                            comm_system_id = 'ZTRAVEL_BACKEND' ).    " optional disambiguation
 
-DATA(http_client) = cl_web_http_client_manager=>create_by_http_destination( http_destination ).
+DATA(lo_http_client) = cl_web_http_client_manager=>create_by_http_destination( lo_http_destination ).
 ```
 
 For quick prototyping only, `cl_http_destination_provider=>create_by_url( )` builds
@@ -66,17 +66,17 @@ prefix* that the scenario or arrangement may override.
 " Destination maintained in SM59 (type G: HTTP to external server)
 cl_http_client=>create_by_destination(
   EXPORTING destination = 'ZTRAVEL_BACKEND'
-  IMPORTING client      = DATA(http_client) ).
+  IMPORTING client      = DATA(lo_http_client) ).
 
-http_client->request->set_method( if_http_request=>co_request_method_get ).
+lo_http_client->request->set_method( if_http_request=>co_request_method_get ).
 cl_http_utility=>set_request_uri(
-  request = http_client->request
+  request = lo_http_client->request
   uri     = '/sap/opu/odata/sap/ZTRAVEL_SRV/TravelSet?$top=10&$format=json' ).
 
-http_client->send( ).
-http_client->receive( ).
-DATA(response_body) = http_client->response->get_cdata( ).
-http_client->close( ).
+lo_http_client->send( ).
+lo_http_client->receive( ).
+DATA(lv_response_body) = lo_http_client->response->get_cdata( ).
+lo_http_client->close( ).
 ```
 
 `cl_http_client` (interface `if_http_client`) is **not released for ABAP Cloud**;
@@ -91,15 +91,15 @@ OData URLs yourself and parse the payload (see
 [abap-xml-json](../../abap-xml-json/SKILL.md) for parsing):
 
 ```abap
-DATA(http_request) = http_client->get_http_request( ).
-http_request->set_uri_path(
+DATA(lo_http_request) = lo_http_client->get_http_request( ).
+lo_http_request->set_uri_path(
   '/sap/opu/odata4/sap/api_business_partner/srvd_a2x/sap/api_business_partner/0001/'
   && 'A_BusinessPartner?$top=10&$select=BusinessPartner,BusinessPartnerName' ).
-http_request->set_header_field( i_name = 'Accept' i_value = 'application/json' ).
+lo_http_request->set_header_field( i_name = 'Accept' i_value = 'application/json' ).
 
-DATA(http_response) = http_client->execute( if_web_http_client=>get ).
-DATA(response_json) = http_response->get_text( ).
-http_client->close( ).
+DATA(lo_http_response) = lo_http_client->execute( if_web_http_client=>get ).
+DATA(lv_response_json) = lo_http_response->get_text( ).
+lo_http_client->close( ).
 ```
 
 Costs of the raw approach: you hand-code `$filter` escaping, paging, error payload
@@ -114,35 +114,35 @@ objects instead of strings.
 
 ```abap
 " (a) ABAP Cloud, RAP guide: from the service consumption model's proxy model key
-DATA(client_proxy) = /iwbep/cl_cp_factory_remote=>create_v4_remote_proxy(
+DATA(lo_client_proxy) = /iwbep/cl_cp_factory_remote=>create_v4_remote_proxy(
   is_proxy_model_key       = VALUE #( repository_id       = 'DEFAULT'
                                       proxy_model_id      = 'ZSC_TRAVEL'
                                       proxy_model_version = '0001' )
-  io_http_client           = http_client
+  io_http_client           = lo_http_client
   iv_relative_service_root = '/sap/opu/odata4/sap/zapi_travel/srvd_a2x/sap/zapi_travel/0001/' ).
 ```
 
 ```abap
 " (b) Integration & connectivity guide: from a service definition name
-DATA(client_proxy_v4) = cl_web_odata_client_factory=>create_v4_remote_proxy(
+DATA(lo_client_proxy_v4) = cl_web_odata_client_factory=>create_v4_remote_proxy(
   iv_service_definition_name = 'ZSC_TRAVEL'
-  io_http_client             = http_client
+  io_http_client             = lo_http_client
   iv_do_fetch_csrf_token     = abap_true
   iv_relative_service_root   = '/sap/opu/odata4/sap/zapi_travel/srvd_a2x/sap/zapi_travel/0001/' ).
 
 " Same class offers CREATE_V2_REMOTE_PROXY for OData V2 targets.
 " V2 relative service roots follow /sap/opu/odata/<service_id>.
-DATA(client_proxy_v2) = cl_web_odata_client_factory=>create_v2_remote_proxy(
+DATA(lo_client_proxy_v2) = cl_web_odata_client_factory=>create_v2_remote_proxy(
   iv_service_definition_name = 'ZSC_TRAVEL_V2'
-  io_http_client             = http_client
+  io_http_client             = lo_http_client
   iv_relative_service_root   = '/sap/opu/odata/sap/ZTRAVEL_SRV' ).
 ```
 
 ```abap
 " (c) Standard ABAP variant used in SAP samples
-DATA(client_proxy_onprem) = /iwbep/cl_cp_client_proxy_fact=>create_v4_remote_proxy(
+DATA(lo_client_proxy_onprem) = /iwbep/cl_cp_client_proxy_fact=>create_v4_remote_proxy(
   iv_service_definition_name = 'ZSC_TRAVEL'
-  io_http_client             = http_client
+  io_http_client             = lo_http_client
   iv_relative_service_root   = '/sap/opu/odata4/sap/zapi_travel/srvd_a2x/sap/zapi_travel/0001/' ).
 ```
 
@@ -158,24 +158,24 @@ Rules:
 ### Reading an entity set
 
 ```abap
-DATA(read_request) = client_proxy->create_resource_for_entity_set( 'TRAVEL'
+DATA(lo_read_request) = lo_client_proxy->create_resource_for_entity_set( 'TRAVEL'
                        )->create_request_for_read( ).
 
-read_request->set_top( 50 ).
-read_request->set_skip( 0 ).
+lo_read_request->set_top( 50 ).
+lo_read_request->set_skip( 0 ).
 
 " Server-side filtering via the filter factory (ranges → $filter)
-DATA(filter_factory) = read_request->create_filter_factory( ).
-DATA(agency_filter)  = filter_factory->create_by_range(
+DATA(lo_filter_factory) = lo_read_request->create_filter_factory( ).
+DATA(lo_agency_filter)  = lo_filter_factory->create_by_range(
                          iv_property_path = 'AGENCY_ID'
                          it_range         = VALUE #( ( sign   = 'I'
                                                        option = 'EQ'
                                                        low    = '070001' ) ) ).
-read_request->set_filter( agency_filter ).
+lo_read_request->set_filter( lo_agency_filter ).
 
-DATA travels TYPE STANDARD TABLE OF zsc_travel WITH EMPTY KEY.
-DATA(read_response) = read_request->execute( ).
-read_response->get_business_data( IMPORTING et_business_data = travels ).
+DATA lt_travels TYPE STANDARD TABLE OF zsc_travel WITH EMPTY KEY.
+DATA(lo_read_response) = lo_read_request->execute( ).
+lo_read_response->get_business_data( IMPORTING et_business_data = lt_travels ).
 ```
 
 `zsc_travel` is the abstract entity the consumption model generated. Property paths
@@ -208,12 +208,12 @@ SAP Gateway requires a CSRF token on modifying requests (POST/PUT/PATCH/DELETE).
 ```abap
 " Step 1: fetch token on a safe request
 token_request->set_header_field( i_name = 'X-CSRF-Token' i_value = 'Fetch' ).
-DATA(token_response) = http_client->execute( if_web_http_client=>get ).
-DATA(csrf_token)     = token_response->get_header_field( 'X-CSRF-Token' ).
+DATA(lo_token_response) = lo_http_client->execute( if_web_http_client=>get ).
+DATA(lv_csrf_token)     = lo_token_response->get_header_field( 'X-CSRF-Token' ).
 
 " Step 2: send it on the modifying request — same client instance,
 " because the token is only valid together with the session cookies.
-modify_request->set_header_field( i_name = 'X-CSRF-Token' i_value = csrf_token ).
+modify_request->set_header_field( i_name = 'X-CSRF-Token' i_value = lv_csrf_token ).
 ```
 
 The classic failure is fetching the token with one HTTP session and posting with
@@ -233,15 +233,15 @@ Pattern:
 
 ```abap
 TRY.
-    DATA(read_response) = read_request->execute( ).
-  CATCH /iwbep/cx_cp_remote INTO DATA(remote_error).
+    DATA(lo_read_response) = lo_read_request->execute( ).
+  CATCH /iwbep/cx_cp_remote INTO DATA(lo_remote_error).
     " OData error payload from the provider — log message, map to your error model
-  CATCH /iwbep/cx_gateway cx_web_http_client_error INTO DATA(technical_error).
+  CATCH /iwbep/cx_gateway cx_web_http_client_error INTO DATA(lo_technical_error).
     " infrastructure problem — retry/alert, do not show raw text to end users
 ENDTRY.
 ```
 
-Always `http_client->close( )` when done (also in the error path) — leaked HTTP
+Always `lo_http_client->close( )` when done (also in the error path) — leaked HTTP
 sessions exhaust the connection pool.
 
 ## 7. Consumption checklist

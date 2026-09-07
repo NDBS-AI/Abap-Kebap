@@ -15,7 +15,7 @@ CLASS ltcl_customer_bo DEFINITION
 
   PRIVATE SECTION.
 
-    CLASS-DATA cds_env TYPE REF TO if_cds_test_environment.
+    CLASS-DATA mo_cds_env TYPE REF TO if_cds_test_environment.
 
     CLASS-METHODS:
       class_setup,
@@ -35,16 +35,16 @@ ENDCLASS.
 CLASS ltcl_customer_bo IMPLEMENTATION.
 
   METHOD class_setup.
-    cds_env = cl_cds_test_environment=>create(
+    mo_cds_env = cl_cds_test_environment=>create(
                 i_for_entity = 'Z_C_CUSTOMER' ).
   ENDMETHOD.
 
   METHOD class_teardown.
-    cds_env->destroy( ).
+    mo_cds_env->destroy( ).
   ENDMETHOD.
 
   METHOD setup.
-    cds_env->clear_doubles( ).
+    mo_cds_env->clear_doubles( ).
   ENDMETHOD.
 
   METHOD teardown.
@@ -58,16 +58,16 @@ CLASS ltcl_customer_bo IMPLEMENTATION.
       ENTITY Customer
       CREATE FIELDS ( Name City Country )
       WITH VALUE #( ( %cid = 'C1' Name = 'AB' City = 'Berlin' Country = 'DE' ) )
-      FAILED   DATA(failed)
-      REPORTED DATA(reported)
-      MAPPED   DATA(mapped).
+      FAILED   DATA(lt_failed)
+      REPORTED DATA(lt_reported)
+      MAPPED   DATA(lt_mapped).
 
     cl_abap_unit_assert=>assert_not_initial(
-      act = failed-customer
+      act = lt_failed-customer
       msg = 'Two-character name should be rejected by validate_name' ).
 
     cl_abap_unit_assert=>assert_not_initial(
-      act = reported-customer
+      act = lt_reported-customer
       msg = 'Validation failure should produce a reported message' ).
   ENDMETHOD.
 
@@ -76,20 +76,20 @@ CLASS ltcl_customer_bo IMPLEMENTATION.
       ENTITY Customer
       CREATE FIELDS ( Name City Country )
       WITH VALUE #( ( %cid = 'C1' Name = 'Acme Industries' City = 'Berlin' Country = 'DE' ) )
-      FAILED   DATA(failed)
-      MAPPED   DATA(mapped).
+      FAILED   DATA(lt_failed)
+      MAPPED   DATA(lt_mapped).
 
     cl_abap_unit_assert=>assert_initial(
-      act = failed-customer
+      act = lt_failed-customer
       msg = 'Valid customer must not fail' ).
 
     cl_abap_unit_assert=>assert_not_initial(
-      act = mapped-customer
+      act = lt_mapped-customer
       msg = 'Mapping should contain assigned CustomerId' ).
 
-    DATA(new_id) = mapped-customer[ 1 ]-CustomerId.
+    DATA(lv_new_id) = lt_mapped-customer[ 1 ]-CustomerId.
     cl_abap_unit_assert=>assert_not_initial(
-      act = new_id
+      act = lv_new_id
       msg = 'Managed numbering should have produced a key' ).
   ENDMETHOD.
 
@@ -101,29 +101,29 @@ CLASS ltcl_customer_bo IMPLEMENTATION.
       ENTITY Customer
       CREATE FIELDS ( Name City Country )
       WITH VALUE #( ( %cid = 'C1' Name = 'Acme Industries' City = 'Berlin' Country = 'DE' ) )
-      MAPPED DATA(mapped).
+      MAPPED DATA(lt_mapped).
 
-    DATA(id) = mapped-customer[ 1 ]-CustomerId.
+    DATA(lv_id) = lt_mapped-customer[ 1 ]-CustomerId.
 
     " act: execute block action
     MODIFY ENTITIES OF Z_C_Customer
       ENTITY Customer
-      EXECUTE block FROM VALUE #( ( CustomerId = id ) )
-      RESULT DATA(result)
-      FAILED DATA(failed).
+      EXECUTE block FROM VALUE #( ( CustomerId = lv_id ) )
+      RESULT DATA(lt_result)
+      FAILED DATA(lt_failed).
 
     cl_abap_unit_assert=>assert_initial(
-      act = failed-customer
+      act = lt_failed-customer
       msg = 'Block action should succeed' ).
 
     " assert: read back, Blocked = true
     READ ENTITIES OF Z_C_Customer
       ENTITY Customer
-      ALL FIELDS WITH VALUE #( ( CustomerId = id ) )
-      RESULT DATA(customers).
+      ALL FIELDS WITH VALUE #( ( CustomerId = lv_id ) )
+      RESULT DATA(lt_customers).
 
     cl_abap_unit_assert=>assert_equals(
-      act = customers[ 1 ]-Blocked
+      act = lt_customers[ 1 ]-Blocked
       exp = abap_true
       msg = 'Blocked flag should be set after action' ).
   ENDMETHOD.
@@ -135,29 +135,29 @@ CLASS ltcl_customer_bo IMPLEMENTATION.
       ENTITY Customer
       CREATE FIELDS ( Name City Country )
       WITH VALUE #( ( %cid = 'C1' Name = 'Acme Industries' City = 'Berlin' Country = 'DE' ) )
-      MAPPED DATA(mapped).
+      MAPPED DATA(lt_mapped).
 
     COMMIT ENTITIES RESPONSE OF Z_C_Customer
-      FAILED   DATA(failed_save)
-      REPORTED DATA(reported_save).
+      FAILED   DATA(lt_failed_save)
+      REPORTED DATA(lt_reported_save).
 
     cl_abap_unit_assert=>assert_initial(
-      act = failed_save-customer
+      act = lt_failed_save-customer
       msg = 'Expected on-save determination to commit without errors' ).
 
-    DATA(id) = mapped-customer[ 1 ]-CustomerId.
+    DATA(lv_id) = lt_mapped-customer[ 1 ]-CustomerId.
 
     READ ENTITIES OF Z_C_Customer
       ENTITY Customer
-      ALL FIELDS WITH VALUE #( ( CustomerId = id ) )
-      RESULT DATA(customers).
+      ALL FIELDS WITH VALUE #( ( CustomerId = lv_id ) )
+      RESULT DATA(lt_customers).
 
     cl_abap_unit_assert=>assert_not_initial(
-      act = customers[ 1 ]-LastChangedAt
+      act = lt_customers[ 1 ]-LastChangedAt
       msg = 'Determination set_audit_fields should have populated LastChangedAt' ).
 
     cl_abap_unit_assert=>assert_equals(
-      act = customers[ 1 ]-LastChangedBy
+      act = lt_customers[ 1 ]-LastChangedBy
       exp = cl_abap_context_info=>get_user_technical_name( )
       msg = 'LastChangedBy should be the executing user' ).
   ENDMETHOD.
@@ -184,8 +184,8 @@ ENDCLASS.
 | EML returns failed but test passes | `failed` is the success-channel inversion | Always check `failed` first; `assert_initial` on success, `assert_not_initial` on expected failure |
 | Test depends on a sequence of test methods | Order-dependent | Each test arranges its own data inside the test method, not in shared setup |
 | Commit not called, then test passes anyway | Pre-commit buffer contents | If your test relies on commit-time logic (an on-save determination/validation), use `COMMIT ENTITIES RESPONSE OF ... FAILED ... REPORTED ...` and assert on `failed`/`reported` — see `determine_sets_audit_fields_on_save` above |
-| `cds_env` not destroyed | Stale doubles across runs | `class_teardown` must destroy |
-| Test passes against `cds_env` but the real BO fails | The double doesn't simulate all the BO's reality (RAP locking, draft, etc.) | Add an integration test in a separate test class with looser isolation, and accept it runs slower |
+| `mo_cds_env` not destroyed | Stale doubles across runs | `class_teardown` must destroy |
+| Test passes against `mo_cds_env` but the real BO fails | The double doesn't simulate all the BO's reality (RAP locking, draft, etc.) | Add an integration test in a separate test class with looser isolation, and accept it runs slower |
 
 ## Where to expand
 

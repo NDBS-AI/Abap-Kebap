@@ -21,9 +21,9 @@ The same grouping is also available as `FOR ... IN GROUP` inside constructor exp
 ### Representative binding
 
 ```abap
-LOOP AT spfli_tab INTO DATA(wa) GROUP BY wa-carrid.
-  " wa holds the first line of the group; wa-carrid is the group key
-  LOOP AT GROUP wa INTO DATA(member).
+LOOP AT lt_spfli_tab INTO DATA(ls_wa) GROUP BY ls_wa-carrid.
+  " ls_wa holds the first line of the group; ls_wa-carrid is the group key
+  LOOP AT GROUP ls_wa INTO DATA(ls_member).
     " each member of this carrid group
   ENDLOOP.
 ENDLOOP.
@@ -34,17 +34,17 @@ ENDLOOP.
 ### Group key binding
 
 ```abap
-LOOP AT spfli_tab INTO DATA(wa) GROUP BY wa-carrid INTO DATA(key).
-  " 'key' is the elementary group key (the carrid value), declarable inline
-  LOOP AT GROUP key INTO DATA(member).
+LOOP AT lt_spfli_tab INTO DATA(ls_wa) GROUP BY ls_wa-carrid INTO DATA(lv_key).
+  " 'lv_key' is the elementary group key (the carrid value), declarable inline
+  LOOP AT GROUP lv_key INTO DATA(ls_member).
     ...
   ENDLOOP.
 ENDLOOP.
 ```
 
-- The difference is the `INTO` after `GROUP BY`. `key` represents the group instead of reusing `wa`.
+- The difference is the `INTO` after `GROUP BY`. `lv_key` represents the group instead of reusing `ls_wa`.
 - Only group key binding enables `GROUP SIZE`, `GROUP INDEX`, `WITHOUT MEMBERS`.
-- When a group key binding is specified, the read result (`wa`) has **initial** component values — access members via `LOOP AT GROUP`.
+- When a group key binding is specified, the read result (`ls_wa`) has **initial** component values — access members via `LOOP AT GROUP`.
 
 ---
 
@@ -54,15 +54,15 @@ A structured group key — components in parentheses:
 
 ```abap
 " Representative binding
-LOOP AT spfli_tab INTO DATA(wa) GROUP BY ( key1 = wa-carrid key2 = wa-airpfrom ).
+LOOP AT lt_spfli_tab INTO DATA(ls_wa) GROUP BY ( key1 = ls_wa-carrid key2 = ls_wa-airpfrom ).
   ...
 ENDLOOP.
 
-" Group key binding → 'key' is a structure with key1, key2
-LOOP AT spfli_tab INTO DATA(wa)
-     GROUP BY ( key1 = wa-carrid key2 = wa-airpfrom ) INTO DATA(key).
-  " key-key1 ... key-key2 ...
-  LOOP AT GROUP key INTO DATA(member).
+" Group key binding → 'ls_key' is a structure with key1, key2
+LOOP AT lt_spfli_tab INTO DATA(ls_wa)
+     GROUP BY ( key1 = ls_wa-carrid key2 = ls_wa-airpfrom ) INTO DATA(ls_key).
+  " ls_key-key1 ... ls_key-key2 ...
+  LOOP AT GROUP ls_key INTO DATA(ls_member).
     ...
   ENDLOOP.
 ENDLOOP.
@@ -78,12 +78,12 @@ ENDLOOP.
 Available **only** with group key binding, as extra structured-key components:
 
 ```abap
-LOOP AT it INTO DATA(wa)
-     GROUP BY ( key = wa-comp1 gi = GROUP INDEX gs = GROUP SIZE )
-     ASCENDING INTO DATA(grp).
-  " grp-key   = group key value
-  " grp-gi    = group index (sequence number of this group)
-  " grp-gs    = group size (member count)
+LOOP AT lt_it INTO DATA(ls_wa)
+     GROUP BY ( key = ls_wa-comp1 gi = GROUP INDEX gs = GROUP SIZE )
+     ASCENDING INTO DATA(ls_grp).
+  " ls_grp-key   = group key value
+  " ls_grp-gi    = group index (sequence number of this group)
+  " ls_grp-gs    = group size (member count)
 ENDLOOP.
 ```
 
@@ -92,11 +92,11 @@ ENDLOOP.
 - `WITHOUT MEMBERS` — build the groups (key + size/index) without materializing members. No member loop is possible afterward; saves time and memory when you only need aggregates. Requires a group key binding.
 
 ```abap
-LOOP AT spfli_tab INTO DATA(wa)
-     GROUP BY ( key1 = wa-carrid key2 = wa-airpfrom
+LOOP AT lt_spfli_tab INTO DATA(ls_wa)
+     GROUP BY ( key1 = ls_wa-carrid key2 = ls_wa-airpfrom
                 index = GROUP INDEX size = GROUP SIZE )
-     WITHOUT MEMBERS INTO DATA(key).
-  " key-key1 ... key-key2 ... key-index ... key-size ... (no LOOP AT GROUP here)
+     WITHOUT MEMBERS INTO DATA(ls_key).
+  " ls_key-key1 ... ls_key-key2 ... ls_key-index ... ls_key-size ... (no LOOP AT GROUP here)
 ENDLOOP.
 ```
 
@@ -105,8 +105,8 @@ ENDLOOP.
 ## Sort order of the group loop
 
 ```abap
-LOOP AT it INTO DATA(wa) GROUP BY wa-comp1 ASCENDING.   ...   ENDLOOP.
-LOOP AT it INTO DATA(wa) GROUP BY ( k1 = wa-comp1 k2 = wa-comp2 ) DESCENDING. ... ENDLOOP.
+LOOP AT lt_it INTO DATA(ls_wa) GROUP BY ls_wa-comp1 ASCENDING.   ...   ENDLOOP.
+LOOP AT lt_it INTO DATA(ls_wa) GROUP BY ( k1 = ls_wa-comp1 k2 = ls_wa-comp2 ) DESCENDING. ... ENDLOOP.
 ```
 
 - `ASCENDING` / `DESCENDING` order the *group loop* by the group key. You can also pre-`SORT` the table.
@@ -118,15 +118,15 @@ LOOP AT it INTO DATA(wa) GROUP BY ( k1 = wa-comp1 k2 = wa-comp2 ) DESCENDING. ..
 
 ```abap
 " Representative binding — address the group via the work area
-LOOP AT it INTO DATA(wa) GROUP BY wa-comp1.
-  LOOP AT GROUP wa INTO DATA(member).
+LOOP AT lt_it INTO DATA(ls_wa) GROUP BY ls_wa-comp1.
+  LOOP AT GROUP ls_wa INTO DATA(ls_member).
     ...
   ENDLOOP.
 ENDLOOP.
 
 " Group key binding — address the group via the key
-LOOP AT it INTO DATA(wa) GROUP BY wa-comp1 INTO DATA(grp).
-  LOOP AT GROUP grp INTO DATA(member).
+LOOP AT lt_it INTO DATA(ls_wa) GROUP BY ls_wa-comp1 INTO DATA(ls_grp).
+  LOOP AT GROUP ls_grp INTO DATA(ls_member).
     ...
   ENDLOOP.
 ENDLOOP.
@@ -137,16 +137,16 @@ ENDLOOP.
 
 ```abap
 " Member loop with WHERE and nested re-grouping
-LOOP AT it INTO DATA(wa) GROUP BY wa-comp1 ASCENDING.
-  LOOP AT GROUP wa INTO DATA(member) WHERE comp3 = abap_true.
+LOOP AT lt_it INTO DATA(ls_wa) GROUP BY ls_wa-comp1 ASCENDING.
+  LOOP AT GROUP ls_wa INTO DATA(ls_member) WHERE comp3 = abap_true.
     ...
   ENDLOOP.
 ENDLOOP.
 
 " "Top per group": sort members descending, take the first, EXIT
-LOOP AT it INTO DATA(wa) GROUP BY wa-comp1 ASCENDING.
-  LOOP AT GROUP wa INTO DATA(member) GROUP BY member-comp2 DESCENDING.
-    APPEND member TO result.
+LOOP AT lt_it INTO DATA(ls_wa) GROUP BY ls_wa-comp1 ASCENDING.
+  LOOP AT GROUP ls_wa INTO DATA(ls_member) GROUP BY ls_member-comp2 DESCENDING.
+    APPEND ls_member TO lt_result.
     EXIT.
   ENDLOOP.
 ENDLOOP.
@@ -160,22 +160,22 @@ The constructor-expression form builds a table in one expression; `LOOP AT ... G
 
 ```abap
 " LOOP AT statement
-LOOP AT fl_tab INTO DATA(flight)
-     GROUP BY ( carrier = flight-carrid cityfr = flight-cityfrom
+LOOP AT lt_fl_tab INTO DATA(ls_flight)
+     GROUP BY ( carrier = ls_flight-carrid cityfr = ls_flight-cityfrom
                 size = GROUP SIZE index = GROUP INDEX )
-     ASCENDING REFERENCE INTO DATA(group_ref).
-  LOOP AT GROUP group_ref ASSIGNING FIELD-SYMBOL(<flight>).
+     ASCENDING REFERENCE INTO DATA(lr_group_ref).
+  LOOP AT GROUP lr_group_ref ASSIGNING FIELD-SYMBOL(<fs_flight>).
     ...
   ENDLOOP.
 ENDLOOP.
 
 " FOR ... GROUP BY ... IN GROUP inside VALUE
-DATA(itab_constr) = VALUE ty_itab_constr(
-  FOR GROUPS group OF line IN fl_tab
+DATA(lt_itab_constr) = VALUE ty_itab_constr(
+  FOR GROUPS group OF line IN lt_fl_tab
     GROUP BY ( carrier = line-carrid cityfrom = line-cityfrom
                size = GROUP SIZE index = GROUP INDEX ) ASCENDING
-    LET members = VALUE tab_type( FOR <member> IN GROUP group ( <member> ) ) IN
-    ( member = members info = |carrid="{ group-carrier }", size="{ group-size }"| ) ).
+    LET lt_members = VALUE tab_type( FOR <fs_member> IN GROUP group ( <fs_member> ) ) IN
+    ( member = lt_members info = |carrid="{ group-carrier }", size="{ group-size }"| ) ).
 ```
 
 See [abap-constructor-expressions](../../abap-constructor-expressions/SKILL.md) for the `FOR ... IN GROUP` deep dive.
@@ -188,20 +188,20 @@ See [abap-constructor-expressions](../../abap-constructor-expressions/SKILL.md) 
 
 ```abap
 " COLLECT
-DATA seats_col TYPE HASHED TABLE OF seats WITH UNIQUE KEY carrid connid.
-SELECT carrid, connid, seatsocc FROM zdemo_abap_fli INTO @DATA(seats).
-  COLLECT seats INTO seats_col.
+DATA lt_seats_col TYPE HASHED TABLE OF seats WITH UNIQUE KEY carrid connid.
+SELECT carrid, connid, seatsocc FROM zdemo_abap_fli INTO @DATA(ls_seats).
+  COLLECT ls_seats INTO lt_seats_col.
 ENDSELECT.
 
 " Equivalent with GROUP BY
-LOOP AT seats_all INTO DATA(wa) GROUP BY ( key1 = wa-carrid key2 = wa-connid ).
-  INSERT VALUE #( carrid = wa-carrid connid = wa-connid )
-    INTO TABLE seats_grp ASSIGNING FIELD-SYMBOL(<fs>).
-  LOOP AT GROUP wa INTO DATA(member).
-    <fs>-seatsocc = <fs>-seatsocc + member-seatsocc.
+LOOP AT lt_seats_all INTO DATA(ls_wa) GROUP BY ( key1 = ls_wa-carrid key2 = ls_wa-connid ).
+  INSERT VALUE #( carrid = ls_wa-carrid connid = ls_wa-connid )
+    INTO TABLE lt_seats_grp ASSIGNING FIELD-SYMBOL(<fs_line>).
+  LOOP AT GROUP ls_wa INTO DATA(ls_member).
+    <fs_line>-seatsocc = <fs_line>-seatsocc + ls_member-seatsocc.
   ENDLOOP.
 ENDLOOP.
-" seats_grp = seats_col
+" lt_seats_grp = lt_seats_col
 ```
 
 Prefer `COLLECT` for pure numeric aggregation into a unique-key table; reach for `GROUP BY` when you need per-group logic beyond summation (group size/index, filtering members, choosing a representative).

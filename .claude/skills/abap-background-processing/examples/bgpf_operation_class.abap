@@ -23,62 +23,62 @@ CLASS zcl_recalculate_inventory DEFINITION
     "! Uncontrolled scenario — only needed when the operation must COMMIT WORK itself.
     INTERFACES if_bgmc_op_single_tx_uncontr.
 
-    TYPES: BEGIN OF inventory_key,
+    TYPES: BEGIN OF ty_inventory_key,
              uuid TYPE sysuuid_x16,
-           END OF inventory_key.
+           END OF ty_inventory_key.
 
     "! Registers this operation as a transactional controlled background process.
     "! Call from the saver class (save_modified) of the RAP business object.
-    "! @parameter entity_key             | key of the inventory to recalculate
-    "! @parameter process_monitor_string | persist this to query the state later
+    "! @parameter is_entity_key             | key of the inventory to recalculate
+    "! @parameter rv_process_monitor_string | persist this to query the state later
     CLASS-METHODS start_in_background
-      IMPORTING entity_key                    TYPE inventory_key
-      RETURNING VALUE(process_monitor_string) TYPE string
+      IMPORTING is_entity_key                    TYPE ty_inventory_key
+      RETURNING VALUE(rv_process_monitor_string) TYPE string
       RAISING   cx_bgmc.
 
     "! Same operation, registered transactional UNCONTROLLED — for wrapped code
     "! that performs its own COMMIT WORK.
     CLASS-METHODS start_in_background_uncontrolled
-      IMPORTING entity_key                    TYPE inventory_key
-      RETURNING VALUE(process_monitor_string) TYPE string
+      IMPORTING is_entity_key                    TYPE ty_inventory_key
+      RETURNING VALUE(rv_process_monitor_string) TYPE string
       RAISING   cx_bgmc.
 
     METHODS constructor
-      IMPORTING entity_key TYPE inventory_key.
+      IMPORTING is_entity_key TYPE ty_inventory_key.
 
   PRIVATE SECTION.
-    CONSTANTS quantity_increment TYPE i VALUE 10.
+    CONSTANTS c_quantity_increment TYPE i VALUE 10.
 
-    DATA inventory_uuid TYPE sysuuid_x16.
+    DATA mv_inventory_uuid TYPE sysuuid_x16.
 ENDCLASS.
 
 
 CLASS zcl_recalculate_inventory IMPLEMENTATION.
 
   METHOD constructor.
-    inventory_uuid = entity_key-uuid.
+    mv_inventory_uuid = is_entity_key-uuid.
   ENDMETHOD.
 
   METHOD start_in_background.
-    DATA(process_monitor) = cl_bgmc_process_factory=>get_default(
+    DATA(lo_process_monitor) = cl_bgmc_process_factory=>get_default(
         )->create(
         )->set_name( |Recalculate inventory|
-        )->set_operation( NEW zcl_recalculate_inventory( entity_key = entity_key )
+        )->set_operation( NEW zcl_recalculate_inventory( is_entity_key = is_entity_key )
         )->save_for_execution( ).
 
     " The process becomes real only when the surrounding LUW commits.
-    process_monitor_string = process_monitor->to_string( ).
+    rv_process_monitor_string = lo_process_monitor->to_string( ).
   ENDMETHOD.
 
   METHOD start_in_background_uncontrolled.
-    DATA(process_monitor) = cl_bgmc_process_factory=>get_default(
+    DATA(lo_process_monitor) = cl_bgmc_process_factory=>get_default(
         )->create(
         )->set_name( |Recalculate inventory (uncontrolled)|
         )->set_operation_tx_uncontrolled(
-              NEW zcl_recalculate_inventory( entity_key = entity_key )
+              NEW zcl_recalculate_inventory( is_entity_key = is_entity_key )
         )->save_for_execution( ).
 
-    process_monitor_string = process_monitor->to_string( ).
+    rv_process_monitor_string = lo_process_monitor->to_string( ).
   ENDMETHOD.
 
   METHOD if_bgmc_op_single~execute.
@@ -87,23 +87,23 @@ CLASS zcl_recalculate_inventory IMPLEMENTATION.
     READ ENTITIES OF zr_inventorytp
       ENTITY Inventory
         ALL FIELDS WITH VALUE #( ( %is_draft = if_abap_behv=>mk-off
-                                   %key-uuid = inventory_uuid ) )
-      RESULT DATA(inventories)
-      FAILED DATA(read_failed).
+                                   %key-uuid = mv_inventory_uuid ) )
+      RESULT DATA(lt_inventories)
+      FAILED DATA(lt_read_failed).
 
-    IF inventories IS INITIAL.
+    IF lt_inventories IS INITIAL.
       RETURN.
     ENDIF.
 
     MODIFY ENTITIES OF zr_inventorytp
       ENTITY Inventory
         UPDATE FIELDS ( Quantity )
-        WITH VALUE #( FOR inventory IN inventories
+        WITH VALUE #( FOR ls_inventory IN lt_inventories
                       ( %is_draft = if_abap_behv=>mk-off
-                        uuid      = inventory-uuid
-                        Quantity  = inventory-Quantity + quantity_increment ) )
-      REPORTED DATA(update_reported)
-      FAILED   DATA(update_failed).
+                        uuid      = ls_inventory-uuid
+                        Quantity  = ls_inventory-Quantity + c_quantity_increment ) )
+      REPORTED DATA(lt_update_reported)
+      FAILED   DATA(lt_update_failed).
 
     " This EML update triggers a new save cycle of the BO. Its saver class can
     " RAISE ENTITY EVENT <bo>~QuantityUpdated (declared "for side effects" in
@@ -128,26 +128,26 @@ ENDCLASS.
 *"* CLASS lsc_inventory IMPLEMENTATION.
 *"*
 *"*   METHOD save_modified.
-*"*     LOOP AT update-inventory ASSIGNING FIELD-SYMBOL(<updated_inventory>)
+*"*     LOOP AT update-inventory ASSIGNING FIELD-SYMBOL(<fs_updated_inventory>)
 *"*          WHERE %control-BgpfStatus = if_abap_behv=>mk-on.
 *"*
 *"*       TRY.
-*"*           DATA(process_monitor_string) =
+*"*           DATA(lv_process_monitor_string) =
 *"*             zcl_recalculate_inventory=>start_in_background(
-*"*                 entity_key = VALUE #( uuid = <updated_inventory>-uuid ) ).
+*"*                 is_entity_key = VALUE #( uuid = <fs_updated_inventory>-uuid ) ).
 *"*
 *"*           " Business data is frozen in the save phase — persist the monitor
 *"*           " string with a direct UPDATE on the BO's own database table.
 *"*           UPDATE zinventory
-*"*             SET bgpf_process_monitor = @process_monitor_string
-*"*             WHERE uuid = @<updated_inventory>-uuid.
+*"*             SET bgpf_process_monitor = @lv_process_monitor_string
+*"*             WHERE uuid = @<fs_updated_inventory>-uuid.
 *"*
-*"*         CATCH cx_bgmc INTO DATA(background_error).
+*"*         CATCH cx_bgmc INTO DATA(lo_background_error).
 *"*           APPEND VALUE #(
-*"*               uuid = <updated_inventory>-uuid
+*"*               uuid = <fs_updated_inventory>-uuid
 *"*               %msg = new_message_with_text(
 *"*                          severity = if_abap_behv_message=>severity-error
-*"*                          text     = background_error->get_text( ) ) )
+*"*                          text     = lo_background_error->get_text( ) ) )
 *"*             TO reported-inventory.
 *"*       ENDTRY.
 *"*     ENDLOOP.
@@ -156,6 +156,6 @@ ENDCLASS.
 *"* ENDCLASS.
 *"*
 *"* Later, to check whether the background process ran:
-*"*   DATA(process_monitor) =
+*"*   DATA(lo_process_monitor) =
 *"*     cl_bgmc_process_factory=>create_monitor_from_string( persisted_string ).
-*"*   DATA(process_state) = process_monitor->get_state( ).
+*"*   DATA(lv_process_state) = lo_process_monitor->get_state( ).

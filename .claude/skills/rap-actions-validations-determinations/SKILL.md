@@ -82,7 +82,7 @@ METHOD accept_order.
       UPDATE FIELDS ( OverallStatus )
       WITH VALUE #( FOR order_key IN keys
                     ( %tky          = order_key-%tky
-                      OverallStatus = order_status-accepted ) )
+                      OverallStatus = c_order_status-accepted ) )
     FAILED failed
     REPORTED reported.
 
@@ -90,9 +90,9 @@ METHOD accept_order.
   READ ENTITIES OF zr_salesordertp IN LOCAL MODE
     ENTITY Order
       ALL FIELDS WITH CORRESPONDING #( keys )
-    RESULT DATA(orders).
+    RESULT DATA(lt_orders).
 
-  result = VALUE #( FOR order IN orders
+  result = VALUE #( FOR order IN lt_orders
                     ( %tky   = order-%tky
                       %param = order ) ).
 ENDMETHOD.
@@ -110,20 +110,20 @@ In the handler, each `keys` row carries `%param-<component>`. Validate the param
 
 ```abap
 METHOD apply_discount.
-  DATA(valid_keys) = keys.
-  LOOP AT valid_keys ASSIGNING FIELD-SYMBOL(<order_key>)
+  DATA(lt_valid_keys) = keys.
+  LOOP AT lt_valid_keys ASSIGNING FIELD-SYMBOL(<fs_order_key>)
        WHERE %param-discount_percent IS INITIAL
           OR %param-discount_percent > 100
           OR %param-discount_percent <= 0.
-    APPEND VALUE #( %tky = <order_key>-%tky ) TO failed-order.
-    APPEND VALUE #( %tky = <order_key>-%tky
+    APPEND VALUE #( %tky = <fs_order_key>-%tky ) TO failed-order.
+    APPEND VALUE #( %tky = <fs_order_key>-%tky
                     %msg = new_message( id       = 'ZSALESORDER_MSG'
                                         number   = '004'
                                         severity = if_abap_behv_message=>severity-error ) )
            TO reported-order.
-    DELETE valid_keys.
+    DELETE lt_valid_keys.
   ENDLOOP.
-  CHECK valid_keys IS NOT INITIAL.
+  CHECK lt_valid_keys IS NOT INITIAL.
   " ... READ prices, apply %param-discount_percent, MODIFY, fill result ...
 ENDMETHOD.
 ```
@@ -145,33 +145,33 @@ METHODS copy_order FOR MODIFY
 
 ```abap
 METHOD copy_order.
-  DATA new_orders TYPE TABLE FOR CREATE zr_salesordertp.
+  DATA lt_new_orders TYPE TABLE FOR CREATE zr_salesordertp.
 
   " Factory actions require a %cid per requested instance
-  READ TABLE keys WITH KEY %cid = '' INTO DATA(key_without_cid).
-  ASSERT key_without_cid IS INITIAL.
+  READ TABLE keys WITH KEY %cid = '' INTO DATA(ls_key_without_cid).
+  ASSERT ls_key_without_cid IS INITIAL.
 
   READ ENTITIES OF zr_salesordertp IN LOCAL MODE
     ENTITY Order
       ALL FIELDS WITH CORRESPONDING #( keys )
-    RESULT DATA(source_orders)
+    RESULT DATA(lt_source_orders)
     FAILED failed.
 
-  LOOP AT source_orders ASSIGNING FIELD-SYMBOL(<source_order>).
-    APPEND VALUE #( %cid      = keys[ KEY entity %key = <source_order>-%key ]-%cid
-                    %is_draft = keys[ KEY entity %key = <source_order>-%key ]-%param-%is_draft
-                    %data     = CORRESPONDING #( <source_order> EXCEPT OrderId ) )
-           TO new_orders ASSIGNING FIELD-SYMBOL(<new_order>).
-    <new_order>-OverallStatus = order_status-open.
+  LOOP AT lt_source_orders ASSIGNING FIELD-SYMBOL(<fs_source_order>).
+    APPEND VALUE #( %cid      = keys[ KEY entity %key = <fs_source_order>-%key ]-%cid
+                    %is_draft = keys[ KEY entity %key = <fs_source_order>-%key ]-%param-%is_draft
+                    %data     = CORRESPONDING #( <fs_source_order> EXCEPT OrderId ) )
+           TO lt_new_orders ASSIGNING FIELD-SYMBOL(<fs_new_order>).
+    <fs_new_order>-OverallStatus = c_order_status-open.
   ENDLOOP.
 
   MODIFY ENTITIES OF zr_salesordertp IN LOCAL MODE
     ENTITY Order
       CREATE FIELDS ( CustomerId OrderQuantity UnitPrice CurrencyCode OverallStatus )
-      WITH new_orders
-    MAPPED DATA(mapped_create).
+      WITH lt_new_orders
+    MAPPED DATA(lt_mapped_create).
 
-  mapped-order = mapped_create-order.   " hand the new keys back to the framework
+  mapped-order = lt_mapped_create-order.   " hand the new keys back to the framework
 ENDMETHOD.
 ```
 
@@ -205,16 +205,16 @@ METHOD validate_customer.
   READ ENTITIES OF zr_salesordertp IN LOCAL MODE
     ENTITY Order
       FIELDS ( CustomerId ) WITH CORRESPONDING #( keys )
-    RESULT DATA(orders).
+    RESULT DATA(lt_orders).
 
-  LOOP AT orders INTO DATA(order).
+  LOOP AT lt_orders INTO DATA(ls_order).
     " Draft state-message hygiene: clear this validation's previous messages first
-    APPEND VALUE #( %tky        = order-%tky
+    APPEND VALUE #( %tky        = ls_order-%tky
                     %state_area = 'VALIDATE_CUSTOMER' ) TO reported-order.
 
-    IF order-CustomerId IS INITIAL.
-      APPEND VALUE #( %tky = order-%tky ) TO failed-order.
-      APPEND VALUE #( %tky                = order-%tky
+    IF ls_order-CustomerId IS INITIAL.
+      APPEND VALUE #( %tky = ls_order-%tky ) TO failed-order.
+      APPEND VALUE #( %tky                = ls_order-%tky
                       %state_area         = 'VALIDATE_CUSTOMER'
                       %msg                = new_message( id       = 'ZSALESORDER_MSG'
                                                          number   = '001'
@@ -265,10 +265,10 @@ METHOD calculate_order_id.
   READ ENTITIES OF zr_salesordertp IN LOCAL MODE
     ENTITY Order
       FIELDS ( OrderId ) WITH CORRESPONDING #( keys )
-    RESULT DATA(orders).
+    RESULT DATA(lt_orders).
 
-  DELETE orders WHERE OrderId IS NOT INITIAL.   " nothing to do — prevents rework and loops
-  CHECK orders IS NOT INITIAL.
+  DELETE lt_orders WHERE OrderId IS NOT INITIAL.   " nothing to do — prevents rework and loops
+  CHECK lt_orders IS NOT INITIAL.
   " ... SELECT MAX + MODIFY ... UPDATE FROM VALUE #( ... %control-OrderId = if_abap_behv=>mk-on ) ...
 ENDMETHOD.
 ```
@@ -281,8 +281,8 @@ METHOD determine_total_amount.
     ENTITY Order
       EXECUTE recalculateTotalAmount
       FROM CORRESPONDING #( keys )
-    REPORTED DATA(execute_reported).
-  reported = CORRESPONDING #( DEEP execute_reported ).
+    REPORTED DATA(lt_execute_reported).
+  reported = CORRESPONDING #( DEEP lt_execute_reported ).
 ENDMETHOD.
 ```
 
@@ -337,17 +337,17 @@ METHOD get_instance_features.
   READ ENTITIES OF zr_salesordertp IN LOCAL MODE
     ENTITY Order
       FIELDS ( OverallStatus ) WITH CORRESPONDING #( keys )
-    RESULT DATA(orders)
+    RESULT DATA(lt_orders)
     FAILED failed.
 
   result = VALUE #(
-    FOR order IN orders
-      LET accept_state = COND #( WHEN order-OverallStatus = order_status-accepted
+    FOR order IN lt_orders
+      LET accept_state = COND #( WHEN order-OverallStatus = c_order_status-accepted
                                  THEN if_abap_behv=>fc-o-disabled
                                  ELSE if_abap_behv=>fc-o-enabled )
       IN ( %tky                  = order-%tky
            %action-acceptOrder   = accept_state
-           %field-DiscountPercent = COND #( WHEN order-OverallStatus = order_status-accepted
+           %field-DiscountPercent = COND #( WHEN order-OverallStatus = c_order_status-accepted
                                             THEN if_abap_behv=>fc-f-read_only
                                             ELSE if_abap_behv=>fc-f-unrestricted ) ) ).
 ENDMETHOD.
@@ -438,8 +438,8 @@ METHOD approve FOR MODIFY IMPORTING approval_keys FOR ACTION travel~approve.
   MODIFY ENTITIES OF zr_auditlogtp IN LOCAL MODE
     ENTITY auditlogentry
       CREATE FIELDS ( description ) WITH audit_entries_for( approval_keys )
-    MAPPED DATA(mapped_audit_entries)
-    FAILED DATA(failed_audit_entries).
+    MAPPED DATA(lt_mapped_audit_entries)
+    FAILED DATA(lt_failed_audit_entries).
 ENDMETHOD.
 ```
 

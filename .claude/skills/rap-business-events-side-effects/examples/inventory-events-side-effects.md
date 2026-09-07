@@ -135,37 +135,37 @@ ENDCLASS.
 CLASS lsc_inventory IMPLEMENTATION.
 
   METHOD save_modified.
-    DATA quantity_updated_events TYPE TABLE FOR EVENT zr_inventory~QuantityUpdated.
+    DATA lt_quantity_updated_events TYPE TABLE FOR EVENT zr_inventory~QuantityUpdated.
 
-    LOOP AT update-inventory ASSIGNING FIELD-SYMBOL(<updated_inventory>).
+    LOOP AT update-inventory ASSIGNING FIELD-SYMBOL(<fs_updated_inventory>).
 
       " Start the background calculation when the action set the status
-      IF     <updated_inventory>-CalculationStatus          = zcl_inventory_calc=>calculation_state-requested
-         AND <updated_inventory>-%control-CalculationStatus = if_abap_behv=>mk-on.
+      IF     <fs_updated_inventory>-CalculationStatus          = zcl_inventory_calc=>calculation_state-requested
+         AND <fs_updated_inventory>-%control-CalculationStatus = if_abap_behv=>mk-on.
         TRY.
             zcl_inventory_calc=>run_via_bgpf(
-              inventory_key = <updated_inventory>-%key ).
-          CATCH cx_bgmc INTO DATA(background_error).
+              inventory_key = <fs_updated_inventory>-%key ).
+          CATCH cx_bgmc INTO DATA(lo_background_error).
             " Log via application log; never let the save dump
         ENDTRY.
       ENDIF.
 
       " The background process wrote Quantity -> raise the side-effect event
-      IF <updated_inventory>-%control-Quantity = if_abap_behv=>mk-on.
-        quantity_updated_events = VALUE #(
-          ( CORRESPONDING #( <updated_inventory> ) ) ).
+      IF <fs_updated_inventory>-%control-Quantity = if_abap_behv=>mk-on.
+        lt_quantity_updated_events = VALUE #(
+          ( CORRESPONDING #( <fs_updated_inventory> ) ) ).
         RAISE ENTITY EVENT zr_inventory~QuantityUpdated
-          FROM quantity_updated_events.
+          FROM lt_quantity_updated_events.
 
         " Integration event with payload when stock is exhausted
-        IF <updated_inventory>-Quantity = 0.
+        IF <fs_updated_inventory>-Quantity = 0.
           RAISE ENTITY EVENT zr_inventory~OutOfStock
             FROM VALUE #(
-              ( %key   = <updated_inventory>-%key
+              ( %key   = <fs_updated_inventory>-%key
                 %param = VALUE #(
-                  product_id = <updated_inventory>-ProductID
-                  quantity   = <updated_inventory>-Quantity
-                  plant      = <updated_inventory>-Plant ) ) ).
+                  product_id = <fs_updated_inventory>-ProductID
+                  quantity   = <fs_updated_inventory>-Quantity
+                  plant      = <fs_updated_inventory>-Plant ) ) ).
         ENDIF.
       ENDIF.
 
@@ -187,9 +187,9 @@ Notes:
 MODIFY ENTITIES OF zr_inventory
   ENTITY Inventory
   UPDATE FIELDS ( Quantity )
-  WITH quantity_updates
-  FAILED   DATA(failed_updates)
-  REPORTED DATA(reported_updates).
+  WITH lt_quantity_updates
+  FAILED   DATA(lt_failed_updates)
+  REPORTED DATA(lt_reported_updates).
 
 COMMIT ENTITIES.
 ```
@@ -228,11 +228,11 @@ CLASS lhe_inventory IMPLEMENTATION.
     " Set the transactional phase before performing modifications.
     cl_abap_tx=>modify( ).
 
-    LOOP AT out_of_stock_events INTO DATA(out_of_stock_event).
-      " Key components:  out_of_stock_event-%key
-      " Payload fields:  out_of_stock_event-%param-product_id,
-      "                  out_of_stock_event-%param-quantity,
-      "                  out_of_stock_event-%param-plant
+    LOOP AT out_of_stock_events INTO DATA(ls_out_of_stock_event).
+      " Key components:  ls_out_of_stock_event-%key
+      " Payload fields:  ls_out_of_stock_event-%param-product_id,
+      "                  ls_out_of_stock_event-%param-quantity,
+      "                  ls_out_of_stock_event-%param-plant
       " e.g. create a replenishment request, write an application log entry
     ENDLOOP.
   ENDMETHOD.
