@@ -97,6 +97,8 @@ Load multiple when the task spans them (e.g. review + sql performance + moderniz
 
 **Always load `abap-clean-style` before generating any ABAP** — new code, a refactor, or a snippet inside an explanation, no matter which topic skill the task mapped to. The Defaults section below is a reminder, not a substitute: single-letter identifiers and legacy constructs slip in whenever the skill is not loaded.
 
+**Follow the shipped naming convention.** Name every new identifier and object per the naming convention shipped with the `abap-clean-style` skill — [references/naming-conventions.md](../skills/abap-clean-style/references/naming-conventions.md) — the scope+type Hungarian grid (`mv_`/`lt_`/`iv_`/`ro_`…, field symbols `<fv_>`/`<fs_>`/`<ft_>`, CDS `z<area>_i_`/`z<area>_c_`) — which overrides `abap-clean-style`'s naming defaults. A project may override it with a naming section in its `CLAUDE.md`/`AGENTS.md`. Present the convention for the user's approval before development starts; legacy code still gets minimum-invasive changes only. **For any object type the convention does not list** (message class, lock object, number range, enhancement spot, transformation, search help, …), do not invent a name silently — propose one that follows the same shape (single `Z`/`Y` + area token + type marker + `snake_case` purpose) and ask the user to confirm or adjust it before you create the object.
+
 ## Scope and limits
 
 **Never do, even if asked:**

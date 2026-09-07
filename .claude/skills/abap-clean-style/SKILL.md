@@ -79,7 +79,7 @@ Load this skill when:
 
 **Local variables.** Short, contextual. Inside a 10-line method, `lt_inv` is fine if it is obviously "invoices". In a 200-line procedural block, `lt_invoices_with_overdue_status` earns its length.
 
-**Hungarian prefixes.** Clean ABAP discourages `lt_`, `ls_`, `lv_`, `lo_`, `lr_`. In practice, most SAP shops still use them; if the project does, follow project convention — Clean ABAP is *guidance*, project convention is *contract*. The rule below applies regardless of prefix style.
+**Hungarian prefixes.** Clean ABAP discourages `lt_`, `ls_`, `lv_`, `lo_`, `lr_`. In practice, most SAP shops still use them; if the project does, follow project convention — Clean ABAP is *guidance*, project convention is *contract*. The rule below applies regardless of prefix style. **The shipped naming convention** ([references/naming-conventions.md](references/naming-conventions.md)) is the authoritative naming standard for the ABAP Kebap agents — a full scope+type Hungarian grid (`mv_`/`lt_`/`iv_`/`ro_`…, field symbols `<fv_>`/`<fs_>`/`<ft_>`, CDS `z<area>_i_`/`z<area>_c_`) — and it overrides the Clean ABAP naming guidance in this section. A project may override it with a naming section in its `CLAUDE.md`/`AGENTS.md`.
 
 ## Control flow {#control-flow}
 

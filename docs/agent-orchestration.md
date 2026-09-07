@@ -113,6 +113,10 @@ On VS Code Copilot — and any surface where there is exactly one agent thread a
 - **Hold the five gates yourself:** design approved → plan → failing test → verify with evidence → independent review pass. What changes on a single thread is that *you* hold all five in one context instead of dispatching each to a peer — not that any of them is skipped.
 - **"You have access — do it yourself" means proceed.** When the user says the tools are reachable and tells you to act, that is approval to run them: verify reachability once, then use them. Repeatedly deferring after the user has said "go" is the failure mode to avoid.
 
+## Project conventions the agents honor
+
+The default ABAP naming convention ships with the `abap-clean-style` skill at [../.claude/skills/abap-clean-style/references/naming-conventions.md](../.claude/skills/abap-clean-style/references/naming-conventions.md) — a scope+type Hungarian grid (`mv_`/`lt_`/`iv_`/`ro_`…, field symbols `<fv_>`/`<fs_>`/`<ft_>`, CDS `z<area>_i_`/`z<area>_c_`). The architect, developer, and reviewer all follow it over the Clean ABAP naming default: the developer for new identifiers, the architect for object/contract names, the reviewer as the standard it grades against (the mandated prefixes are never flagged as violations). A project may override it with a naming section in its `CLAUDE.md`/`AGENTS.md` — relative to the project root, so the wiring works for every checkout with no absolute path baked in. The agent presents the convention for the user's approval before development starts.
+
 ## Token / cost note
 
 This architecture is **opt-in per task**, not the default for every turn.
