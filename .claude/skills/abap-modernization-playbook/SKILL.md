@@ -207,6 +207,15 @@ Approach:
 
 The full cloud migration playbook exceeds this skill; see SAP's official guide and [SAP-samples/cloud-abap-rap](https://github.com/SAP-samples/cloud-abap-rap) for reference scenarios.
 
+## Verifying behavior parity after a transformation
+
+Before calling any transformation in this playbook done, confirm the original
+behavior actually survived the move — see [the shared Retrieval Discipline's
+behavior-preserving refactor checklist](../../../docs/retrieval-discipline.md#behavior-preserving-refactors--compare-once-not-one-gap-at-a-time)
+for the ordered audit (validations, error handling, conversions, caching,
+external calls, transaction boundaries, constants vs dynamic input). Don't
+find these gaps one at a time after the fact.
+
 ## Sequencing transports
 
 Each modernization is one transport (or a small sequenced family). Mixing modernization with a feature change makes the diff illegible.
