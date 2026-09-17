@@ -145,14 +145,18 @@ SELECT PredecessorObjectType, PredecessorObjectName, SuccessorObjectType, Succes
 |---|---|
 | `CL_ABAP_PARALLEL` | Parallel processing. |
 | `CL_ABAP_LOCK_OBJECT_FACTORY` | Enqueue/dequeue via lock objects. |
-| `XCO_CP_BAL` | Business Application Log. |
-| Application Jobs / background-run classes | Schedule and run code in the background. |
+| `XCO_CP_BAL` | Business Application Log (XCO flavour). |
+| `CL_BALI_LOG`, `CL_BALI_LOG_DB`, `CL_BALI_HEADER_SETTER`, `CL_BALI_FREE_TEXT_SETTER`, `CL_BALI_MESSAGE_SETTER`, `CL_BALI_EXCEPTION_SETTER`, `IF_BALI_CONSTANTS` | Application Log (BALI) — free text is `C(200)` per item. |
+| `IF_APJ_RT_RUN`, `IF_APJ_DT_DEFAULTS`, `IF_APJ_DT_EXEC_OBJECT`, `IF_APJ_RT_EXEC_OBJECT`, `CL_APJ_RT_API`, `CL_APJ_DT_CREATE_CONTENT` | Application Jobs — `IF_APJ_RT_RUN` (parameters as public attributes, F4 in the catalog entry) for new jobs. |
+| `CL_ABAP_TSTMP` | `add` / `subtractsecs` / `subtract` on `timestamp`/`timestampl`. |
 
 ## Communication & files
 
 | Class | Use |
 |---|---|
-| Service-call classes | Call HTTP / OData services. |
+| `CL_HTTP_DESTINATION_PROVIDER` → `CL_WEB_HTTP_CLIENT_MANAGER` (`IF_WEB_HTTP_CLIENT`) → `/IWBEP/CL_CP_FACTORY_REMOTE` | The outbound stack: destination from a communication arrangement, HTTP client, OData V4 client proxy (`/IWBEP/IF_CP_RESOURCE_ENTITY`, `/IWBEP/IF_CP_REQUEST_ACTION`, …). Details in [abap-odata](../../abap-odata/references/client-proxy-operations.md). |
+| `CL_WEB_ODATA_CLIENT_FACTORY` | V2/V4 remote proxy from a service definition name. |
+| `/UI2/CL_JSON` | JSON body building with `compress` + `name_mappings` (hand-built OData payloads). |
 | `XCO_CP_XLSX` | Read/write XLSX content. |
 | `CL_CSV_FACTORY` / `IF_CSV_WRITER` | Write internal table content to CSV (released 917/2511+). |
 | Email-sending classes | Send emails. |

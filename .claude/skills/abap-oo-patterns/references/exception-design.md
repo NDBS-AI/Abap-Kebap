@@ -129,6 +129,49 @@ When the exception is caught, the message text is available via `get_text( )` wi
 
 Source: [SAP-samples/abap-cheat-sheets — 27_Exceptions.md, "System Interfaces for Messages"](https://github.com/SAP-samples/abap-cheat-sheets/blob/main/27_Exceptions.md)
 
+## Carrying long diagnostic text — the 50-character placeholder limit
+
+Three limits bite exceptions that wrap remote calls or parsers:
+
+| Layer | Limit | What you see |
+|---|---|---|
+| T100 placeholder `&1..&4` (`msgv1..4`, via `IF_T100_DYN_MSG` / `MESSAGE … WITH`) | **50 characters per placeholder** | `400 Bad Request: Property PaymentPercentage cannot be used …` (~200 chars) arrives as `400 Bad Request: Property PaymentPercentag` |
+| `cx_root->get_text( )` on a T100-based exception | rendered from the 4 × 50 placeholders → **≈ 200 characters** | Same truncation one level up |
+| BAL free text (`cl_bali_free_text_setter`) | `C(200)` | Cut without warning — chunk it ([abap-background-processing](../../abap-background-processing/references/application-log-bali.md)) |
+
+Keep the short, translatable T100 text **and** add a long-text channel:
+
+```abap
+CLASS zcx_rate_service_error DEFINITION PUBLIC INHERITING FROM cx_static_check CREATE PUBLIC.
+  PUBLIC SECTION.
+    INTERFACES if_t100_dyn_msg.
+    INTERFACES if_t100_message.
+    DATA mv_long_text TYPE string READ-ONLY.            " full diagnostic: URL, HTTP body, …
+
+    METHODS constructor
+      IMPORTING textid       LIKE if_t100_message=>t100key OPTIONAL
+                previous     LIKE previous OPTIONAL
+                iv_v1        TYPE string OPTIONAL   " … iv_v4: classifier only (status, reason)
+                iv_long_text TYPE string OPTIONAL.
+    METHODS get_long_text RETURNING VALUE(rv_text) TYPE string.
+ENDCLASS.
+
+CLASS zcx_rate_service_error IMPLEMENTATION.
+  METHOD get_long_text.
+    rv_text = get_text( ).                              " short, message-class based
+    IF mv_long_text IS NOT INITIAL.
+      rv_text = |{ rv_text } — { mv_long_text }|.
+    ENDIF.
+  ENDMETHOD.
+ENDCLASS.
+```
+
+Rules:
+
+- Raise sites put the **classifier** in the placeholders (`iv_v3 = |{ lv_status } { lv_reason }|`) and the **payload** in `iv_long_text` (`|POST { lv_url } -> { lv_body }|`).
+- Consumers that *log* (job fatal handler, per-row results, F9 console) call `get_long_text( )`; UI-facing consumers keep `get_text( )`.
+- Never put a URL, an HTTP body, or a stack dump into a T100 placeholder.
+
 ## Resumable exceptions
 
 A resumable exception allows the caller to **continue execution from the point where the exception was raised** after handling it in a `CATCH BEFORE UNWIND` block. Normal `CATCH` unwinds the stack; `CATCH BEFORE UNWIND` preserves it so `RESUME` can jump back.
@@ -229,6 +272,7 @@ If there is *any* plausible way for the condition to occur in production — bad
 - [ ] One class per failure **category**, not per call site
 - [ ] Hierarchy rooted on a domain abstract class
 - [ ] `IF_T100_MESSAGE` implemented for user-facing exceptions
+- [ ] Long diagnostics (URL, response body) carried in `mv_long_text` / `get_long_text( )`, not in `&1..&4`
 - [ ] All raises that wrap pass `previous`
 - [ ] Static-check used only where caller should handle
 - [ ] No-check used only for unrecoverable internals (or use `ASSERT`)

@@ -1,6 +1,6 @@
 ---
 name: abap-odata
-description: "Use when creating, exposing, or consuming OData services in ABAP beyond RAP business-object modeling — choosing between a classic SEGW project (OData V2, on-premise), CDS-based exposure via SADL (@OData.publish, referenced data source), and a RAP service definition plus service binding; understanding OData V2 vs V4 differences that matter in ABAP; activating and registering services on-premise via /IWFND/MAINT_SERVICE and ICF versus publishing service bindings and communication arrangements in ABAP Cloud; consuming external OData through a service consumption model in ADT, the OData client proxy factories, or plain HTTP clients (cl_web_http_client_manager versus cl_http_client); and testing with /IWFND/GW_CLIENT, /IWFND/ERROR_LOG, or the ADT preview. Triggers include create OData service, SEGW, expose CDS view as OData, service binding, OData V2 vs V4, consume external OData, OData client proxy, service consumption model, communication arrangement, CSRF token, $batch, and $metadata error."
+description: "Use when creating, exposing, or consuming OData services in ABAP beyond RAP business-object modeling — choosing between a classic SEGW project (OData V2, on-premise), CDS-based exposure via SADL (@OData.publish, referenced data source), and a RAP service definition plus service binding; understanding OData V2 vs V4 differences that matter in ABAP; activating and registering services on-premise via /IWFND/MAINT_SERVICE and ICF versus publishing service bindings and communication arrangements in ABAP Cloud; consuming external OData through a service consumption model, the OData client proxy (incl. navigation, $expand, bound actions), or plain HTTP clients; and testing with /IWFND/GW_CLIENT, /IWFND/ERROR_LOG, or the ADT preview. Triggers include create OData service, SEGW, expose CDS view as OData, service binding, OData V2 vs V4, consume external OData, OData client proxy, bind_action, navigate_to_optional, service consumption model, communication arrangement, CSRF token, $batch, and $metadata error."
 ---
 
 # ABAP OData Services — Create, Expose, Consume
@@ -226,6 +226,13 @@ Factory overview (all take the HTTP client plus the relative service root):
 
 CSRF is handled for you: the client proxy fetches an `X-CSRF-Token` via a HEAD request and reuses it for all requests of that proxy instance (`iv_do_fetch_csrf_token = abap_false` disables it). A local proxy variant exists for same-system consumption in integration tests, but it cannot consume SAP-delivered OData services.
 
+**Step 4 — Navigate, expand, invoke operations.** Read the generated consumption-model class first: its `gcs_entity_set-*`, `gcs_entity_type-*-navigation-*`, `gcs_bound_action-*` constants and `tys_*`/`tyt_*` types are the authoritative names. Then:
+
+- **Navigate by modelled multiplicity:** `navigate_with_key` (key), `navigate_to_single` (1:1 only — raises `multiplicity 'O'` on a 0..1 nav), `navigate_to_optional` (0..1), `navigate_to_many`. `navigate_to_optional` returns the narrow `/iwbep/if_cp_resource_entity01`, which hides `bind_action` at **compile time only** — `CAST /iwbep/if_cp_resource_entity( … )` and bind; the runtime has no casting guard on `bind_action`.
+- **Bound action:** `…->bind_action( gcs_bound_action-<name> )->create_request( )` → `set_parameter( is_parameter = … )` → `set_if_match( raw_etag )` → `execute( )`. Proxy-level `create_resource_for_action/_function` are for **unbound** imports only.
+- **Nested `$expand`:** `create_expand_node( )` → `add_expand( CONV #( nav ) )` (returns the child node) → `set_expand( )`. `get_business_data` fills a **table** even for a to-one read — take `[ 1 ]`. eTag via `execute( )->get_etag( )` (unquoted).
+- **Payload the proxy cannot express:** a server *business* error such as `400 … Property X cannot be used for …` after the action executed means the parameter type has `Nullable="false"` members the provider treats as "exactly one". Value controls exist only for nullable properties and action requests have no data-description node, so the typed proxy is a dead end for that call — build the JSON by hand (`/ui2/cl_json` with `compress` + `name_mappings`) and POST it over a **fresh** `if_web_http_client` (CSRF GET relative path first, POST absolute path second on the same client, `If-Match: W/"…"`). Full rules in [references/client-proxy-operations.md](references/client-proxy-operations.md).
+
 Raw-HTTP consumption without a proxy (build the URL with `$filter`/`$top` yourself, parse JSON — see [abap-xml-json](../abap-xml-json/SKILL.md)) is the fallback when no consumption model is possible. Full request patterns — filters, CRUD, error handling, manual CSRF — in [references/consuming-odata-services.md](references/consuming-odata-services.md); a complete Clean ABAP consumer class in [examples/zcl_travel_odata_consumer.clas.abap](examples/zcl_travel_odata_consumer.clas.abap).
 
 ## Testing OData services
@@ -257,6 +264,12 @@ Testing discipline:
 | `CX_WEB_HTTP_CLIENT_ERROR` on consumption | Destination/communication arrangement broken, TLS trust missing |
 | Deep create fails | Missing composition in CDS/BDEF (RAP) or missing `create_deep_entity` implementation (SEGW) |
 | V2 consumer "loses" warnings | Messages are in the `sap-message` response header on 2xx, not in the body |
+| `/IWBEP/CX_CP_RUNTIME` "Navigation property '…' has multiplicity 'O'" | `navigate_to_single` on a 0..1 navigation → `navigate_to_optional`, then downcast to `/iwbep/if_cp_resource_entity` before `bind_action` |
+| `400 … Property X cannot be used for …` (business message) after a proxy action call | Transport is fine; the action parameter type has `Nullable="false"` "exactly-one" members the proxy always serializes → hand-built JSON body over raw HTTP ([references/client-proxy-operations.md](references/client-proxy-operations.md) §5–6) |
+| `expand path contains invalid property` on a CSRF GET | The `if_web_http_client` is shared with the proxy; its `$expand` leaked → fresh client per raw request pair |
+| `The etag could not be parsed` on a raw POST | `If-Match` sent unquoted → `W/"<etag>"` (or `*`); the proxy's `set_if_match` wants it unwrapped |
+| `404` on a raw POST while proxy reads work | Comm-arrangement destination applies the service root only on a client's **first** request → absolute path on the second |
+| "destination not found" from `create_by_comm_arrangement` at runtime, tests green | Scenario / outbound-service literal truncated or misspelled → diff literals against the real object names in the package |
 
 ## Quick Reference
 
@@ -271,6 +284,7 @@ Testing discipline:
 | Register service on-premise | `/IWFND/MAINT_SERVICE` |
 | Debug a failing request on-premise | `/IWFND/ERROR_LOG` → replay in `/IWFND/GW_CLIENT` |
 | Consume external OData, Cloud | Service consumption model + `/iwbep/cl_cp_factory_remote` proxy over `cl_web_http_client_manager` |
+| Invoke a bound action / navigate 0..1 / nested `$expand` | [references/client-proxy-operations.md](references/client-proxy-operations.md) — `navigate_to_optional` + `CAST` + `bind_action`; `create_expand_node`/`add_expand`/`set_expand` |
 | Consume external OData, on-premise | Client proxy factories where available, else `cl_http_client` + manual parsing |
 | HTTP without OData semantics | `cl_web_http_client_manager` (Cloud) / `cl_http_client` (on-premise) |
 | Stale metadata after change | `/IWFND/CACHE_CLEANUP` + `/IWBEP/CACHE_CLEANUP`, regenerate artifacts |
@@ -291,10 +305,16 @@ Testing discipline:
 | Concluding a model change "didn't arrive" while the hub cache still serves old metadata | Regenerate, then clear `/IWFND/CACHE_CLEANUP` / `/IWBEP/CACHE_CLEANUP`, then retest |
 | Exposing the root CDS view in the service definition | Expose the projection (`C_`) views plus needed value-help entities |
 | Reading only the response body of a V2 service for messages | Also read the `sap-message` header on 2xx responses |
+| Concluding "the proxy cannot bind an action after `navigate_to_optional`" from the compile error on `entity01` | A static typing error is not a capability statement — `CAST /iwbep/if_cp_resource_entity( … )->bind_action( … )` works; read `/iwbep/cl_cp_resource` in-system before writing a raw-HTTP fallback |
+| Re-touching the transport (CSRF, URL, eTag) after the server returned a *business* message | A business message means transport succeeded — the problem is the payload contract; separate the layers first |
+| Guessing proxy method names (`create_expand_node_factory`, `create_by_property_path`) across activation cycles | Read the generated consumption-model class and the `/iwbep` interfaces; the chain is `create_expand_node` → `add_expand` → `set_expand` |
+| Sharing one `if_web_http_client` between the client proxy and hand-built requests | Fresh client per raw request pair; the proxy mutates its client's query options |
+| Reading a to-one navigation into a structure | `get_business_data` returns `et_business_data` (a table) — read into a 1-row table and take `[ 1 ]` |
 
 ## References
 
 - [references/consuming-odata-services.md](references/consuming-odata-services.md) — consumption deep dive: service consumption model, client proxy request patterns, HTTP clients, CSRF, error handling
+- [references/client-proxy-operations.md](references/client-proxy-operations.md) — client proxy beyond a plain read: navigation by multiplicity (0..1 + downcast), nested `$expand`, filter/eTag, bound actions and functions, the non-nullable "exactly-one" payload escape hatch and its raw-HTTP transport rules, in-system framework source path
 - [references/segw-service-development.md](references/segw-service-development.md) — SEGW deep dive: artifact map, DPC/MPC method catalog, registration, troubleshooting workflow
 - [examples/zcl_travel_odata_consumer.clas.abap](examples/zcl_travel_odata_consumer.clas.abap) — Clean ABAP consumer class (ABAP Cloud, V4 client proxy)
 - [examples/segw_dpc_ext_get_entityset.abap](examples/segw_dpc_ext_get_entityset.abap) — SEGW DPC_EXT `GET_ENTITYSET` honoring paging and filters

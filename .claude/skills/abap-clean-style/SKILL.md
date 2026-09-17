@@ -179,6 +179,16 @@ Usage: `if_invoice_status=>status-paid` — the meaning is on the call site.
 
 **Avoid magic literals.** Every `'X'`, `'Y'`, `'01'` in business code earns a comment from a reviewer; pre-empt by extracting a constant.
 
+**Configuration literals must match a real object, character for character.** Communication scenario, outbound service, proxy model id, BAL object/subobject, job catalog/template, message numbers — these are string constants that compile, pass unit tests (the client is doubled) and pass ATC, then fail at runtime. Comment the constant with the object it must match and diff it against the package before activation:
+
+```abap
+" Must match objects ZINV_CS_RATES / ZINV_OS_RATE_API_REST in package ZINV.
+CONSTANTS c_comm_scenario TYPE c LENGTH 30 VALUE 'ZINV_CS_RATES'.
+CONSTANTS c_service_id    TYPE c LENGTH 40 VALUE 'ZINV_OS_RATE_API_REST'.
+```
+
+**Size constants for the longest value they hold.** A `c LENGTH 12` result code truncates a 13-character value silently; when the domain is a closed set, type the constant from a DDIC data element or a `TYPES` with the real maximum.
+
 ## Strings {#strings}
 
 **Template strings** for everything new:
@@ -319,6 +329,8 @@ ABAP has three exception class types. Pick the right one:
 
 **MESSAGE in business logic is a code smell.** `MESSAGE 'x' TYPE 'E'` couples logic to the dialog layer. Raise an exception with an `if_t100_message`-implementing class instead and let the boundary translate to a message.
 
+**T100 placeholders are 50 characters each.** Never put a URL, an HTTP body, or a stack of technical detail into `&1..&4` — it is cut to 50 characters without warning, and `get_text( )` tops out around 200. Put the *classifier* (status, reason) in the placeholders and carry the full diagnostic in a dedicated `READ-ONLY mv_long_text` exposed through `get_long_text( )`; see [abap-oo-patterns](../abap-oo-patterns/references/exception-design.md).
+
 ## Comments {#comments}
 
 **Default: no comment.** If a comment explains *what* the code does, the code's names are wrong — rename instead.
@@ -359,6 +371,8 @@ See [examples/before-after-snippets.md](examples/before-after-snippets.md) for e
 | Comments that restate code | Noise, rots | Rename the identifier so the comment is unnecessary |
 | Empty `CATCH` block | Hides bugs | Either handle, log + rethrow, or comment WHY you ignore |
 | `READ TABLE … INTO wa` where you don't change `wa` | Copies for nothing | `READ TABLE … REFERENCE INTO ref` |
+| HTTP error body or URL passed as a T100 placeholder | Truncated to 50 chars, diagnosis lost | Classifier in `&1..&4`, full text in `mv_long_text` / `get_long_text( )` |
+| Configuration literal typed from memory (`'ZINV_CS_RATE'` for `ZINV_CS_RATES`) | Compiles, tests green, runtime "destination not found" | Diff against the real object name; comment which object it must match |
 
 ## References
 

@@ -1,6 +1,6 @@
 ---
 name: abap-systematic-debugging
-description: Use when an ABAP runtime problem needs root cause analysis — a short dump (ST22), an application log error (SLG1), a performance regression (ST05 SQL trace, SAT runtime), an inconsistency between dev and prod, a "works on my system" report, or a flaky job (SM37). Forces a hypothesis-driven workflow so you stop guessing, start measuring, and stop fixing the wrong layer. This is the diagnosis process — once a trace points at a specific SQL statement, the fix itself lives in abap-sql-performance.
+description: Use when an ABAP runtime problem needs root cause analysis — a short dump (ST22), an application log error (SLG1), a performance regression (ST05 SQL trace, SAT runtime), an inconsistency between dev and prod, a "works on my system" report, a flaky job (SM37), a remote OData/HTTP call that keeps failing across activation cycles, or a compile error on a framework interface that looks like a capability limit. Forces a hypothesis-driven workflow so you stop guessing, start measuring, and stop fixing the wrong layer. This is the diagnosis process — once a trace points at a specific SQL statement, the fix itself lives in abap-sql-performance.
 ---
 
 # ABAP Systematic Debugging
@@ -92,6 +92,19 @@ Good hypothesis traits:
 - **Falsifiable cheaply.** "Setting a breakpoint there and looking at `ls_customer-bukrs` value will refute or confirm in 5 seconds."
 - **One step from the symptom.** Don't jump to "DB hardware". Start at the line where the wrong value appears and walk *one step backward*.
 
+**Remote calls — separate transport from payload before hypothesising.** Decide first which layer failed:
+
+| Evidence | Layer | What it tells you |
+|---|---|---|
+| HTTP status with an infrastructure text: token, segment, destination, eTag, `404`, `403 CSRF` | **Transport** | URL / CSRF / destination / headers — fix the plumbing |
+| A **business message** with a message class (`Property X cannot be used …`, a `/045`-style message id) | **Payload / contract** | The request *reached and executed* on the server. The transport is done — **stop touching it** |
+
+Re-touching the transport after a business message is the most expensive misdiagnosis in remote-call debugging.
+
+**A static typing error is not a runtime capability statement.** "Method not found on interface X" tells you the *declared* type of the variable, nothing more. Check which class implements X and whether the method's implementation guards against the narrow type before concluding the operation is impossible — a `CAST` may be the whole fix.
+
+**Read the framework class after the second failed iteration.** When the API you are fighting is in-system (`/iwbep` client proxy, `cl_bali_*`, `cl_apj_*`, `cl_web_http_*`), its source is readable under *System Library → … → Source Code Library* in ADT. One read of the implementing class answers "does this method exist / what does it validate / what can this request set" in minutes; guessing method names against the compiler does not. Budget: the second time the same API fails, read the class before the third attempt. Path pattern in [abap-cloud-development](../abap-cloud-development/SKILL.md).
+
 **Anti-pattern:** "It's flaky, must be a race condition." That is a category, not a hypothesis. Force yourself to name the *specific* shared resource: "`cl_singleton=>get_instance( )` returns a stale price table when two work processes initialize within ~10ms because the LOAD-OF-PROGRAM only runs once per session and Session A finished before the price update."
 
 ## Step 4 — Pick the cheapest verification
@@ -127,6 +140,8 @@ Now you know the root cause. Three traps to avoid:
 3. **Fix at the right boundary.** If the cause is "the input data is wrong, the code handled it as best it could", the fix is upstream (validation at the boundary), not downstream (special-case the value).
 
 If the cause is a missing SAP Note, apply the note; do not write a custom workaround that the next upgrade will quietly remove.
+
+4. **When the blocker is external** (a server contract you cannot change, an SAP-side metadata mismatch), keep the abandoned "correct" path as a **reference method** next to the workaround, not as deleted code. It documents that the obvious way was tried and why it fails, and it is what you switch back to when the incident is resolved.
 
 ## Step 8 — Regression test
 
@@ -182,6 +197,10 @@ Full guide: [references/sql-trace-reading.md](references/sql-trace-reading.md).
 | Stopping at "it's flaky" | Real cause never found | Name the specific shared resource and the specific race window |
 | Re-opening a settled question — re-asking what the user already answered, or dropping a *confirmed* hypothesis | Thrash; wasted iterations; the real fix never lands | Record each answered fact and each confirmed cause, then move forward. Re-open only when new evidence *refutes* it — and name that evidence |
 | Fixing one symptom of an N-symptom DDIC change | Other symptoms surface next sprint | Where-used; fix at the DDIC layer in one transport |
+| Rewriting the transport layer of a remote call after the server returned a *business* message | Half a day on the wrong layer | A business message means transport succeeded — move to the payload |
+| Concluding "the framework cannot do X" from a compile error on a narrow interface | A whole fallback implementation for a static-typing restriction | Read the implementing class; check for a cast guard; `CAST` if there is none |
+| Guessing framework method names across activation cycles | Ten compile rounds for one fact | Read the class / interface source in-system after the second miss |
+| Manual dependencies (message numbers, value help, authorizations, schedule) discovered on the first real run | Delivery blocked by items nobody listed | Name them in the hand-over notes before the first run |
 
 ## References
 

@@ -75,6 +75,17 @@ A walkable, copy-able checklist. Use it once per review. Mark items as `[x]` che
 - [ ] Secrets not logged or returned in error messages
 - [ ] No `AUTHORITY-CHECK` bypass via `sy-batch` / `sy-modno` games
 
+## Integration & configuration literals (only when the code calls out or is scheduled)
+
+- [ ] Every configuration string constant verified **character for character** against the real object in the package: communication scenario, communication system id, outbound/inbound service id, proxy model key (`is_proxy_model_key`), BAL object/subobject, job catalog/template names, message class + numbers used in `MESSAGE … INTO`
+- [ ] OData service-root path, action qualifier (`SAP__self.` alias), and EDM property names in `name_mappings` taken from the EDMX / a working consumer, not typed from memory
+- [ ] Proxy model constants (`gcs_bound_action-*`, `gcs_entity_type-*-navigation-*`) referenced from the generated consumption-model class, not string literals
+- [ ] Each such constant carries a comment naming the object it must match
+- [ ] Remote-call exceptions carry long diagnostics in a dedicated long-text attribute, not in T100 placeholders (50 chars each); BAL free text chunked at 200
+- [ ] Background-job date/time parameters converted with `TIME ZONE 'UTC'`, not the user zone; first run bounded (no "everything since epoch")
+- [ ] Interface-doubled remote client has a serialization unit test on the concrete client and a documented live smoke path
+- [ ] Manual dependencies (message numbers, value help assignment, technical-user authorizations, schedule) listed in the hand-over notes
+
 ## Maintainability
 
 - [ ] Comments only explain *why*, not *what*

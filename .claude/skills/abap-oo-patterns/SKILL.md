@@ -419,6 +419,7 @@ ABAP has three exception class types. See [references/exception-design.md](refer
 - Inherit from `CX_NO_CHECK` for exceptional-but-catchable failures that a framework boundary must still log or shut down on cleanly. For a pure programming-error invariant ("this can only happen if there's a bug"), use `ASSERT` instead — it dumps unconditionally and cannot be caught, so never guard a condition with it that bad input, timing, or user action could plausibly trigger in production; see [references/exception-design.md](references/exception-design.md).
 - One exception class per **failure category**, not per **call site**. `cx_invoice_not_found` (good) vs `cx_get_invoice_failed` (bad — what's the failure?).
 - Use `MESSAGE` interface (`if_t100_message`) on the exception class so messages can be displayed by callers without re-translating.
+- T100 placeholders (`&1..&4`) hold **50 characters each** and `get_text( )` about 200 — never a URL or an HTTP body. Carry long diagnostics in a `READ-ONLY mv_long_text` attribute and expose `get_long_text( )`; see [references/exception-design.md](references/exception-design.md).
 - Always preserve `previous` when wrapping: `RAISE EXCEPTION TYPE cx_x EXPORTING previous = lo_old.`
 
 ## God class — splitting playbook
@@ -474,6 +475,7 @@ Default to `PRIVATE`. Promote to `PROTECTED` only when a real subclass needs it.
 |---|---|
 | Designing inheritance hierarchies before any concrete need | Use composition; add hierarchy only when a second subtype actually arrives |
 | One exception class per failing method | One per failure *category*; the call site is documentation |
+| Technical detail (URL, response body) stuffed into `MESSAGE … WITH` placeholders | 50 chars per placeholder — classifier in the placeholders, full text in `mv_long_text` / `get_long_text( )` |
 | `IS BOUND` checks scattered everywhere | Null object pattern, or fail fast with `RAISE` at the boundary |
 | Using `EVENTS` for business logic when an interface fits | Interface observer keeps the contract typed |
 | Designing for "what if we need to swap the DB" | YAGNI — first need usually never arrives; design for actual swap when actual swap appears |

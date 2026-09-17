@@ -1,6 +1,6 @@
 ---
 name: abap-builtin-functions
-description: Use when calling ABAP built-in functions (numeric, string, table, logical, type/describe), handling dates / times / time stamps (types d, t, utclong, timestamp, timestampl; sy-datum/sy-uzeit; cl_abap_context_info, XCO_CP_TIME, CONVERT, GET TIME STAMP), or doing numeric operations — rounding (round / ceil / floor / trunc / frac / rescale), integer vs packed vs decfloat vs binary-float type choice, the calculation type and conversion rules in mixed arithmetic, / DIV MOD and ** operators, overflow and zero-division handling, type conversions inside calculations, or utility functions like line_exists / line_index / lines / abs / sign / nmin / nmax. Covers classic ABAP and ABAP Cloud (Steampunk). Distilled from SAP's official ABAP cheat sheets.
+description: Use when calling ABAP built-in functions (numeric, string, table, logical, type/describe), handling dates / times / time stamps (types d, t, utclong, timestamp, timestampl; sy-datum/sy-uzeit; cl_abap_context_info, XCO_CP_TIME, CONVERT, GET TIME STAMP, converting user date/time input against UTC persistence in background jobs, cl_abap_tstmp), or doing numeric operations — rounding (round / ceil / floor / trunc / frac / rescale), integer vs packed vs decfloat vs binary-float type choice, the calculation type and conversion rules in mixed arithmetic, / DIV MOD and ** operators, overflow and zero-division handling, type conversions inside calculations, or utility functions like line_exists / line_index / lines / abs / sign / nmin / nmax. Covers classic ABAP and ABAP Cloud (Steampunk). Distilled from SAP's official ABAP cheat sheets.
 ---
 
 # ABAP Built-In Functions, Date/Time & Numeric Operations
@@ -225,6 +225,43 @@ CONVERT TIME STAMP lv_tsf TIME ZONE 'EST' INTO DATE DATA(lv_dt) TIME DATA(lv_tm)
 
 An **initial** time zone means no shift. A non-existent zone raises `cx_sy_conversion_no_date_time` (CONVERT UTCLONG) or sets `sy-subrc = 8` (CONVERT TIME STAMP).
 
+#### Comparing user date/time input against UTC persistence (background jobs)
+
+| Fact | Consequence |
+|---|---|
+| `GET TIME STAMP FIELD` returns **UTC** | A bookmark written from it is UTC |
+| RAP/CDS admin fields (`LastChangeDateTime`, `CreationDateTime`; `timestampl`, `abp_lastchange_tstmpl`) are **UTC** | Any `WHERE lastchangedatetime IN @range` needs UTC bounds |
+| `cl_abap_context_info=>get_user_time_zone( )` is the **executing** user's zone — in an application job that is the technical job user | Converting job parameters with it shifts the window by that user's offset, silently |
+| `timezone` is a DDIC type; `CONVERT … TIME ZONE 'UTC'` accepts a constant | Declare `CONSTANTS lc_utc TYPE timezone VALUE 'UTC'` and label the parameters "(UTC)" |
+
+```abap
+CONSTANTS lc_utc TYPE timezone VALUE 'UTC'.
+
+IF p_from_date IS NOT INITIAL.                                  " datn/timn are initial as 00000000/000000
+  DATA(lv_time_from) = COND t( WHEN p_from_time IS INITIAL THEN '000000' ELSE p_from_time ).
+  CONVERT DATE p_from_date TIME lv_time_from TIME ZONE lc_utc INTO TIME STAMP DATA(lv_ts_from).
+ENDIF.
+IF p_to_date IS NOT INITIAL.
+  DATA(lv_time_to) = COND t( WHEN p_to_time IS INITIAL THEN '235959' ELSE p_to_time ).
+  CONVERT DATE p_to_date TIME lv_time_to TIME ZONE lc_utc INTO TIME STAMP DATA(lv_ts_to).
+ENDIF.
+DATA(lt_window) = VALUE ty_tstmp_range(
+  ( sign = 'I' option = COND #( WHEN lv_ts_to IS INITIAL THEN 'GE' ELSE 'BT' )
+    low = lv_ts_from high = lv_ts_to ) ).
+
+" "One interval back" default for an empty bookmark — no hand arithmetic on the packed number
+DATA(lv_from_default) = cl_abap_tstmp=>subtractsecs( tstmp = lv_now secs = 3600 ).
+```
+
+Type gotchas on the way:
+
+| Attempt | Effect | Fix |
+|---|---|---|
+| `CONV timestamp( lv_tstmpl )` with fractions present | rounding / conversion error | `CONV timestamp( trunc( lv_tstmpl ) )` |
+| Rendering a `timestampl` window in a log line | fraction noise | `\|{ CONV timestamp( trunc( lv_ts ) ) TIMESTAMP = ISO }Z\|` |
+| `COND #( … )` mixing a literal range and `VALUE #( )` | type inference fails | Give `COND` the result type: `COND ty_tstmp_range( … )` |
+| Logic that depends on "now" | untestable | `iv_now TYPE timestampl OPTIONAL`, default `GET TIME STAMP`; the test injects a fixed instant |
+
 ### Date/time validity — check before you trust
 
 ```abap
@@ -263,7 +300,8 @@ DATA(lv_idx) = line_index( lt_itab[ comp2 = 'd' ] ).    "index of found row; 0 =
 
 ## Cloud / Steampunk notes
 
-- **Date/time:** avoid `sy-datum`, `sy-uzeit`, `sy-timlo`, `sy-datlo` — use `cl_abap_context_info=>get_system_date/time/user_time_zone` or XCO (`xco_cp=>sy`, `xco_cp_time`).
+- **Date/time:** avoid `sy-datum`, `sy-uzeit`, `sy-timlo`, `sy-datlo`, `sy-zonlo` — use `cl_abap_context_info=>get_system_date/time/user_time_zone` or XCO (`xco_cp=>sy`, `xco_cp_time`). `get_user_time_zone( )` is the *executing* user's zone; for background jobs comparing against UTC columns use `TIME ZONE 'UTC'` explicitly.
+- **Time-stamp arithmetic:** `cl_abap_tstmp=>add` / `subtractsecs` / `subtract` on `timestamp`/`timestampl`; `utclong_add` / `utclong_diff` on `utclong`.
 - **Big numbers / rationals:** `cl_abap_bigint` (arbitrary precision integers) and `cl_abap_rational` (exact fractions) for values beyond `decfloat34` or where fractions must be preserved.
 - **Math/random:** `cl_abap_math` (min/max constants, helpers), `cl_abap_random*` (seeded random numbers).
 - Built-in functions themselves (numeric, string, table, `utclong_*`) are available in both classic and Cloud ABAP.
@@ -281,6 +319,8 @@ DATA(lv_idx) = line_index( lt_itab[ comp2 = 'd' ] ).    "index of found row; 0 =
 | Trusting an unchecked date field | invalid date → wrong calc or dump | `EXACT` / `is_valid` first |
 | `utclong` in an arithmetic expression | unsupported in calculation type | use `utclong_add` / `utclong_diff` |
 | Time difference without `MOD 86400` | negative seconds across midnight | `( t2 - t1 ) MOD 86400` |
+| Job date/time parameters converted with the user time zone | window shifted by the technical user's offset; `LastChangeDateTime` / `GET TIME STAMP` are UTC | `CONVERT … TIME ZONE 'UTC' INTO TIME STAMP`; label the parameters "(UTC)" |
+| `CONV timestamp( lv_timestampl )` | conversion error / rounding when fractions present | `trunc( )` first |
 | Ignoring overflow / zero-division | runtime dump | `TRY … CATCH cx_sy_arithmetic_overflow / cx_sy_zerodivide` |
 
 ## References

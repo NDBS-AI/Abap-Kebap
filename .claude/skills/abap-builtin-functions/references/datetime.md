@@ -54,6 +54,12 @@ DATA(lv_tz_w_xco_utc) = xco_cp_time=>time_zone->utc->value.
 
 CDS view with time-zone info: `I_TIMEZONE`. On SAP BTP ABAP Environment the time zone defaults to UTC.
 
+> **Which zone is "the user's"?** `get_user_time_zone( )` returns the zone of the *executing*
+> user. In an application job that is the technical job user, not the person who scheduled it.
+> Persisted time stamps (`GET TIME STAMP`, RAP `LastChangeDateTime`, `timestampl`) are UTC, so a
+> job filter must convert its date/time parameters with `TIME ZONE 'UTC'` — see the
+> "Comparing user date/time input against UTC persistence" section in [../SKILL.md](../SKILL.md).
+
 ---
 
 ## 3. Date

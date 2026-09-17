@@ -1,6 +1,6 @@
 ---
 name: abap-unit-tdd
-description: Use when writing ABAP Unit tests, applying TDD discipline in ABAP, designing test doubles for OO collaborators, replacing live DB calls with cl_osql_test_environment, doubling CDS views with cds_test_environment, mocking RAP behavior with the behavior test framework, or reviewing test code for risk_level / duration / determinism / isolation. Covers the TDD red-green-refactor cycle adapted to ABAP and the test-double catalog for OO, DB, CDS, and RAP.
+description: Use when writing ABAP Unit tests, applying TDD discipline in ABAP, designing test doubles for OO collaborators, doubling an external OData or HTTP client behind an interface seam so tests need no live service, replacing live DB calls with cl_osql_test_environment, doubling CDS views with cds_test_environment, mocking RAP behavior with the behavior test framework, or reviewing test code for risk_level / duration / determinism / isolation. Covers the TDD red-green-refactor cycle adapted to ABAP and the test-double catalog for OO, DB, CDS, RAP, and remote service clients.
 ---
 
 # ABAP Unit + TDD
@@ -159,6 +159,7 @@ If a single test has 5 assertions, prefer one structural assertion (table equali
 | Tool | Use when |
 |---|---|
 | Manual stub (local class implementing an interface) | OO collaborator — anytime you can use interface injection |
+| Interface seam + hand-written local double (`ltd_*`) for an **external service client** (OData client proxy, HTTP, RFC) | The cut calls a remote service — put the call behind your own interface with neutral DTOs, double the interface; no `/iwbep` or HTTP type crosses the seam |
 | Friend visibility "back door" | Setting up internal state of the cut for a specific scenario (sparingly) |
 | `cl_osql_test_environment` | The cut does a SELECT against a table — substitute test data without hitting the live table |
 | `cl_cds_test_environment` (`cds_test_environment`) | The cut reads a CDS view — substitute the underlying data via the test environment |
@@ -193,6 +194,75 @@ Inject in `setup`:
 ```abap
 mo_cut = NEW zcl_order_pricing( io_rate_provider = NEW ltcl_fake_rate( ) ).
 ```
+
+### External service clients (OData / HTTP) behind an interface seam
+
+The most common integration case — a class that calls a remote OData service through a client proxy — is doubled the same way as any collaborator, with one extra rule: **the interface exposes neutral DTOs, never proxy types.** Then the business logic runs deterministically with zero network, `RISK LEVEL HARMLESS`, `DURATION SHORT`.
+
+```
+Logic under test ──depends on──►  zif_rate_service_client  ◄──implements──  ltd_rate_service (test double, spies)
+                                                          ◄──implements──  zcl_rate_service_client (prod: /iwbep proxy)
+```
+
+```abap
+"! Test double for the remote rate service: canned DTOs in, call recording out.
+CLASS ltd_rate_service DEFINITION FINAL FOR TESTING CREATE PUBLIC.
+  PUBLIC SECTION.
+    INTERFACES zif_rate_service_client.
+    " Arrange knobs
+    DATA mt_rates         TYPE zif_rate_service_client=>tt_rate.
+    " Spies — assert the modifying call happened with the right payload
+    DATA mv_publish_calls TYPE i.
+    DATA mt_last_payload  TYPE zif_rate_service_client=>tt_rate.
+ENDCLASS.
+
+CLASS ltd_rate_service IMPLEMENTATION.
+  METHOD zif_rate_service_client~read_rates.
+    rt_rates = mt_rates.
+  ENDMETHOD.
+  METHOD zif_rate_service_client~publish_rates.   " spy: record, call nothing
+    mv_publish_calls = mv_publish_calls + 1.
+    mt_last_payload  = it_rates.
+  ENDMETHOD.
+ENDCLASS.
+
+CLASS ltc_rate_sync DEFINITION FINAL FOR TESTING DURATION SHORT RISK LEVEL HARMLESS.
+  PRIVATE SECTION.
+    DATA mo_cut    TYPE REF TO zcl_rate_sync.
+    DATA mo_client TYPE REF TO ltd_rate_service.
+    METHODS setup.
+    METHODS given_two_rates_when_sync_then_publishes_once FOR TESTING.
+ENDCLASS.
+
+CLASS ltc_rate_sync IMPLEMENTATION.
+  METHOD setup.
+    mo_client = NEW #( ).
+    mo_cut    = NEW #( mo_client ).      " constructor injection of the seam
+  ENDMETHOD.
+  METHOD given_two_rates_when_sync_then_publishes_once.
+    mo_client->mt_rates = VALUE #( ( currency = 'EUR' rate = '1.00' )
+                                   ( currency = 'USD' rate = '1.10' ) ).
+    mo_cut->synchronize( ).
+    cl_abap_unit_assert=>assert_equals( act = mo_client->mv_publish_calls exp = 1 ).
+  ENDMETHOD.
+ENDCLASS.
+```
+
+A hand-written double beats `cl_abap_testdouble` here: the seam is small, the spies are explicit, and no destination or proxy is ever touched. A persistence side effect (e.g. "bookmark advanced on real runs, not on simulation runs") is spied the same way with a local subclass that redefines the write method and counts calls.
+
+**What the seam does not prove.** Interface doubles verify *your* logic, never the *server's* contract. A payload the server rejects stays green through every test. Two obligations follow:
+
+1. **A serialization test on the concrete client** — the body-building method is `PROTECTED`, the test class is a `LOCAL FRIENDS`, and the test asserts the exact JSON shape (a populated property present, an initial one **absent**). Pure `/ui2/cl_json`, no network, still `HARMLESS/SHORT`.
+
+   ```abap
+   METHOD given_rate_without_end_date_when_build_body_then_no_end_date_property.
+     DATA(lv_json) = mo_cut->build_publish_body( VALUE #( ( currency = 'EUR' rate = '1.00' ) ) ).
+     cl_abap_unit_assert=>assert_char_cp( act = lv_json exp = '*"Rate":"1.00"*' ).
+     cl_abap_unit_assert=>assert_false( xsdbool( lv_json CS 'ValidityEndDate' ) ).
+   ENDMETHOD.
+   ```
+
+2. **One live smoke path** — an `if_oo_adt_classrun` F9 simulation run against a known object — and the explicit statement in the hand-over that seam-tested code is not proof of remote compatibility.
 
 ### `cl_osql_test_environment`
 
@@ -374,6 +444,9 @@ ENDMETHOD.
 | Test asserts implementation detail (private state) | Brittle | Assert observable behavior |
 | Setup does too much | Tests slow, brittle | Per-test setup, factory method |
 | Test that never fails (test of nothing) | False sense of security | Verify it fails by introducing a deliberate bug |
+| Proxy / HTTP types in the collaborator interface | Tests must build `/iwbep` objects; double becomes the proxy | Neutral DTOs in the interface; the adapter class owns the proxy |
+| "All tests green" taken as proof the remote call works | Doubles never exercise the server's contract | Add a serialization test on the concrete client + one live F9 smoke run |
+| Config string literals (comm scenario, service id) only exercised by the doubled client | Truncated literal compiles, tests pass, fails at runtime with "destination not found" | Diff literals against the real object names before the first live run ([abap-code-review](../abap-code-review/SKILL.md) checklist) |
 
 ## Verify your tests fail for the right reason
 

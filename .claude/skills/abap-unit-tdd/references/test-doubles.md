@@ -93,6 +93,19 @@ METHOD test_raises_when_rate_unavailable.
 ENDMETHOD.
 ```
 
+## Interface seam for an external service client (OData / HTTP)
+
+Same mechanics as the manual stub, one extra design rule: the interface carries **neutral DTOs**
+(plain structures/tables of your own types), never `/iwbep/if_cp_*` or `if_web_http_*` types.
+The concrete adapter class owns the client proxy and the mapping; the double returns canned DTOs
+and records calls (spies). Tests then need no destination, no proxy model, no network — `RISK
+LEVEL HARMLESS`, `DURATION SHORT`, order-independent.
+
+Caveat to write into the test class header: **the double proves our logic, not the server's
+contract.** Pair it with (a) a serialization unit test on the concrete client that asserts the
+exact JSON body (populated members present, initial members absent), and (b) one live F9 smoke
+run. Worked example in [../SKILL.md](../SKILL.md#external-service-clients-odata--http-behind-an-interface-seam).
+
 ## `cl_osql_test_environment` — when SELECT is unavoidable
 
 Some logic genuinely depends on data from a table:
@@ -253,6 +266,7 @@ you script inputs/outputs per statement instead of doubling the buffer.
 | Manual stub that re-implements the production class | Now the test is a second source of truth that drifts | Manual stub only covers the methods needed by the test |
 | Live DB read "just for setup" | Flaky; coupled to system state | Use the test environment |
 | Double a SAP API class with `cl_abap_testdouble` to "skip" SAP logic | You may skip exactly what the test needs to verify | Wrap the SAP call in your own interface; double *your* wrapper |
+| Treat a green interface-double suite as proof the remote payload is accepted | The server's contract is never exercised | Serialization test on the concrete client + live smoke path |
 | Many doubles per test | The cut has too many collaborators | Refactor: extract a façade collaborator |
 | Test class touches another test class's doubles | Shared state breaks isolation | Each test class owns its environment |
 | Forgetting `ROLLBACK ENTITIES` in RAP BO tests | Previous test's MODIFY leaks into this test | Always roll back in `teardown` |

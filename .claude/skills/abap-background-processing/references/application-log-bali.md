@@ -65,10 +65,46 @@ cl_bali_log_db=>get_instance( )->save_log(
 
 Notes:
 
-- `cl_bali_free_text_setter=>ty_text` is a character field of length **200** — longer strings must be split.
+- `cl_bali_free_text_setter=>ty_text` is a character field of length **200** — longer strings are cut **silently**. Chunk them (below).
 - `assign_to_current_appl_job = abap_true` links the log to the currently running application job so it shows up as the job's log; only meaningful when actually running as a job (`sy-batch = abap_true`).
 - Besides free text, item setters exist for T100 messages and exceptions — the free-text setter is what both SAP samples use.
 - All runtime errors raise `cx_bali_runtime`. In a job's `execute`, catch it and re-raise as `cx_apj_rt_content` (the sample does exactly this) so the job framework records the failure.
+
+### Free text longer than 200 characters — chunk, don't truncate
+
+```abap
+METHOD add_free_text.       " io_log TYPE REF TO if_bali_log, iv_text TYPE string, iv_severity
+  CONSTANTS lc_max_length TYPE i VALUE 200.          " cl_bali_free_text_setter=>ty_text is C(200)
+  DATA(lv_rest) = iv_text.
+  WHILE lv_rest IS NOT INITIAL.
+    DATA(lv_chunk) = substring( val = lv_rest
+                                len = nmin( val1 = strlen( lv_rest ) val2 = lc_max_length ) ).
+    io_log->add_item( cl_bali_free_text_setter=>create( severity = iv_severity text = lv_chunk ) ).
+    lv_rest = COND #( WHEN strlen( lv_rest ) > lc_max_length THEN lv_rest+lc_max_length ELSE `` ).
+  ENDWHILE.
+ENDMETHOD.
+```
+
+When the text is structured, prefer `cl_bali_message_setter` (one T100 message per item) or
+`cl_bali_exception_setter` for the exception itself — still ~200 characters of text per item.
+Exceptions that carry long diagnostics should expose them through a dedicated long-text
+attribute rather than T100 placeholders (50 characters each) — see the exception pattern in
+[abap-oo-patterns](../../abap-oo-patterns/references/exception-design.md).
+
+### Run header and footer — make the job log self-explaining
+
+```
+Start SIMULATE mode=delta window=2025-01-15T09:00:00Z..2025-01-15T10:00:00Z inventories=3
+INV-0001 / Item 10: OK - Recalculated: 23 quantity field(s)
+INV-0001 / Item 20: OK - Recalculated: 23 quantity field(s)
+INV-0002: SKIPPED - no pending changes
+End: inventories checked=3 updated=1 skipped=1 failed=1; items ok=2 skipped=0 error=1
+```
+
+- Count **distinct business objects** for the footer and **detail rows** separately — mixing the two confuses the first reader.
+- `MESSAGE i001(zinventory_msg) WITH lv_item_count lv_field_count INTO lv_detail` — `WITH` does **not** accept functional expressions such as `lines( lt_items )`; assign to a local first.
+- Header/footer belong to the **job class**; the domain class returns a result table (`key, code, detail`) and stays log-agnostic, which also keeps it unit-testable.
+- Render a UTC window with `|{ CONV timestamp( trunc( lv_ts ) ) TIMESTAMP = ISO }Z|` to avoid `timestampl` fraction noise.
 
 ### Severities (if_bali_constants)
 

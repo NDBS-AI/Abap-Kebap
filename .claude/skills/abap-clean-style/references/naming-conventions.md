@@ -146,20 +146,39 @@ These keep their own conventions:
 | Structure (DDIC) | single `Z`/`Y` + `_s_` | `z<area>_s_<purpose>` |
 | Database table (DDIC) | single `Z`/`Y` + `_t_` | `z<area>_t_<purpose>` |
 | Table type (DDIC) | single `Z`/`Y` + `_tt_` | `z<area>_tt_<purpose>` |
+| Message class (`MSAG`) | single `Z`/`Y` + `_msg_` (≤ 20 chars) | `z<area>_msg_<purpose>` |
+| Application Log object (BAL) + subobject | single `Z`/`Y` + `_log` / plain subobject | `z<area>_log` / `RECALC` |
+| Communication scenario (`SCO1`) | single `Z`/`Y` + `_cs_` | `z<area>_cs_<purpose>` |
+| Outbound service (`SCO3`) | single `Z`/`Y` + `_os_` + api + protocol | `z<area>_os_<api>_<proto>` |
+| Service consumption model | single `Z`/`Y` + `_scm_` | `z<area>_scm_<api>` |
+| Application job catalog entry (`SAJC`) | single `Z`/`Y` + purpose + `_cat` | `z<area>_<purpose>_cat` |
+| Application job template (`SAJT`) | single `Z`/`Y` + purpose + `_tmpl` | `z<area>_<purpose>_tmpl` |
+| Number range object (`NROB`, ≤ 10 chars) | single `Z`/`Y` + purpose | `z<area>_<purpose>` |
+| Lock object (`ENQU`) | `E` + single `Z`/`Y` + table | `ez<area>_<table>` |
 
 > Customer objects use **one** leading `Z`/`Y`. A doubled `ZZ…`/`YY…` name is
 > always a generator misfire — never a target.
 
+### Hard length limits and generator traps
+
+| Constraint | Consequence |
+|---|---|
+| DDIC **table** name ≤ 16 characters (ADT enforces at creation) | Budget `z<area>_t_` against 16 up front; `zinv_t_inventory_bookmark` (25) is rejected, `zinv_t_invbkm` (13) is not |
+| Message class ≤ 20, number range object ≤ 10, job attribute (parameter) ≤ 38 | Same budgeting before the design is approved |
+| Object **generators prepend the namespace letter** | Hand them a prefix **without** a leading `Z`/`Y`, else you get `ZZ…`; re-list the generated objects and confirm exactly one leading letter |
+| Generators usually do **not overwrite** an existing object | They create a parallel `*000` set instead; diff generated names against the design before wiring anything on top |
+| Manual entry and generators **truncate silently** | A constant `'ZINV_CS_RATE'` (for `ZINV_CS_RATES`) compiles and passes unit tests, then fails at runtime — diff every configuration literal against the real object name in the package |
+
 ### Object types not listed above
 
 If you need to create a repository object whose type is **not** in the table above
-(e.g. a message class, lock object, number range, enhancement spot, transformation,
-search help, transaction code, …), do **not** invent a name silently:
+(e.g. an enhancement spot, transformation, search help, transaction code, IAM
+app, business catalog, …), do **not** invent a name silently:
 
 1. Propose a name that follows the same shape — single `Z`/`Y`, a short area token,
    a two/three-letter type marker for the object, then a meaningful `snake_case`
-   purpose (e.g. a message class → `z<area>_msg_<purpose>`, a lock object →
-   `z<area>_e_<entity>`).
+   purpose (e.g. a transformation → `z<area>_xslt_<purpose>`, a search help →
+   `z<area>_sh_<entity>`).
 2. **Ask the user to confirm or adjust** that name before creating the object.
 3. Once confirmed, reuse that decision consistently for the rest of the task.
 

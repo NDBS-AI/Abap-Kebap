@@ -10,7 +10,87 @@ ZINVENTORY_TEMPLATE (SAJT) job template — catalog entry + parameter values, "t
 Fiori "Application Jobs"   scheduling + monitoring app for administrators/end users
 ```
 
-## IF_APJ_DT_EXEC_OBJECT — design time contract
+## IF_APJ_RT_RUN — the attribute-based contract (preferred for new jobs)
+
+`if_apj_rt_run` has one method, `execute( )`. **Every public attribute of the class is a job
+parameter**: the framework instantiates the class, fills the attributes from the template /
+scheduling call, then calls `execute( )`. Default values come from the attribute `VALUE`
+addition, the constructor, or `if_apj_dt_defaults~fill_attribute_defaults`.
+
+| Rule | Why it matters |
+|---|---|
+| Attribute names ≤ 38 characters, uppercase in the catalog entry | Longer names are rejected when the SAJC entry is saved |
+| **SAJC parameter names must equal the attribute names exactly** | The catalog editor validates against the class; `P_SIMULATE` in SAJC ⇒ `DATA p_simulate` in the class |
+| `RANGE OF <type>` attributes are the select-option equivalent | Multi-value / interval parameters |
+| **Value help (F4)** is assigned per attribute in the SAJC editor, not in code | Choose a released CDS value-help view; the legacy `if_apj_dt_exec_object` metadata has no field for it |
+| `datn`/`timn` attributes are initial as `00000000`/`000000` | Guard with `IS INITIAL` before converting |
+| Date/time attributes compared to persisted UTC columns | Convert with `TIME ZONE 'UTC'`; label the parameter "(UTC)" |
+
+Skeleton (contract verified on S/4HANA Cloud Public Edition; self-contained example):
+
+```abap
+CLASS zcl_inventory_recalc_job DEFINITION PUBLIC FINAL CREATE PUBLIC.
+  PUBLIC SECTION.
+    INTERFACES if_apj_rt_run.          " runtime entry point — attributes are already filled
+    INTERFACES if_apj_dt_defaults.     " default values for a new job template
+    INTERFACES if_oo_adt_classrun.     " F9 harness
+
+    " Public attributes ARE the job parameters. Their names must equal the parameter
+    " names in the catalog entry (SAJC editor); the value help is assigned there, not here.
+    DATA p_simulate  TYPE abap_bool.
+    DATA s_inventory TYPE RANGE OF sysuuid_x16.   " select-option style parameter
+    DATA p_from_date TYPE datn.                   " describe it as "(UTC)" in the catalog entry
+ENDCLASS.
+
+CLASS zcl_inventory_recalc_job IMPLEMENTATION.
+  METHOD if_apj_dt_defaults~fill_attribute_defaults.
+    p_simulate  = abap_true.
+    p_from_date = cl_abap_context_info=>get_system_date( ).
+  ENDMETHOD.
+
+  METHOD if_apj_rt_run~execute.
+    TRY.
+        DATA(lo_log) = cl_bali_log=>create_with_header(
+            header = cl_bali_header_setter=>create( object    = 'ZINVENTORY_LOG'
+                                                    subobject = 'ZINVENTORY_SUB' ) ).
+        lo_log->add_item( cl_bali_free_text_setter=>create(
+            severity = if_bali_constants=>c_severity_status
+            text     = |Recalculation started: simulate={ p_simulate } from={ p_from_date DATE = ISO }| ) ).
+        " ... business logic over s_inventory / p_from_date ...
+        cl_bali_log_db=>get_instance( )->save_log( log = lo_log assign_to_current_appl_job = abap_true ).
+      CATCH cx_bali_runtime INTO DATA(lo_log_error).
+        RAISE EXCEPTION TYPE cx_apj_rt_content EXPORTING previous = lo_log_error.
+    ENDTRY.
+  ENDMETHOD.
+
+  METHOD if_oo_adt_classrun~main.
+    " F9: set the attributes the way the framework would, then run the same entry point.
+    p_simulate = abap_true.
+    TRY.
+        if_apj_rt_run~execute( ).
+        out->write( 'Dry run finished — see the application log.' ).
+      CATCH cx_apj_rt_content INTO DATA(lo_job_error).
+        out->write( lo_job_error->get_text( ) ).
+    ENDTRY.
+  ENDMETHOD.
+ENDCLASS.
+```
+
+Wiring: **SAJC** (catalog entry) binds the class, lists the parameters (names = attributes) and
+carries the per-parameter value help; **SAJT** (template) pre-fills values and is what the
+*Application Jobs* app schedules. Dynamic date defaults in a template use commands like
+`@STARTDAYPLUSDAY@:03`.
+
+Checklist before the first run:
+
+- [ ] Public attribute names == SAJC parameter names (exact).
+- [ ] Value help configured on the attribute in the SAJC editor.
+- [ ] Date/time parameters converted with `TIME ZONE 'UTC'`, labelled "(UTC)".
+- [ ] Run header/footer written to the application log (mode, window, counts).
+- [ ] Every `Z*` message number the job uses exists — listed as a manual dependency in the delivery notes.
+- [ ] Technical job user has the communication-arrangement / API authorizations.
+
+## IF_APJ_DT_EXEC_OBJECT — design time contract (legacy pair)
 
 One method: `get_parameters`. It plays the part of a classic report's selection screen — it declares which parameters the job supports and optionally returns default values used as fallback when a job is scheduled without values.
 
@@ -166,6 +246,7 @@ Why not schedule in the interaction phase? The API call could trigger implicit d
 - Creating a Job Catalog Entry and a Job Template via API: https://help.sap.com/docs/ABAP_ENVIRONMENT/250515df61b74848810389e964f8c367/e58737f463534a23bff0e9f21f7ee6d0.html
 - Maintaining Application Jobs Using an API: https://help.sap.com/docs/ABAP_ENVIRONMENT/250515df61b74848810389e964f8c367/1491e6c075c04e7c9a485a2e24b82653.html
 - Examples of Periodic Application Jobs: https://help.sap.com/docs/ABAP_ENVIRONMENT/250515df61b74848810389e964f8c367/232c4a8ff2d8422b93bc89151068b893.html
+- Creating an ABAP Class with Interface IF_APJ_RT_RUN: https://help.sap.com/docs/SAP_S4HANA_CLOUD/6aa39f1ac05441e5a23f484f31e477e7/79bd2d9879a74f4c8512d374a3bc5416.html
 - Example Implementation Using IF_APJ_DT_EXEC_OBJECT / IF_APJ_RT_EXEC_OBJECT: https://help.sap.com/docs/ABAP_ENVIRONMENT/250515df61b74848810389e964f8c367/0abb3f205d4645ac82ef03bbf47b3427.html
 - Setting up the Authorizations: https://help.sap.com/docs/ABAP_ENVIRONMENT/250515df61b74848810389e964f8c367/bb559a5a4b654996a167d72273f28542.html
 - Automatically Restarting an Application Job: https://help.sap.com/docs/BTP/65de2977205c403bbc107264b8eccf4b/5bb62cec33834c6eaa5b80e82b34e54a.html

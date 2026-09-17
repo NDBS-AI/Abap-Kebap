@@ -1,6 +1,6 @@
 ---
 name: abap-cloud-development
-description: Use when working in ABAP Cloud / Steampunk (SAP BTP ABAP environment, S/4HANA Cloud, embedded Steampunk), choosing the ABAP language version (Standard ABAP / ABAP for Key Users / ABAP for Cloud Development), figuring out what is allowed or forbidden in ABAP Cloud and S/4HANA Cloud, finding the released API for a classic construct, checking whether an object is released (release contract C0/C1), navigating ABAP release news version-by-version, picking the right released class (XCO, cl_abap_context_info, cl_abap_*_utilities), or using generative AI in ABAP (ABAP AI SDK / Intelligent Scenario Lifecycle Management). This is the single source of truth other ABAP skills cite for cloud restrictions and released objects.
+description: Use when working in ABAP Cloud / Steampunk (SAP BTP ABAP environment, S/4HANA Cloud, embedded Steampunk), choosing the ABAP language version (Standard ABAP / ABAP for Key Users / ABAP for Cloud Development), figuring out what is allowed or forbidden in ABAP Cloud and S/4HANA Cloud, finding the released API for a classic construct, checking whether an object is released (release contract C0/C1), navigating ABAP release news version-by-version, picking the right released class (XCO, cl_abap_context_info, cl_abap_*_utilities), reading SAP framework source in-system (System Library in ADT) instead of guessing method names, choosing the released connectivity and logging stack (cl_http_destination_provider, cl_web_http_client_manager, /iwbep client proxy, cl_bali_*, cl_apj_*), or using generative AI in ABAP (ABAP AI SDK / Intelligent Scenario Lifecycle Management). This is the single source of truth other ABAP skills cite for cloud restrictions and released objects.
 ---
 
 # ABAP Cloud / Steampunk Development
@@ -130,9 +130,29 @@ Full curated catalog grouped by purpose: [references/released-apis.md](reference
 | Codepage / binary / zip | `CL_ABAP_CONV_CODEPAGE`, `CL_ABAP_GZIP*`, `CL_ABAP_ZIP` |
 | RAP behavior pool base classes | `CL_ABAP_BEHAVIOR_HANDLER`, `CL_ABAP_BEHAVIOR_SAVER`, `CL_ABAP_BEHV_AUX`, `CL_ABAP_TX` |
 | Locking | `CL_ABAP_LOCK_OBJECT_FACTORY` |
+| Outbound connectivity (the canonical trio) | `CL_HTTP_DESTINATION_PROVIDER` (`create_by_comm_arrangement`) → `CL_WEB_HTTP_CLIENT_MANAGER` (`IF_WEB_HTTP_CLIENT`) → `/IWBEP/CL_CP_FACTORY_REMOTE` (`create_v4_remote_proxy`) — see [abap-odata](../abap-odata/SKILL.md) |
+| Application log / application jobs | `CL_BALI_LOG`, `CL_BALI_LOG_DB`, `CL_BALI_*_SETTER`; `IF_APJ_RT_RUN`, `IF_APJ_DT_DEFAULTS`, `CL_APJ_RT_API` — see [abap-background-processing](../abap-background-processing/SKILL.md) |
+| Time stamps | `CL_ABAP_TSTMP` (`add`/`subtractsecs`), `CL_ABAP_CONTEXT_INFO` (`sy-zonlo` is not allowed — but see [abap-builtin-functions](../abap-builtin-functions/SKILL.md) for why jobs convert with `'UTC'`) |
 | Parallel processing | `CL_ABAP_PARALLEL` |
 | ABAP Unit | `CL_ABAP_UNIT_ASSERT`, `CL_ABAP_TESTDOUBLE`, `CL_OSQL_TEST_ENVIRONMENT`, `CL_CDS_TEST_ENVIRONMENT` |
 | XLSX | `XCO_CP_XLSX` |
+
+## Reading SAP framework source in-system
+
+Released or not, most SAP framework classes are **readable** in ADT. When a released API's behaviour is unclear — which method exists, what a request object can set, whether a narrow interface is a runtime guard or only a static type — read the class instead of iterating against the compiler:
+
+```
+Project Explorer → System Library → (<NS>)<PACKAGE> → … → Source Code Library → {Classes, Interfaces}
+e.g. System Library/(IWBEP)FRAMEWORK/(IWBEP)MAIN/(IWBEP)CP/(IWBEP)CP_RUNTIME/Source Code Library/Classes/
+```
+
+Rules that pay for themselves:
+
+- **Second failed iteration on the same API → read the class.** Not the fifth.
+- **Generated classes are the dictionary.** A Service Consumption Model class carries `gcs_*` constants (entity sets, navigations, bound actions) and `tys_*` types (parameters, keys, **value controls**). Read them; do not infer names from the EDMX or a blog post. If a property is missing from `tys_value_controls_*`, the proxy will always serialize it.
+- **Large single-line files** (an EDMX `$metadata`) are read with terminal tools (`grep -o 'Name="[^"]*"'`, `tr '>' '\n'`), not by eye and not with an editor search that silently stops.
+- **ADT `abap:/` URIs:** text search is unreliable; read the object once, then search within it ([retrieval discipline](../../../docs/retrieval-discipline.md)).
+- **Diff configuration literals against the real objects** before activation: communication scenario, outbound service id, proxy model key, BAL object/subobject, job catalog/template, message numbers. They compile, pass doubled unit tests and ATC, and fail only at runtime.
 
 ## Navigating ABAP Release News
 
@@ -185,6 +205,9 @@ Key types/exceptions: `IF_AIC_COMPLETION_API`, `IF_AIC_COMPLETION_API_RESULT`, `
 | Assuming "released" = "forever frozen" | Code breaks when API is extended | C1 promises compatibility, not immutability — read the contract |
 | Writing a report/`WRITE` to test | Not allowed | Implement `IF_OO_ADT_CLASSRUN`, run with F9, `out->write( )` |
 | Guessing whether something is released | Wasted refactor | Check ADT API State / Released Objects / api.sap.com |
+| Guessing a framework method name for the third time | Activation ping-pong; a fallback built on a wrong conclusion | Read the class under System Library after the second miss |
+| Concluding a released API "cannot" do something from a compile error on a narrow interface | Static typing ≠ runtime capability | Check the implementing class for a cast guard; `CAST` if none |
+| Comm-scenario / service-id / proxy-model literals typed from memory | "destination not found" at runtime only | Diff against the object names in the package; comment the constant with the object it must match |
 
 ## References
 

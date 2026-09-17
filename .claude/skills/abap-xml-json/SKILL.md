@@ -1,6 +1,6 @@
 ---
 name: abap-xml-json
-description: Use when serializing or deserializing XML or JSON in ABAP — converting ABAP data (structures, internal tables, objects, references) to and from XML or JSON and back. Covers CALL TRANSFORMATION (SOURCE/RESULT, SOURCE XML / RESULT XML, SOURCE JSON / RESULT JSON), the predefined identity transformation ID, asXML and asJSON intermediate formats, Simple Transformations (ST) and XSL Transformations (XSLT) and when to pick each, the sXML serial library (cl_sxml_string_writer / cl_sxml_string_reader, token-based and object-oriented readers/writers, JSON-XML), the iXML DOM library, JSON via the ID transformation, /ui2/cl_json (serialize/deserialize, format_output, pretty_mode, name_mappings, generate), and XCO JSON (xco_cp_json) for ABAP Cloud. Also for serializing IF_SERIALIZABLE_OBJECT instances, choosing between transformation / sXML / JSON class, and string<->xstring conversion for binary XML/JSON payloads.
+description: Use when serializing or deserializing XML or JSON in ABAP — converting ABAP data (structures, internal tables, objects, references) to and from XML or JSON and back. Covers CALL TRANSFORMATION (SOURCE/RESULT, SOURCE XML / RESULT XML, SOURCE JSON / RESULT JSON), the predefined identity transformation ID, asXML and asJSON intermediate formats, Simple Transformations (ST) and XSL Transformations (XSLT) and when to pick each, the sXML serial library (cl_sxml_string_writer / cl_sxml_string_reader, token-based and object-oriented readers/writers, JSON-XML), the iXML DOM library, JSON via the ID transformation, /ui2/cl_json (serialize/deserialize, format_output, pretty_mode, name_mappings, compress to omit initial members, leading-underscore JSON names, generate), and XCO JSON (xco_cp_json) for ABAP Cloud. Also for serializing IF_SERIALIZABLE_OBJECT instances, choosing between transformation / sXML / JSON class, and string<->xstring conversion for binary XML/JSON payloads.
 ---
 
 # Working with XML and JSON in ABAP
@@ -216,6 +216,31 @@ DATA(lr_dref) = /ui2/cl_json=>generate( json = lv_some_json ).  "RETURNING ref t
 
 `generate` yields a generic `REF TO data` you can inspect via RTTS — see [abap-dynamic-programming](../abap-dynamic-programming/SKILL.md).
 
+**Omitting members and exact EDM names** — the two knobs you need when hand-building an OData request body (see [abap-odata](../abap-odata/SKILL.md) for when that is necessary):
+
+```abap
+" compress = abap_true drops EMPTY-STRING members only. '0', '00000000' and initial dates
+" survive — so type the body struct with string members and map initial values to '' first.
+TYPES: BEGIN OF ty_json_payment_value,
+         payment_voucher TYPE string,
+         payment_amount  TYPE string,
+         payment_date    TYPE string,          " |{ lv_date DATE = ISO }| or ''
+       END OF ty_json_payment_value.
+
+DATA(lv_body) = /ui2/cl_json=>serialize(
+  data          = ls_body
+  compress      = abap_true
+  name_mappings = VALUE #( ( abap = 'INSTALLMENTS'    json = '_Installment' )    " leading underscore
+                           ( abap = 'PAYMENT_VOUCHER' json = 'PaymentVoucher' )
+                           ( abap = 'PAYMENT_AMOUNT'  json = 'PaymentAmount' )
+                           ( abap = 'PAYMENT_DATE'    json = 'PaymentDate' ) ) ).
+```
+
+- No `pretty_name` mode produces a leading underscore (`_Installment`) — `name_mappings` is mandatory for such names.
+- `Edm.Date` / `Edm.TimeOfDay` want `YYYY-MM-DD` / `HH:MM:SS`; format with `|{ lv_date DATE = ISO }|` / `|{ lv_time TIME = ISO }|` into the string member.
+- Take the JSON names from the EDMX with a terminal `grep -o 'Name="[^"]*"'` on the one-line file rather than by eye.
+- Add a unit test that asserts the exact serialized string for a populated member (present) and an initial member (absent); it is pure `/ui2/cl_json`, no network.
+
 ### XCO JSON (xco_cp_json) — ABAP Cloud
 
 Released for ABAP Cloud; fluent API. `from_abap`/`to_string`, `from_string`/`write_to`, a builder, and `transformation` name-style conversions.
@@ -296,6 +321,8 @@ See [abap-strings-regex](../abap-strings-regex/SKILL.md) for the string layer. F
 | `/ui2/cl_json=>deserialize` with `RETURNING`-style call | It uses `CHANGING data = ...` | Pass the target via `CHANGING` |
 | No `IF_SERIALIZABLE_OBJECT` on a class you serialize | Transformation fails | Implement the interface |
 | Implementing only one of the helper methods | Compile/behaviour error | Implement `SERIALIZE_HELPER` and `DESERIALIZE_HELPER` together or neither |
+| Expecting `compress = abap_true` to drop an initial number or date | Only empty strings are dropped; `0` / `00000000` are sent and the server may reject them | String-typed body struct, map initial values to `''` |
+| Trying to get `_Name` JSON keys from a `pretty_name` mode | No mode emits a leading underscore | `name_mappings` |
 
 ## References
 

@@ -1,21 +1,44 @@
 {
   "_comment": "Tier-1 static regression checks. Pure substring grep over repo files — zero model tokens, deterministic, run on every change. 'forbidden' patterns must not appear (optionally limited by 'in' path-substring); 'required' patterns must appear in the file(s) whose path contains 'in'. These encode PROJECT CONVENTIONS, some of which are stricter than raw SAP rules (noted per rule).",
-  "scanDirs": [".claude/skills", ".claude/agents", ".claude-plugin", ".github", "docs"],
-  "scanFiles": ["CLAUDE.md", "AGENTS.md"],
-  "extensions": [".md", ".json", ".abap", ".bdef", ".ddls", ".ddlx", ".dcls", ".xml"],
+  "scanDirs": [
+    ".claude/skills",
+    ".claude/agents",
+    ".claude-plugin",
+    ".github",
+    "docs"
+  ],
+  "scanFiles": [
+    "CLAUDE.md",
+    "AGENTS.md"
+  ],
+  "extensions": [
+    ".md",
+    ".json",
+    ".abap",
+    ".bdef",
+    ".ddls",
+    ".ddlx",
+    ".dcls",
+    ".xml"
+  ],
   "rules": [
     {
       "id": "audit-uses-systemDateTime-not-systemDate-createdAt",
       "kind": "forbidden",
       "pattern": "@Semantics.systemDate.createdAt",
-      "exclude": ["docs/grounding-protocol.md", "docs/lessons.md"],
+      "exclude": [
+        "docs/grounding-protocol.md",
+        "docs/lessons.md"
+      ],
       "note": "Project convention: RAP audit 'created at' is a timestamp -> @Semantics.systemDateTime.createdAt. @Semantics.systemDate.* is valid in SAP only for genuine date-only fields; do not use it for audit semantics here. (grounding-protocol.md is excluded: it discusses this very anti-pattern as a worked example.)"
     },
     {
       "id": "audit-uses-systemDateTime-not-systemDate-lastChangedAt",
       "kind": "forbidden",
       "pattern": "@Semantics.systemDate.lastChangedAt",
-      "exclude": ["docs/lessons.md"],
+      "exclude": [
+        "docs/lessons.md"
+      ],
       "note": "Same convention as createdAt: audit 'last changed at' is a timestamp -> @Semantics.systemDateTime.lastChangedAt."
     },
     {
@@ -183,6 +206,69 @@
       "pattern": "MAX( order_id ) AS max_order_id",
       "in": ".claude/skills/rap-actions-validations-determinations",
       "note": "MAX(key)+index numbering is racy under concurrent saves. Use cl_numberrange_runtime=>number_get (see rap-saves-and-numbering's late-numbering-adjust-numbers.abap) instead of a demo MAX-based pattern."
+    },
+    {
+      "id": "odata-teaches-bound-action-downcast",
+      "kind": "required",
+      "pattern": "CAST /iwbep/if_cp_resource_entity(",
+      "in": ".claude/skills/abap-odata/references/client-proxy-operations.md",
+      "note": "Lesson 2026-09-17: navigate_to_optional returns the narrow entity01 interface; bind_action has no cast guard, so the downcast is the fix — not a raw-HTTP rewrite."
+    },
+    {
+      "id": "odata-separates-transport-from-payload",
+      "kind": "required",
+      "pattern": "cannot be used for",
+      "in": ".claude/skills/abap-odata/references/client-proxy-operations.md",
+      "note": "The 'Property X cannot be used for …' business-message pattern must stay documented as a payload (not transport) failure."
+    },
+    {
+      "id": "bgp-teaches-if-apj-rt-run",
+      "kind": "required",
+      "pattern": "if_apj_rt_run",
+      "in": ".claude/skills/abap-background-processing/SKILL.md",
+      "note": "if_apj_rt_run (public attributes, F4 in the SAJC entry) must be documented as the F4-capable job contract."
+    },
+    {
+      "id": "bgp-jobs-convert-with-utc",
+      "kind": "required",
+      "pattern": "TIME ZONE 'UTC'",
+      "in": ".claude/skills/abap-background-processing/SKILL.md",
+      "note": "Job date/time parameters are compared against UTC persistence; converting with the user zone shifts the window."
+    },
+    {
+      "id": "builtin-warns-user-zone-in-jobs",
+      "kind": "required",
+      "pattern": "executing",
+      "in": ".claude/skills/abap-builtin-functions/SKILL.md",
+      "note": "get_user_time_zone( ) is the executing user's zone (the technical job user in a job) — must stay stated."
+    },
+    {
+      "id": "oo-patterns-long-text-channel",
+      "kind": "required",
+      "pattern": "get_long_text",
+      "in": ".claude/skills/abap-oo-patterns/references/exception-design.md",
+      "note": "T100 placeholders are 50 chars; exceptions carrying diagnostics need the mv_long_text / get_long_text channel."
+    },
+    {
+      "id": "unit-tdd-seam-does-not-prove-server",
+      "kind": "required",
+      "pattern": "never the *server's* contract",
+      "in": ".claude/skills/abap-unit-tdd/SKILL.md",
+      "note": "Interface doubles prove our logic only; the serialization test + live smoke obligation must stay."
+    },
+    {
+      "id": "xml-json-compress-drops-empty-strings-only",
+      "kind": "required",
+      "pattern": "drops EMPTY-STRING members only",
+      "in": ".claude/skills/abap-xml-json/SKILL.md",
+      "note": "/ui2/cl_json compress semantics: only empty strings are omitted; '0' and initial dates survive."
+    },
+    {
+      "id": "skills-no-customer-project-names",
+      "kind": "forbidden",
+      "pattern": "zprd_",
+      "in": ".claude/skills",
+      "note": "Skills are global: no customer/project object names from retrospectives. Port lessons as self-contained generic examples in the skill's existing domain (inventory job, ZSC_TRAVEL proxy, rate service), never as renamed project code."
     }
   ]
 }

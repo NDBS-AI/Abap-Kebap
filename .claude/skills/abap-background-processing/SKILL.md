@@ -1,6 +1,6 @@
 ---
 name: abap-background-processing
-description: "Use when ABAP logic must run asynchronously or in the background in ABAP Cloud — choosing between the Background Processing Framework (bgPF), the Application Jobs API, and bgRFC; implementing bgPF operation classes with if_bgmc_op_single or if_bgmc_op_single_tx_uncontr and starting them via cl_bgmc_process_factory (controlled vs uncontrolled transactions, transactional vs queued); building application jobs with if_apj_dt_exec_object and if_apj_rt_exec_object plus job catalog entries and job templates; scheduling and monitoring jobs from code with cl_apj_rt_api, including from a RAP action's save phase; and writing or reading the Application Log via the BALI API (cl_bali_log, cl_bali_log_db, cl_bali_free_text_setter). Triggers include run this in the background, schedule an application job, job catalog entry, job template, bgPF, write to the application log, read the BAL log, asynchronous processing in RAP, and show job status in Fiori."
+description: "Use when ABAP logic must run asynchronously or in the background in ABAP Cloud — choosing between the Background Processing Framework (bgPF), the Application Jobs API, and bgRFC; implementing bgPF operation classes (if_bgmc_op_single, if_bgmc_op_single_tx_uncontr, cl_bgmc_process_factory; controlled vs uncontrolled, transactional vs queued); building application jobs with if_apj_rt_run (parameters as public attributes, F4 value help in the catalog entry) or the older if_apj_dt_exec_object / if_apj_rt_exec_object pair, plus job catalog entries and templates; designing delta jobs with a UTC bookmark; scheduling and monitoring jobs with cl_apj_rt_api, including from a RAP save phase; and writing the Application Log via BALI (cl_bali_log, cl_bali_log_db, cl_bali_free_text_setter). Triggers include run this in the background, schedule an application job, job catalog entry, job template, bgPF, application log, job parameter value help, delta job bookmark, BAL text truncated, and job time zone."
 ---
 
 # ABAP Background Processing — bgPF, Application Jobs, Application Log
@@ -174,7 +174,67 @@ The projection BDEF must opt in with `use side effects;` at BO level and `use ev
 
 ## Application Jobs — the job class
 
-A class becomes an application job by implementing two interfaces, one method each:
+Two runtime contracts exist. Pick before you write the class:
+
+| | `if_apj_rt_run` (+ optional `if_apj_dt_defaults`) | `if_apj_dt_exec_object` + `if_apj_rt_exec_object` |
+|---|---|---|
+| Parameters | **Public attributes** of the class (name ≤ 38 chars; `RANGE OF` for select-options) | Declared in `get_parameters` (`et_parameter_def`), delivered as `it_parameters` |
+| Defaults | Attribute `VALUE`, constructor, or `if_apj_dt_defaults~fill_attribute_defaults` | `et_parameter_val` |
+| **Value help (F4)** on a parameter | **Yes** — assigned per attribute in the SAJC catalog-entry editor (a released CDS value-help view) | No field for it in the parameter metadata |
+| Name-match rule | SAJC parameter names must equal the public attribute names **exactly** | `selname` is the contract |
+| Availability | S/4HANA Cloud Public Edition, BTP ABAP; on-premise from 2023 | All releases with Application Jobs |
+
+**Decision rule:** a parameter needs F4 → `if_apj_rt_run`. Parameter-less or code-only scheduling → either; new code defaults to `if_apj_rt_run`. Add `if_oo_adt_classrun` in both cases for an F9 harness.
+
+```abap
+CLASS zcl_inventory_recalc_job DEFINITION PUBLIC FINAL CREATE PUBLIC.
+  PUBLIC SECTION.
+    INTERFACES if_apj_rt_run.          " runtime entry point — attributes are already filled
+    INTERFACES if_apj_dt_defaults.     " default values for a new job template
+    INTERFACES if_oo_adt_classrun.     " F9 harness
+
+    " Public attributes ARE the job parameters. Their names must equal the parameter
+    " names in the catalog entry (SAJC editor); the value help is assigned there, not here.
+    DATA p_simulate  TYPE abap_bool.
+    DATA s_inventory TYPE RANGE OF sysuuid_x16.   " select-option style parameter
+    DATA p_from_date TYPE datn.                   " describe it as "(UTC)" in the catalog entry
+ENDCLASS.
+
+CLASS zcl_inventory_recalc_job IMPLEMENTATION.
+  METHOD if_apj_dt_defaults~fill_attribute_defaults.
+    p_simulate  = abap_true.
+    p_from_date = cl_abap_context_info=>get_system_date( ).
+  ENDMETHOD.
+
+  METHOD if_apj_rt_run~execute.
+    TRY.
+        DATA(lo_log) = cl_bali_log=>create_with_header(
+            header = cl_bali_header_setter=>create( object    = 'ZINVENTORY_LOG'
+                                                    subobject = 'ZINVENTORY_SUB' ) ).
+        lo_log->add_item( cl_bali_free_text_setter=>create(
+            severity = if_bali_constants=>c_severity_status
+            text     = |Recalculation started: simulate={ p_simulate } from={ p_from_date DATE = ISO }| ) ).
+        " ... business logic over s_inventory / p_from_date ...
+        cl_bali_log_db=>get_instance( )->save_log( log = lo_log assign_to_current_appl_job = abap_true ).
+      CATCH cx_bali_runtime INTO DATA(lo_log_error).
+        RAISE EXCEPTION TYPE cx_apj_rt_content EXPORTING previous = lo_log_error.
+    ENDTRY.
+  ENDMETHOD.
+
+  METHOD if_oo_adt_classrun~main.
+    " F9: set the attributes the way the framework would, then run the same entry point.
+    p_simulate = abap_true.
+    TRY.
+        if_apj_rt_run~execute( ).
+        out->write( 'Dry run finished — see the application log.' ).
+      CATCH cx_apj_rt_content INTO DATA(lo_job_error).
+        out->write( lo_job_error->get_text( ) ).
+    ENDTRY.
+  ENDMETHOD.
+ENDCLASS.
+```
+
+The older pair is still what the SAP sample repository uses; its shape:
 
 - `if_apj_dt_exec_object~get_parameters` — design time; the cloud replacement for a report's selection screen. Returns parameter *definitions* (`et_parameter_def`) and *default values* (`et_parameter_val`).
 - `if_apj_rt_exec_object~execute( it_parameters )` — runtime; called by the framework when the job starts. Parameters arrive from the scheduling API call, the job template, or as fallback from `get_parameters` defaults.
@@ -200,7 +260,36 @@ METHOD if_apj_dt_exec_object~get_parameters.
 ENDMETHOD.
 ```
 
-The complete pattern — job class with BALI logging, F9 harness, and EML update — is in [examples/application_job_class.abap](examples/application_job_class.abap).
+The complete pattern — job class with BALI logging, F9 harness, and EML update — is in [examples/application_job_class.abap](examples/application_job_class.abap). The `if_apj_rt_run` contract, the SAJC name-match rule and the value-help wiring are detailed in [references/application-jobs-api.md](references/application-jobs-api.md).
+
+**Hand-over list.** Everything the job needs that is *not* in the transportable code is a manual dependency: message-class numbers referenced by `MESSAGE … INTO`, the value help assigned in the SAJC editor, the technical job user's authorizations (communication arrangement, API scope), and the schedule itself. Name them in the delivery notes before the first run — not after it fails.
+
+## Application Jobs — delta jobs: window, bookmark, UTC
+
+A periodic job that processes "what changed since last time" needs three decisions made explicitly:
+
+```abap
+" Explicit from-date given          -> use it, never move the bookmark
+" No filter, bookmark present       -> last_changed_at > bookmark
+" No filter, bookmark empty (1st)   -> last interval only (never "everything since epoch")
+TYPES ty_tstmp_range TYPE RANGE OF timestampl.
+DATA(lt_window) = COND ty_tstmp_range(
+  WHEN lv_explicit_from IS NOT INITIAL THEN VALUE #( ( sign = 'I' option = 'GE' low = lv_explicit_from ) )
+  WHEN lv_bookmark IS NOT INITIAL      THEN VALUE #( ( sign = 'I' option = 'GT' low = lv_bookmark ) )
+  ELSE VALUE #( ( sign = 'I' option = 'GT'
+                  low = cl_abap_tstmp=>subtractsecs( tstmp = lv_now secs = 3600 ) ) ) ).
+
+SELECT inventory_uuid, last_changed_at
+  FROM zinventory
+  WHERE inventory_uuid IN @s_inventory AND last_changed_at IN @lt_window
+  ORDER BY last_changed_at, inventory_uuid
+  INTO TABLE @DATA(lt_changed).
+```
+
+- **Bookmark** (high-water mark) lives in a small `Z` table keyed by job id; advance it only when no explicit filter was given **and** the run is not a dry run. `GET TIME STAMP` is UTC, so the bookmark is UTC.
+- **Date/time parameters are UTC instants.** `LastChangeDateTime`-style admin fields are UTC; convert `p_from_date`/`p_from_time` with `CONVERT DATE … TIME … TIME ZONE 'UTC' INTO TIME STAMP`, **not** with `cl_abap_context_info=>get_user_time_zone( )` — in a job that is the technical user's zone and shifts the window silently. Label the parameters "(UTC)". Details in [abap-builtin-functions](../abap-builtin-functions/SKILL.md).
+- **Ranges beat `BETWEEN`:** one `IN @range` with `GE` / `LE` / `BT` rows covers from-only, to-only, and both.
+- **Inject "now"** (`iv_now TYPE timestampl OPTIONAL`) so a unit test can assert the window bounds deterministically.
 
 ## Application Jobs — catalog entry and template
 
@@ -301,6 +390,8 @@ LOOP AT lo_log->get_all_items( ) INTO DATA(ls_loaded_item).
 ENDLOOP.
 ```
 
+**Text limits and run summaries.** `cl_bali_free_text_setter=>ty_text` is `C(200)` and truncates silently — chunk longer diagnostics (HTTP error bodies are the usual offender) with a small `add_free_text` helper instead of losing the tail. Write a run **header** (mode, window, item count) and **footer** (per-status counts) so the job log in the Application Jobs app is self-explaining; keep header/footer in the job class and let the domain class return a result table so it stays log-agnostic and unit-testable. `MESSAGE … WITH` does not accept functional expressions (`lines( lt_fields )`) — assign to a local first. Chunker and summary pattern in [references/application-log-bali.md](references/application-log-bali.md).
+
 The Application Jobs sample wraps this read in an unmanaged query (`if_rap_query_provider`) behind a custom entity keyed by `log_handle` + `log_item_number`, associates it to the BO root, and gets an application-log facet on the object page with zero UI development. Runtime errors raise `cx_bali_runtime`; reading logs requires authorization object `S_APPL_LOG` for the log object/subobject. Severity constants, exception messages (`cl_bali_message_setter` and friends), and the display pattern are detailed in [references/application-log-bali.md](references/application-log-bali.md).
 
 ## Transactional caveats — what runs in which LUW
@@ -337,8 +428,12 @@ Always confirm the API state in ADT's *Released Objects* view for your release �
 | Start async work with own commits (uncontrolled) | Same chain with `set_operation_tx_uncontrolled( ... )`; operation implements `if_bgmc_op_single_tx_uncontr` |
 | Ordered background operations | `cl_bgmc_process_factory=>get_for_queue( iv_bg_processing_context = ... iv_queue = ... )` |
 | Check bgPF process state later | Persist `monitor->to_string( )`; `create_monitor_from_string` + `get_state` |
-| Define job parameters | `if_apj_dt_exec_object~get_parameters` → `et_parameter_def` / `et_parameter_val` |
-| Job entry point | `if_apj_rt_exec_object~execute( it_parameters )` |
+| Define job parameters (F4-capable) | Public attributes of an `if_apj_rt_run` class; value help assigned in the SAJC editor; names must match the catalog entry |
+| Define job parameters (legacy pair) | `if_apj_dt_exec_object~get_parameters` → `et_parameter_def` / `et_parameter_val` |
+| Job entry point | `if_apj_rt_run~execute( )` (attributes pre-filled) or `if_apj_rt_exec_object~execute( it_parameters )` |
+| Delta window | `RANGE OF timestampl` + `IN @range`; bookmark table keyed by job id; first run = last interval via `cl_abap_tstmp=>subtractsecs` |
+| Convert job date/time parameters | `CONVERT DATE … TIME … TIME ZONE 'UTC' INTO TIME STAMP` — never the user zone |
+| Log text > 200 chars | Chunk into several `cl_bali_free_text_setter` items ([references/application-log-bali.md](references/application-log-bali.md)) |
 | Create catalog entry / template in code | `cl_apj_dt_create_content=>get_instance( )->create_job_cat_entry / create_job_template_entry` |
 | Schedule a job | `cl_apj_rt_api=>schedule_job` → `ev_jobname`, `ev_jobcount` |
 | Job status | `cl_apj_rt_api=>get_job_status` → `'R'` / `'F'` / `'A'` + text |
@@ -363,6 +458,13 @@ Always confirm the API state in ADT's *Released Objects* view for your release �
 | Job status hardcoded from the last known value | Read it live via `cl_apj_rt_api=>get_job_status` in a virtual-element calculator (`if_sadl_exit_calc_element_read`) |
 | Expecting end users to read logs without authorization | Reading requires `S_APPL_LOG` for the log object/subobject; scheduling requires the generated IAM app in the user's role |
 | Using bare bgRFC units in ABAP for Cloud Development | Use bgPF (it wraps the inbound bgRFC); direct bgRFC programming is classic-ABAP territory |
+| Choosing `if_apj_rt_exec_object` and then wanting an F4 value help on a parameter | Its parameter metadata has no value-help field; use `if_apj_rt_run` and assign the value help to the attribute in the SAJC editor |
+| Public attribute `pv_simulate` while the SAJC entry declares `P_SIMULATE` | The catalog entry validates against the attribute names — they must match exactly |
+| Converting job date/time parameters with `cl_abap_context_info=>get_user_time_zone( )` | In a job that is the technical user's zone; persisted `LastChangeDateTime` and `GET TIME STAMP` are UTC → `TIME ZONE 'UTC'` |
+| Empty bookmark → "process everything" | Full scan plus thousands of remote calls on the first schedule; default to one interval back |
+| Advancing the bookmark on a filtered or dry run | Advance only on unfiltered, non-dry runs |
+| Passing a 400-char HTTP error to `cl_bali_free_text_setter=>create` | `ty_text` is C(200); chunk it |
+| Discovering message numbers, value help, and job-user authorizations on the first real run | List these manual dependencies at hand-over |
 
 ## References
 
@@ -379,6 +481,7 @@ Always confirm the API state in ADT's *Released Objects* view for your release �
 - **Creating a Job Catalog Entry and a Job Template:** https://help.sap.com/docs/ABAP_ENVIRONMENT/250515df61b74848810389e964f8c367/949ba003345b476e99e46b920f41632d.html
 - **Creating a Job Catalog Entry and a Job Template via API:** https://help.sap.com/docs/ABAP_ENVIRONMENT/250515df61b74848810389e964f8c367/e58737f463534a23bff0e9f21f7ee6d0.html
 - **Maintaining Application Jobs Using an API:** https://help.sap.com/docs/ABAP_ENVIRONMENT/250515df61b74848810389e964f8c367/1491e6c075c04e7c9a485a2e24b82653.html
+- **Creating an ABAP Class with Interface IF_APJ_RT_RUN:** https://help.sap.com/docs/SAP_S4HANA_CLOUD/6aa39f1ac05441e5a23f484f31e477e7/79bd2d9879a74f4c8512d374a3bc5416.html
 - **Example Implementation Using IF_APJ_DT_EXEC_OBJECT / IF_APJ_RT_EXEC_OBJECT:** https://help.sap.com/docs/ABAP_ENVIRONMENT/250515df61b74848810389e964f8c367/0abb3f205d4645ac82ef03bbf47b3427.html
 - **Application Jobs — Setting up the Authorizations:** https://help.sap.com/docs/ABAP_ENVIRONMENT/250515df61b74848810389e964f8c367/bb559a5a4b654996a167d72273f28542.html
 - **Create a New Application Log:** https://help.sap.com/docs/ABAP_ENVIRONMENT/250515df61b74848810389e964f8c367/f7c20f7b2fce4fbaba79ae0c5182d869.html

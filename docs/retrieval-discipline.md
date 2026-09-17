@@ -52,6 +52,23 @@ resource, don't retry with tweaked patterns — switch to a direct `Read`.
 local source tree, normal text-search and glob tools work fine — the
 known-path and one-miss rules still apply, but grep is not the problem there.)
 
+**SAP framework source is a known path.** SAP-delivered classes and interfaces are
+readable under the *System Library* node; the URI shape is
+
+```
+abap:/repotree-v1/<DEST>/System Library/(<NS>)<PKG>/…/Source Code Library/{Classes,Interfaces}/<name>
+e.g. …/System Library/(IWBEP)FRAMEWORK/(IWBEP)MAIN/(IWBEP)CP/(IWBEP)CP_RUNTIME/Source Code Library/Classes/
+```
+
+Read the implementing class the **second** time a compile or runtime iteration fails on the
+same framework API — before the third attempt, not after the tenth. A generated class (e.g. a
+Service Consumption Model) is the authoritative dictionary for the names it generates; read
+its `gcs_*` constants and `tys_*` types rather than inferring from metadata files.
+
+**Large single-line files** (an EDMX `$metadata`, minified JSON) defeat editor search and
+reading by eye. Use the terminal — `grep -o 'Name="[^"]*"'`, `tr '>' '\n'` — and paste the
+exact tokens into the code.
+
 ## Progressive, not broad-first
 
 Match the search width to what the prompt already gives you:
