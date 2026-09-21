@@ -3,6 +3,15 @@ import assert from 'node:assert/strict'
 import { createServer, type Server, type RequestListener } from 'node:http'
 import { createHttpClient } from '../src/http'
 
+// EnvHttpProxyAgent has no implicit loopback bypass: with a proxy configured and no matching
+// NO_PROXY entry it would route these 127.0.0.1 requests to that proxy, failing for the wrong
+// reason and putting bytes on the network. Loopback tests must never leave the machine.
+process.env.NO_PROXY = '127.0.0.1'
+process.env.HTTP_PROXY = ''
+process.env.HTTPS_PROXY = ''
+process.env.http_proxy = ''
+process.env.https_proxy = ''
+
 async function listen(handler: RequestListener): Promise<{ server: Server; base: string }> {
   const server = createServer(handler)
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
