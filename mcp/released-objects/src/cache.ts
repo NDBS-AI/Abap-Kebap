@@ -185,6 +185,17 @@ export class CacheError extends Error {
   }
 }
 
+/**
+ * A failure upstream answered with: a non-2xx status or a payload that failed validation.
+ * The transport worked, so these must never flip `offline` - that flag means "no network".
+ */
+class UpstreamError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'UpstreamError'
+  }
+}
+
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export class CacheManager {
@@ -294,17 +305,19 @@ export class CacheManager {
       throw new CacheError('UNKNOWN_VERSION', `${spec.fileName} does not exist upstream`)
     }
     if (response.status !== 200 || response.body === null) {
-      throw new Error(`HTTP ${response.status} for ${spec.fileName}`)
+      throw new UpstreamError(`HTTP ${response.status} for ${spec.fileName}`)
     }
 
     const validation = validatePayload(response.body, spec.arrayKey, previous?.entries ?? null)
     if (!validation.ok) {
-      if (previous) {
-        previous.lastError = validation.reason
+      if (previous) previous.lastError = validation.reason
+      // Only a file that is actually on disk can be "kept"; without one this is a hard failure,
+      // so callers hear about it instead of being handed a path to nothing.
+      if (previous && onDisk) {
         this.options.log(`kept the cached ${spec.fileName}: ${validation.reason}`)
         return
       }
-      throw new Error(`${spec.fileName} failed validation: ${validation.reason}`)
+      throw new UpstreamError(`${spec.fileName} failed validation: ${validation.reason}`)
     }
 
     await this.atomicWrite(this.localPath(spec), response.body)
@@ -380,7 +393,10 @@ export class CacheManager {
 
     let pending = this.inFlight.get(spec.id)
     if (!pending) {
-      pending = this.downloadOne(spec, false).finally(() => this.inFlight.delete(spec.id))
+      // Nothing else persists a lazy download, so this path writes the manifest itself.
+      pending = this.downloadOne(spec, false)
+        .then(() => this.saveManifest())
+        .finally(() => this.inFlight.delete(spec.id))
       this.inFlight.set(spec.id, pending)
     }
 
@@ -395,7 +411,8 @@ export class CacheManager {
     try {
       await Promise.race([pending, deadline])
     } catch (error) {
-      this.lastNetworkFailed = true
+      // An upstream answer (404, bad status, bad payload) proves the network works.
+      if (!(error instanceof CacheError) && !(error instanceof UpstreamError)) this.lastNetworkFailed = true
       if (error instanceof CacheError) throw error
       throw new CacheError(
         'DATASET_UNAVAILABLE',
@@ -404,9 +421,13 @@ export class CacheManager {
     } finally {
       clearTimeout(timer)
     }
-    if (timedOut && !existsSync(path)) {
-      throw new CacheError('DATASET_DOWNLOADING', `${spec.fileName} is still downloading; retry shortly.`, 30)
+    if (!existsSync(path)) {
+      if (timedOut) {
+        throw new CacheError('DATASET_DOWNLOADING', `${spec.fileName} is still downloading; retry shortly.`, 30)
+      }
+      throw new CacheError('DATASET_UNAVAILABLE', `${spec.fileName} is still not on disk after its download reported success.`)
     }
+    this.lastNetworkFailed = false
     return path
   }
 

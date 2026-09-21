@@ -160,3 +160,53 @@ test('ensureFile returns the path when the file is already on disk', async () =>
   await cache.refresh([CORE])
   assert.equal(await cache.ensureFile(CORE, 200), join(dataDir, 'objectReleaseInfo_BTPLatest.json'))
 })
+
+test('ensureFile never hands back a path to a file it failed to write', async () => {
+  const { cache, http, dataDir } = await makeCache({ 'objectReleaseInfo_BTPLatest.json': jsonResponse(payload(200)) })
+  await cache.refresh([CORE])
+  await rm(join(dataDir, 'objectReleaseInfo_BTPLatest.json'))
+  // A captive portal or proxy login page: 200, but not the dataset.
+  http.setRoute('objectReleaseInfo_BTPLatest.json', { status: 200, headers: {}, body: '<html>sign in to continue</html>' })
+
+  await assert.rejects(
+    () => cache.ensureFile(CORE, 200),
+    (error: unknown) => error instanceof CacheError && error.code === 'DATASET_UNAVAILABLE',
+  )
+  assert.notEqual(cache.status(CORE.id), 'ready')
+})
+
+test('a download made by ensureFile survives into the next process', async () => {
+  const { cache, http, clock, dataDir } = await makeCache({ 'objectReleaseInfo_BTPLatest.json': jsonResponse(payload(200), '"e1"') })
+  await cache.refresh([CORE])
+  await rm(join(dataDir, 'objectReleaseInfo_BTPLatest.json'))
+  // Upstream moved on: what ensureFile downloads differs from what the daily check persisted,
+  // and the daily gate is shut for today, so only ensureFile itself can write the manifest.
+  http.setRoute('objectReleaseInfo_BTPLatest.json', jsonResponse(payload(250), '"e2"'))
+  await cache.ensureFile(CORE, 200)
+
+  const restarted = new CacheManager({
+    dataDir, baseUrl: BASE, githubApi: null, http, now: clock.now, log: () => undefined,
+  })
+  assert.equal(restarted.readManifest().files[CORE.id]?.entries, 250)
+  assert.equal(restarted.readManifest().files[CORE.id]?.etag, '"e2"')
+  assert.equal(restarted.status(CORE.id), 'ready')
+})
+
+test('a 404 is an upstream answer, not an outage - offline stays false', async () => {
+  const { cache } = await makeCache({ 'objectReleaseInfo_BTPLatest.json': { status: 404, headers: {}, body: 'not found' } })
+  await assert.rejects(
+    () => cache.ensureFile(CORE, 200),
+    (error: unknown) => error instanceof CacheError && error.code === 'UNKNOWN_VERSION',
+  )
+  assert.equal(cache.offline, false)
+})
+
+test('a successful ensureFile download clears the offline flag again', async () => {
+  const { cache, http } = await makeCache({ 'objectReleaseInfo_BTPLatest.json': unreachable() })
+  await assert.rejects(() => cache.ensureFile(CORE, 200))
+  assert.equal(cache.offline, true)
+
+  http.setRoute('objectReleaseInfo_BTPLatest.json', jsonResponse(payload(200)))
+  await cache.ensureFile(CORE, 200)
+  assert.equal(cache.offline, false)
+})
