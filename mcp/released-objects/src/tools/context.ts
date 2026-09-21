@@ -1,7 +1,7 @@
 import { CacheError, type CacheManager, type FileSpec, type FileStatus } from '../cache'
 import type { ServerConfig } from '../config'
 import { buildDataset, resolveFiles, type Dataset, type DatasetRegistry } from '../datasets'
-import { namespaceOf, type PartnerIndex } from '../partner-index'
+import { cachedPartnerSpecs, namespaceOf, type PartnerIndex } from '../partner-index'
 import type { ClassificationLookup, SearchPool } from '../query'
 import { resolveTarget, TargetResolutionError, type TargetResolution } from '../target-resolver'
 import type { MaxLevel, RawRecord, Target } from '../types'
@@ -111,8 +111,11 @@ export async function loadTarget(context: ServerContext, request: { target?: Tar
   const classification = resolved.classification ? await context.registry.load(resolved.classification) : null
 
   const specs: FileSpec[] = resolved.classification ? [releaseSpec, resolved.classification] : [releaseSpec]
-  // Open the daily gate for exactly the files this request touches; never block on it.
-  context.cache.ensureFresh(specs)
+  // Open the daily gate for exactly the files this request touches, plus every partner file
+  // already on disk: those arrive through a lazy lookup that never checks them again, so without
+  // this a partner classification downloaded once would stay at its first version forever. Never
+  // block on any of it.
+  context.cache.ensureFresh([...specs, ...cachedPartnerSpecs(context.cache, context.partnerIndex)])
 
   const classificationOf: ClassificationLookup = (record: RawRecord) => {
     if (!classification) return null

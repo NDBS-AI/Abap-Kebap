@@ -249,11 +249,31 @@ export class CacheManager {
     return 'ready'
   }
 
+  /**
+   * Throw one cached file away: the manifest entry, the file, and with them the etag that
+   * would otherwise earn a 304 and keep a corrupt copy forever. The only way back from a file
+   * that is on disk but unreadable, so a caller that finds one can repair the cache itself.
+   */
+  async evict(spec: FileSpec): Promise<void> {
+    const manifest = this.readManifest()
+    delete manifest.files[spec.id]
+    await rm(this.localPath(spec), { force: true })
+    await this.saveManifest()
+    for (const listener of this.listeners) listener(spec.id)
+  }
+
   /** Temp file then rename, so a reader never sees a half-written dataset. */
   private async atomicWrite(target: string, text: string): Promise<void> {
     mkdirSync(dirname(target), { recursive: true })
     const temp = `${target}.${process.pid}.${Date.now()}.tmp`
-    await writeFile(temp, text, 'utf8')
+    try {
+      await writeFile(temp, text, 'utf8')
+    } catch (error) {
+      // A write that fails part-way still leaves a temp file behind; clean it up on the way out,
+      // and never let the cleanup's own failure replace the error the caller has to see.
+      await rm(temp, { force: true }).catch(() => undefined)
+      throw error
+    }
     for (let attempt = 0; attempt < 5; attempt += 1) {
       try {
         await rename(temp, target)
@@ -298,6 +318,7 @@ export class CacheManager {
     })
 
     if (response.status === 304 && previous && onDisk) {
+      // An answer arrived, so the transport worked: the caller (`refresh`) clears `offline` for it.
       previous.lastError = null
       return
     }
@@ -345,7 +366,11 @@ export class CacheManager {
   async refresh(specs: FileSpec[], force = false): Promise<void> {
     const manifest = this.readManifest()
     if (!shouldCheck(manifest, this.options.now(), force)) return
-    if (this.refreshing) return this.refreshing
+    // A check already running is not this check: it may cover other files, and a forced call must
+    // not be answered by a run that started before it. Queue behind it instead of joining it - the
+    // in-flight run clears `refreshing` before this continuation fires, so it chains exactly once,
+    // and the daily gate above turns the chained call into a no-op when it has nothing left to do.
+    if (this.refreshing) return this.refreshing.then(() => this.refresh(specs, force))
 
     this.refreshing = (async () => {
       let requiredFailure: string | null = null
@@ -395,6 +420,10 @@ export class CacheManager {
    */
   async ensureFile(spec: FileSpec, timeoutMs = 30_000): Promise<string> {
     const path = this.localPath(spec)
+    // The file is already here, so nothing was asked of the network and nothing was learned about
+    // it: `offline` keeps whatever it held. A `false` stays false because no failure happened, and
+    // a `true` stays true because finding a cached file is not evidence that an outage has ended -
+    // only a transport success (a download or a 304 in `refresh`) may clear the flag.
     if (existsSync(path)) return path
 
     let pending = this.inFlight.get(spec.id)

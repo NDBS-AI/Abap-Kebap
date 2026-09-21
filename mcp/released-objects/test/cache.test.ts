@@ -1,6 +1,6 @@
 import { after, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -220,4 +220,91 @@ test('a successful ensureFile download clears the offline flag again', async () 
   http.setRoute('objectReleaseInfo_BTPLatest.json', jsonResponse(payload(200)))
   await cache.ensureFile(CORE, 200)
   assert.equal(cache.offline, false)
+})
+
+test('evict throws the file, its manifest entry and its etag away together', async () => {
+  const { cache, dataDir, http } = await makeCache({ 'objectReleaseInfo_BTPLatest.json': jsonResponse(payload(200), '"e1"') })
+  await cache.refresh([CORE])
+  const notified: string[] = []
+  cache.subscribe((id) => notified.push(id))
+
+  await cache.evict(CORE)
+
+  assert.equal(cache.status(CORE.id), 'missing')
+  assert.equal(existsSync(join(dataDir, 'objectReleaseInfo_BTPLatest.json')), false)
+  assert.deepEqual(notified, [CORE.id])
+  // The etag went with the entry, so the re-download is unconditional and cannot earn a 304.
+  await cache.ensureFile(CORE, 500)
+  assert.equal(http.calls.at(-1)?.options.etag ?? null, null)
+  assert.equal(cache.status(CORE.id), 'ready')
+})
+
+test('evicting a file that is already gone is not an error', async () => {
+  const { cache } = await makeCache({ 'objectReleaseInfo_BTPLatest.json': jsonResponse(payload(200)) })
+  await cache.evict(CORE)
+  assert.equal(cache.status(CORE.id), 'missing')
+})
+
+test('a write that cannot even be started leaves no temp file behind', async () => {
+  // A path no file system can hold: the temp file is refused before a byte is written, which is
+  // the one failure the rename path's cleanup never saw.
+  const impossible: FileSpec = { ...CORE, id: 'btp/impossible', fileName: `objectReleaseInfo_BTP${String.fromCharCode(0)}Latest.json` }
+  const { cache, dataDir } = await makeCache({ 'objectReleaseInfo_BTP': jsonResponse(payload(200)) })
+  await cache.refresh([impossible])
+
+  assert.equal(cache.status(impossible.id), 'missing')
+  assert.deepEqual((await readdir(dataDir)).filter((entry) => entry.endsWith('.tmp')), [])
+})
+
+test('a forced refresh for other files is not swallowed by one already in flight', async () => {
+  let release: () => void = () => undefined
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const { cache, http } = await makeCache({
+    'objectReleaseInfo_BTPLatest.json': async () => {
+      await held
+      return jsonResponse(payload(200))
+    },
+    'partner/objectClassifications_OTX.json': jsonResponse({
+      formatVersion: '2',
+      objectClassifications: [{ tadirObject: 'CLAS', tadirObjName: '/OTX/CL_A', objectType: 'CLAS', objectKey: '/OTX/CL_A', state: 'classicAPI' }],
+    }),
+  })
+
+  const slow = cache.refresh([CORE])
+  const forced = cache.refresh([PARTNER], true)
+  release()
+  await Promise.all([slow, forced])
+
+  assert.ok(http.calls.some((call) => call.url.endsWith('partner/objectClassifications_OTX.json')), 'the second call was queued, not dropped')
+  assert.equal(cache.status(PARTNER.id), 'ready')
+})
+
+test('a 304 proves the network is back and clears the offline flag', async () => {
+  const { cache, http, clock } = await makeCache({ 'objectReleaseInfo_BTPLatest.json': jsonResponse(payload(200), '"e1"') })
+  await cache.refresh([CORE])
+
+  http.setRoute('objectReleaseInfo_BTPLatest.json', unreachable())
+  clock.advanceDays(1)
+  await cache.refresh([CORE])
+  assert.equal(cache.offline, true)
+
+  http.setRoute('objectReleaseInfo_BTPLatest.json', notModified('"e1"'))
+  await cache.refresh([CORE], true)
+  assert.equal(cache.offline, false, 'an answer arrived, even though nothing was downloaded')
+})
+
+test('finding a file already on disk says nothing about the network, so offline is left alone', async () => {
+  const { cache, http, clock } = await makeCache({ 'objectReleaseInfo_BTPLatest.json': jsonResponse(payload(200), '"e1"') })
+  await cache.refresh([CORE])
+
+  http.setRoute('objectReleaseInfo_BTPLatest.json', unreachable())
+  clock.advanceDays(1)
+  await cache.refresh([CORE])
+  assert.equal(cache.offline, true)
+
+  // The cached file answers immediately; an outage that is still on is still on.
+  await cache.ensureFile(CORE, 200)
+  assert.equal(cache.offline, true)
 })

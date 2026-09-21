@@ -62531,11 +62531,28 @@ var CacheManager = class {
     if (entry.lastError) return "stale-error";
     return "ready";
   }
+  /**
+   * Throw one cached file away: the manifest entry, the file, and with them the etag that
+   * would otherwise earn a 304 and keep a corrupt copy forever. The only way back from a file
+   * that is on disk but unreadable, so a caller that finds one can repair the cache itself.
+   */
+  async evict(spec) {
+    const manifest = this.readManifest();
+    delete manifest.files[spec.id];
+    await (0, import_promises.rm)(this.localPath(spec), { force: true });
+    await this.saveManifest();
+    for (const listener of this.listeners) listener(spec.id);
+  }
   /** Temp file then rename, so a reader never sees a half-written dataset. */
   async atomicWrite(target, text) {
     (0, import_node_fs.mkdirSync)((0, import_node_path.dirname)(target), { recursive: true });
     const temp = `${target}.${process.pid}.${Date.now()}.tmp`;
-    await (0, import_promises.writeFile)(temp, text, "utf8");
+    try {
+      await (0, import_promises.writeFile)(temp, text, "utf8");
+    } catch (error62) {
+      await (0, import_promises.rm)(temp, { force: true }).catch(() => void 0);
+      throw error62;
+    }
     for (let attempt = 0; attempt < 5; attempt += 1) {
       try {
         await (0, import_promises.rename)(temp, target);
@@ -62618,7 +62635,7 @@ var CacheManager = class {
   async refresh(specs, force = false) {
     const manifest = this.readManifest();
     if (!shouldCheck(manifest, this.options.now(), force)) return;
-    if (this.refreshing) return this.refreshing;
+    if (this.refreshing) return this.refreshing.then(() => this.refresh(specs, force));
     this.refreshing = (async () => {
       let requiredFailure = null;
       let transportFailed = false;
@@ -62868,8 +62885,11 @@ var DatasetRegistry = class {
   }
   cache;
   loaded = /* @__PURE__ */ new Map();
+  /** Spec ids that answered 404 upstream; a version that does not exist is not asked for twice. */
+  missing = /* @__PURE__ */ new Set();
   invalidate(id) {
     this.loaded.delete(id);
+    this.missing.delete(id);
   }
   async load(spec, timeoutMs = 3e4) {
     const cached2 = this.loaded.get(spec.id);
@@ -62877,6 +62897,7 @@ var DatasetRegistry = class {
     await this.cache.ensureFile(spec, timeoutMs);
     const records = parseRecords(await this.cache.readFileText(spec), spec.arrayKey);
     if (records.length === 0) {
+      await this.cache.evict(spec);
       throw new CacheError(
         "DATASET_UNAVAILABLE",
         `${spec.fileName} is on disk but holds no records; it may be truncated \u2014 call dataset_info with refresh to re-download`
@@ -62890,10 +62911,15 @@ var DatasetRegistry = class {
   async loadFirstAvailable(candidates, timeoutMs = 3e4) {
     let lastError = null;
     for (const spec of candidates) {
+      if (this.missing.has(spec.id)) {
+        lastError = new CacheError("UNKNOWN_VERSION", `${spec.fileName} does not exist upstream`);
+        continue;
+      }
       try {
         return { dataset: await this.load(spec, timeoutMs), spec };
       } catch (error62) {
         if (!isMissingCandidate(error62)) throw error62;
+        if (error62.code === "UNKNOWN_VERSION") this.missing.add(spec.id);
         lastError = error62;
       }
     }
@@ -63024,6 +63050,7 @@ var partner_index_default = {
 
 // src/partner-index.ts
 var PARTNER_DIR = "partner";
+var PARTNER_ID_PREFIX = "partner/";
 var TEMPLATE_FILE = "objectClassifications_NAMESPACE.json";
 var FILE_PREFIX = "objectClassifications_";
 function namespaceOf(objectName) {
@@ -63036,6 +63063,9 @@ function namespaceFromFileName(fileName) {
   const middle = fileName.slice(FILE_PREFIX.length, -".json".length);
   if (!middle || middle === "SAP") return null;
   return `/${middle.toUpperCase()}/`;
+}
+function fileNameForNamespace(namespace) {
+  return `${FILE_PREFIX}${namespace.replace(/^\/|\/$/g, "")}.json`;
 }
 var BUILT_IN_PARTNER_INDEX = partner_index_default.namespaces.slice();
 var PartnerIndex = class {
@@ -63086,14 +63116,30 @@ var PartnerIndex = class {
   }
   /** Partner files are optional: a 404 or a proxy block must never fail a lookup. */
   specFor(entry) {
-    return {
-      id: `partner/${entry.namespace}`,
-      fileName: `${PARTNER_DIR}/${entry.file}`,
-      arrayKey: "objectClassifications",
-      optional: true
-    };
+    return partnerSpecFor(entry);
   }
 };
+function partnerSpecFor(entry) {
+  return {
+    id: `${PARTNER_ID_PREFIX}${entry.namespace}`,
+    fileName: `${PARTNER_DIR}/${entry.file}`,
+    arrayKey: "objectClassifications",
+    optional: true
+  };
+}
+var NAMESPACE_ID = /^\/[A-Za-z0-9_]{1,8}\/$/;
+function cachedPartnerSpecs(cache, partnerIndex) {
+  const specs = [];
+  for (const [id, entry] of Object.entries(cache.readManifest().files)) {
+    if (!id.startsWith(PARTNER_ID_PREFIX)) continue;
+    const namespace = id.slice(PARTNER_ID_PREFIX.length);
+    if (!NAMESPACE_ID.test(namespace)) continue;
+    const fromUrl = entry.url?.split("/").pop() ?? "";
+    const file2 = namespaceFromFileName(fromUrl) === namespace ? fromUrl : fileNameForNamespace(namespace);
+    specs.push(partnerIndex.specFor({ namespace, file: file2 }));
+  }
+  return specs;
+}
 
 // src/schemas.ts
 var MAX_BATCH = 100;
@@ -63478,12 +63524,12 @@ var TargetResolutionError = class extends Error {
 };
 async function resolveTarget(input2) {
   const { config: config2 } = input2;
-  const version2 = input2.version || config2.versionPin || "latest";
+  const versionFor = (target) => input2.version || (target === "cloud-erp-private" ? config2.versionPin || "latest" : "latest");
   if (input2.requested && input2.requested !== "auto") {
-    return { target: input2.requested, version: version2, resolvedFrom: "request", confidence: "high" };
+    return { target: input2.requested, version: versionFor(input2.requested), resolvedFrom: "request", confidence: "high" };
   }
   if (config2.targetPin) {
-    return { target: config2.targetPin, version: version2, resolvedFrom: "environment", confidence: "high" };
+    return { target: config2.targetPin, version: versionFor(config2.targetPin), resolvedFrom: "environment", confidence: "high" };
   }
   const destinations = await readDestinations(config2.adtDestinationsPath);
   const candidates = destinations.map((summary) => ({
@@ -63497,7 +63543,7 @@ async function resolveTarget(input2) {
     const classified = classifyDestination(only);
     return {
       target: classified.target,
-      version: version2,
+      version: versionFor(classified.target),
       resolvedFrom: "single-destination",
       confidence: classified.confidence,
       assumption: `Assumed the only configured ADT destination, ${only.id} (${only.systemId || "no system id"}), which looks like ${classified.target}.`
@@ -63510,7 +63556,7 @@ async function resolveTarget(input2) {
       const classified = classifyDestination(hinted);
       return {
         target: classified.target,
-        version: version2,
+        version: versionFor(classified.target),
         // A stale session folder is a hint, never a fact: cap the confidence.
         confidence: classified.confidence === "low" ? "low" : "medium",
         resolvedFrom: "adt-session",
@@ -63576,7 +63622,7 @@ async function loadTarget(context, request) {
   const { dataset: releaseInfo, spec: releaseSpec } = await context.registry.loadFirstAvailable(resolved.releaseInfoCandidates);
   const classification = resolved.classification ? await context.registry.load(resolved.classification) : null;
   const specs = resolved.classification ? [releaseSpec, resolved.classification] : [releaseSpec];
-  context.cache.ensureFresh(specs);
+  context.cache.ensureFresh([...specs, ...cachedPartnerSpecs(context.cache, context.partnerIndex)]);
   const classificationOf = (record2) => {
     if (!classification) return null;
     const bucket = classification.byKey.get(record2.objectKey.toUpperCase());
@@ -63648,7 +63694,7 @@ async function handleCheckObjects(context, input2) {
   const { resolution } = loaded;
   const refusal = refuseMaxLevelOnNonPrivate(resolution, input2.maxLevel);
   if (refusal) return refusal;
-  const maxLevel = input2.maxLevel ?? (resolution.target === "cloud-erp-private" ? "C" : "A");
+  const maxLevel = input2.maxLevel ?? "A";
   const results = [];
   for (const ref of input2.objects) {
     const request = normalizeObjectRef(ref);
@@ -63726,8 +63772,9 @@ async function handleDatasetInfo(context, input2) {
   try {
     const targeted = resolution ? resolveFiles(resolution.target, resolution.version) : null;
     const classification = targeted?.classification ? [targeted.classification] : [];
-    checked = targeted ? uniqueSpecs([...await releaseInfoToCheck(context, targeted.releaseInfoCandidates), ...classification]) : coreFileSpecs();
-    listed = uniqueSpecs([...targeted?.releaseInfoCandidates ?? [], ...classification, ...checked, ...coreFileSpecs()]);
+    const partner = cachedPartnerSpecs(context.cache, context.partnerIndex);
+    checked = targeted ? uniqueSpecs([...await releaseInfoToCheck(context, targeted.releaseInfoCandidates), ...classification, ...partner]) : uniqueSpecs([...coreFileSpecs(), ...partner]);
+    listed = uniqueSpecs([...targeted?.releaseInfoCandidates ?? [], ...classification, ...checked, ...coreFileSpecs(), ...partner]);
   } catch (error62) {
     return failureFor(error62);
   }
@@ -63738,6 +63785,8 @@ async function handleDatasetInfo(context, input2) {
   }
   const manifest = context.cache.readManifest();
   const files = listed.map((spec) => summarizeFile(context.cache, spec));
+  const partnerNamespaces = (await context.partnerIndex.list()).length;
+  const cachedPartnerFiles = cachedPartnerSpecs(context.cache, context.partnerIndex).length;
   const offline = context.cache.offline;
   const serving = files.some((file2) => file2.status === "ready");
   const hint = offline ? serving ? SERVING_CACHED_HINT : OFFLINE_HINT2 : null;
@@ -63762,7 +63811,11 @@ async function handleDatasetInfo(context, input2) {
     lastCheckedAt: manifest.lastCheckedAt,
     nextCheckAt: manifest.nextCheckAt,
     lastCheckError: manifest.lastCheckError,
-    partnerIndex: manifest.partnerIndex ? { indexSource: manifest.partnerIndex.indexSource, indexedAt: manifest.partnerIndex.indexedAt, fileCount: manifest.partnerIndex.files.length } : null,
+    partnerIndex: {
+      indexSource: context.partnerIndex.source,
+      namespaces: partnerNamespaces,
+      cachedFiles: cachedPartnerFiles
+    },
     files,
     warnings: context.config.warnings,
     ...hint ? { hint } : {}

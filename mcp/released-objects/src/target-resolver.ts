@@ -154,15 +154,22 @@ export class TargetResolutionError extends Error {
 
 export async function resolveTarget(input: ResolveInput): Promise<TargetResolution> {
   const { config } = input
+  /**
+   * Only the private edition ships per-release files, so the pin is a fact about that target
+   * alone: applied to a public or BTP system it would turn every call into an argument error
+   * the caller never asked for. An explicit `version` is passed through whatever the target is,
+   * so the datasets gate can still refuse it in the caller's own words.
+   */
   // `||`, not `??`: an empty version string is "not given", and must not beat the pin.
-  const version = input.version || config.versionPin || 'latest'
+  const versionFor = (target: Target): string =>
+    input.version || (target === 'cloud-erp-private' ? config.versionPin || 'latest' : 'latest')
 
   if (input.requested && input.requested !== 'auto') {
-    return { target: input.requested, version, resolvedFrom: 'request', confidence: 'high' }
+    return { target: input.requested, version: versionFor(input.requested), resolvedFrom: 'request', confidence: 'high' }
   }
 
   if (config.targetPin) {
-    return { target: config.targetPin, version, resolvedFrom: 'environment', confidence: 'high' }
+    return { target: config.targetPin, version: versionFor(config.targetPin), resolvedFrom: 'environment', confidence: 'high' }
   }
 
   const destinations = await readDestinations(config.adtDestinationsPath)
@@ -178,7 +185,7 @@ export async function resolveTarget(input: ResolveInput): Promise<TargetResoluti
     const classified = classifyDestination(only)
     return {
       target: classified.target,
-      version,
+      version: versionFor(classified.target),
       resolvedFrom: 'single-destination',
       confidence: classified.confidence,
       assumption: `Assumed the only configured ADT destination, ${only.id} (${only.systemId || 'no system id'}), which looks like ${classified.target}.`,
@@ -192,7 +199,7 @@ export async function resolveTarget(input: ResolveInput): Promise<TargetResoluti
       const classified = classifyDestination(hinted)
       return {
         target: classified.target,
-        version,
+        version: versionFor(classified.target),
         // A stale session folder is a hint, never a fact: cap the confidence.
         confidence: classified.confidence === 'low' ? 'low' : 'medium',
         resolvedFrom: 'adt-session',

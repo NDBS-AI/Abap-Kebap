@@ -234,6 +234,36 @@ test('a file that holds no records is refused instead of answering as an empty d
   )
 })
 
+test('a corrupt file is evicted, so the next load downloads a good copy again', async () => {
+  const { registry, cache, dataDir } = await makeRegistry({ 'objectReleaseInfo_PCELatest.json': jsonResponse(payload(['CL_A', 'CL_B'])) })
+  assert.equal((await registry.load(PCE_LATEST, 500)).records.length, 2)
+
+  // Truncated on disk behind the server's back; the manifest still believes the file is good.
+  await writeFile(join(dataDir, 'objectReleaseInfo_PCELatest.json'), '{}', 'utf8')
+  registry.invalidate(PCE_LATEST.id)
+  await assert.rejects(
+    () => registry.load(PCE_LATEST, 500),
+    (error: unknown) => error instanceof CacheError && error.code === 'DATASET_UNAVAILABLE',
+  )
+  // Without the eviction the etag would survive, every refresh would earn a 304, and the
+  // unreadable copy would answer for good.
+  assert.equal(cache.status(PCE_LATEST.id), 'missing')
+
+  assert.equal((await registry.load(PCE_LATEST, 500)).records.length, 2)
+  assert.equal(cache.status(PCE_LATEST.id), 'ready')
+})
+
+test('a candidate that 404s once is not asked for again', async () => {
+  const { registry, http } = await makeRegistry({ 'objectReleaseInfo_PCE2023_0.json': jsonResponse(payload(['CL_A'])) })
+  const candidates = () => resolveFiles('cloud-erp-private', '2023').releaseInfoCandidates
+  assert.equal((await registry.loadFirstAvailable(candidates(), 500)).spec.fileName, 'objectReleaseInfo_PCE2023_0.json')
+
+  const before = http.calls.length
+  assert.equal((await registry.loadFirstAvailable(candidates(), 500)).spec.fileName, 'objectReleaseInfo_PCE2023_0.json')
+  const askedAgain = http.calls.slice(before).filter((call) => call.url.endsWith('objectReleaseInfo_PCE2023.json'))
+  assert.deepEqual(askedAgain, [], 'a file SAP does not publish is not re-requested on every lookup')
+})
+
 test('loadFirstAvailable falls through a candidate that does not exist upstream', async () => {
   const { registry } = await makeRegistry({ 'objectReleaseInfo_PCE2022_0.json': jsonResponse(payload(['CL_A'])) })
   const { dataset, spec } = await registry.loadFirstAvailable(resolveFiles('cloud-erp-private', '2022').releaseInfoCandidates, 500)

@@ -147,6 +147,8 @@ function isMissingCandidate(error: unknown): boolean {
 /** Parses each file at most once per process, and forgets it when the cache swaps the file. */
 export class DatasetRegistry {
   private readonly loaded = new Map<string, Dataset>()
+  /** Spec ids that answered 404 upstream; a version that does not exist is not asked for twice. */
+  private readonly missing = new Set<string>()
 
   constructor(private readonly cache: CacheManager) {
     cache.subscribe((id) => this.invalidate(id))
@@ -154,6 +156,8 @@ export class DatasetRegistry {
 
   invalidate(id: string): void {
     this.loaded.delete(id)
+    // The cache just wrote or evicted this file, so whatever upstream said last time is stale too.
+    this.missing.delete(id)
   }
 
   async load(spec: FileSpec, timeoutMs = 30_000): Promise<Dataset> {
@@ -164,6 +168,9 @@ export class DatasetRegistry {
     // The cache never writes a payload with zero rows, so an empty parse means the file on disk
     // was truncated or edited. Answering "not released" out of it would be a silent wrong answer.
     if (records.length === 0) {
+      // Drop the unreadable copy and its etag: while the manifest still claims the file, every
+      // refresh earns a 304 and the bad copy stays forever. Evicted, the next load downloads again.
+      await this.cache.evict(spec)
       throw new CacheError(
         'DATASET_UNAVAILABLE',
         `${spec.fileName} is on disk but holds no records; it may be truncated — call dataset_info with refresh to re-download`,
@@ -178,11 +185,19 @@ export class DatasetRegistry {
   async loadFirstAvailable(candidates: FileSpec[], timeoutMs = 30_000): Promise<{ dataset: Dataset; spec: FileSpec }> {
     let lastError: CacheError | null = null
     for (const spec of candidates) {
+      // A 404 is a fact about upstream, not about this call: the losing spelling of a bare year
+      // would otherwise be requested again on every single lookup.
+      if (this.missing.has(spec.id)) {
+        lastError = new CacheError('UNKNOWN_VERSION', `${spec.fileName} does not exist upstream`)
+        continue
+      }
       try {
         return { dataset: await this.load(spec, timeoutMs), spec }
       } catch (error) {
         // A download still running, or anything that is not a cache failure, is the caller's answer.
         if (!isMissingCandidate(error)) throw error
+        // Only an outright 404 is remembered; DATASET_UNAVAILABLE can be a transient outage.
+        if ((error as CacheError).code === 'UNKNOWN_VERSION') this.missing.add(spec.id)
         lastError = error as CacheError
       }
     }

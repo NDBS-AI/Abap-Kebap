@@ -21,7 +21,10 @@ export async function handleCheckObjects(context: ServerContext, input: CheckObj
   const { resolution } = loaded
   const refusal = refuseMaxLevelOnNonPrivate(resolution, input.maxLevel)
   if (refusal) return refusal
-  const maxLevel: MaxLevel = input.maxLevel ?? (resolution.target === 'cloud-erp-private' ? 'C' : 'A')
+  // Level A - released APIs only - on every target, private edition included (spec 7.1): the
+  // strict answer is the safe default, and a caller who can live with a classic or unclassified
+  // API says so with `maxLevel`. `impliedLevelWhenAbsent` still reports what absence means there.
+  const maxLevel: MaxLevel = input.maxLevel ?? 'A'
 
   const results: ObjectResult[] = []
   for (const ref of input.objects) {

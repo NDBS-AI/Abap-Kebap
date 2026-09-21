@@ -1,6 +1,7 @@
 import { CacheError, type FileSpec } from '../cache'
 import { DEFAULT_BASE_URL, SERVER_VERSION, SOURCE_REPO } from '../config'
 import { coreFileSpecs, resolveFiles, type ResolvedFiles } from '../datasets'
+import { cachedPartnerSpecs } from '../partner-index'
 import type { DatasetInfoInput } from '../schemas'
 import { resolveTarget, TargetResolutionError, type TargetResolution } from '../target-resolver'
 import { failureFor, summarizeFile, toolSuccess, type FileSummary, type ServerContext, type ToolResult } from './context'
@@ -61,15 +62,19 @@ export async function handleDatasetInfo(context: ServerContext, input: DatasetIn
   try {
     const targeted: ResolvedFiles | null = resolution ? resolveFiles(resolution.target, resolution.version) : null
     const classification = targeted?.classification ? [targeted.classification] : []
+    // Partner files are downloaded by a lookup and never checked again on their own; this is the
+    // one tool that can re-check them, so every cached one joins the check and the list. They are
+    // optional, so a partner file that fails cannot become this call's `lastCheckError`.
+    const partner = cachedPartnerSpecs(context.cache, context.partnerIndex)
     // What the check covers: the files this request is about, or — with no target to be about —
     // every core file. Checking the other targets' files too would report their failures as this
     // request's `lastCheckError` and hide the one the caller ran the tool to see.
     checked = targeted
-      ? uniqueSpecs([...(await releaseInfoToCheck(context, targeted.releaseInfoCandidates)), ...classification])
-      : coreFileSpecs()
+      ? uniqueSpecs([...(await releaseInfoToCheck(context, targeted.releaseInfoCandidates)), ...classification, ...partner])
+      : uniqueSpecs([...coreFileSpecs(), ...partner])
     // What the answer lists: every candidate, checked or not, plus every core file, so the caller
     // sees the whole cache and not only the slice this call touched.
-    listed = uniqueSpecs([...(targeted?.releaseInfoCandidates ?? []), ...classification, ...checked, ...coreFileSpecs()])
+    listed = uniqueSpecs([...(targeted?.releaseInfoCandidates ?? []), ...classification, ...checked, ...coreFileSpecs(), ...partner])
   } catch (error) {
     return failureFor(error)
   }
@@ -84,6 +89,11 @@ export async function handleDatasetInfo(context: ServerContext, input: DatasetIn
 
   const manifest = context.cache.readManifest()
   const files: FileSummary[] = listed.map((spec) => summarizeFile(context.cache, spec))
+  // Resolved before the answer is built so `partnerIndexSource` below reports the route the list
+  // actually came from rather than the built-in default nobody has asked to replace yet. The
+  // namespaces are the ones this server knows of; the cached files are the ones it has.
+  const partnerNamespaces = (await context.partnerIndex.list()).length
+  const cachedPartnerFiles = cachedPartnerSpecs(context.cache, context.partnerIndex).length
 
   // Offline with a cached copy is a different situation from offline with nothing: the first
   // still answers questions, and telling the user to fix their proxy before anything works would
@@ -113,9 +123,11 @@ export async function handleDatasetInfo(context: ServerContext, input: DatasetIn
     lastCheckedAt: manifest.lastCheckedAt,
     nextCheckAt: manifest.nextCheckAt,
     lastCheckError: manifest.lastCheckError,
-    partnerIndex: manifest.partnerIndex
-      ? { indexSource: manifest.partnerIndex.indexSource, indexedAt: manifest.partnerIndex.indexedAt, fileCount: manifest.partnerIndex.files.length }
-      : null,
+    partnerIndex: {
+      indexSource: context.partnerIndex.source,
+      namespaces: partnerNamespaces,
+      cachedFiles: cachedPartnerFiles,
+    },
     files,
     warnings: context.config.warnings,
     ...(hint ? { hint } : {}),

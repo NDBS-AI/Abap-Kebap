@@ -8,7 +8,9 @@ import { loadConfig } from '../src/config'
 import { DatasetRegistry } from '../src/datasets'
 import { PartnerIndex } from '../src/partner-index'
 import { handleDatasetInfo } from '../src/tools/dataset-info'
-import { fakeHttp, jsonResponse, notModified, unreachable } from './helpers/fixtures'
+import { loadTarget } from '../src/tools/context'
+import { BUILT_IN_PARTNER_INDEX } from '../src/partner-index'
+import { fakeClock, fakeHttp, jsonResponse, notModified, unreachable } from './helpers/fixtures'
 import type { FakeHttp, Route } from './helpers/fixtures'
 import type { ServerContext } from '../src/tools/context'
 
@@ -38,7 +40,11 @@ after(async () => {
   for (const dir of tempDirs) await rm(dir, { recursive: true, force: true }).catch(() => {})
 })
 
-async function contextFor(routes: Record<string, Route>, env: NodeJS.ProcessEnv = {}): Promise<{ context: ServerContext; http: FakeHttp }> {
+async function contextFor(
+  routes: Record<string, Route>,
+  env: NodeJS.ProcessEnv = {},
+  clock = fakeClock('2026-09-21T08:00:00Z'),
+): Promise<{ context: ServerContext; http: FakeHttp }> {
   const dataDir = await mkdtemp(join(tmpdir(), 'ro-info-'))
   tempDirs.push(dataDir)
   const http = fakeHttp(routes)
@@ -49,7 +55,7 @@ async function contextFor(routes: Record<string, Route>, env: NodeJS.ProcessEnv 
   }, dataDir)
   const cache = new CacheManager({
     dataDir: config.dataDir, baseUrl: config.baseUrl, githubApi: null, http,
-    now: () => new Date('2026-09-21T08:00:00Z'), log: () => {},
+    now: clock.now, log: () => {},
   })
   const context: ServerContext = {
     cache,
@@ -170,4 +176,57 @@ test('an unresolved target is reported as a field, and the core files are still 
   assert.equal(payload.target, null)
   assert.equal(payload.targetProblem.code, 'TARGET_UNRESOLVED')
   assert.ok(payload.files.length >= 1)
+})
+
+const PARTNER_FILE = 'partner/objectClassifications_OTX.json'
+
+const partnerCorpus = () => jsonResponse({
+  formatVersion: '2',
+  objectClassifications: [
+    { tadirObject: 'CLAS', tadirObjName: '/OTX/CL_A', objectType: 'CLAS', objectKey: '/OTX/CL_A', state: 'classicAPI' },
+  ],
+}, '"p1"')
+
+/** A context whose partner file has already been pulled in by a lookup, as only a lookup can. */
+async function withCachedPartnerFile() {
+  const clock = fakeClock('2026-09-21T08:00:00Z')
+  const { context, http } = await contextFor(
+    { [BTP_FILE]: corpus(), [PARTNER_FILE]: partnerCorpus() },
+    { ABAP_KEBAP_RELEASED_OBJECTS_TARGET: 'btp-abap-environment' },
+    clock,
+  )
+  const loaded = await loadTarget(context, { target: 'auto' })
+  assert.ok(await loaded.partnerFor('/OTX/CL_A'))
+  // loadTarget opens the daily gate in the background; let it finish before the clock moves.
+  await new Promise((resolve) => setTimeout(resolve, 20))
+  return { context, http, clock }
+}
+
+test('a partner file pulled in by a lookup is re-checked by the daily gate afterwards', async () => {
+  const { context, http, clock } = await withCachedPartnerFile()
+  clock.advanceDays(1)
+
+  const before = http.calls.length
+  const payload = await info(context)
+
+  const rechecked = http.calls.slice(before).filter((call) => call.url.endsWith(PARTNER_FILE))
+  assert.equal(rechecked.length, 1, 'the cached partner file joins the check like any other file')
+  assert.ok(payload.files.some((entry: { fileName: string }) => entry.fileName === PARTNER_FILE))
+})
+
+test('the partner index is reported from the index itself, not from a manifest field nobody writes', async () => {
+  const { context } = await withCachedPartnerFile()
+  const payload = await info(context)
+  assert.deepEqual(payload.partnerIndex, {
+    indexSource: 'built-in',
+    namespaces: BUILT_IN_PARTNER_INDEX.length,
+    cachedFiles: 1,
+  })
+})
+
+test('with no partner file cached the count is zero rather than a missing section', async () => {
+  const { context } = await makeContext()
+  const payload = await info(context)
+  assert.equal(payload.partnerIndex.cachedFiles, 0)
+  assert.ok(payload.partnerIndex.namespaces > 0)
 })

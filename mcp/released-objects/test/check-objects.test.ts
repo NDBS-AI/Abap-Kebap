@@ -144,6 +144,52 @@ test('the classification pool holds only what release info does not, so nothing 
   assert.equal(loaded.classification?.records.length, 3)
 })
 
+/** The private edition, where a level exists at all: MARA is unreleased and unclassified. */
+const privateContext = () => contextFor(
+  {
+    'objectReleaseInfo_PCELatest.json': jsonResponse({
+      formatVersion: 1,
+      objectReleaseInfo: [
+        record({ objectKey: 'MARA', tadirObjName: 'MARA', state: 'notToBeReleased' }),
+        record({ objectKey: 'I_PRODUCT', tadirObjName: 'I_PRODUCT', objectType: 'DDLS', tadirObject: 'DDLS' }),
+      ],
+    }),
+    'objectClassifications_SAP.json': jsonResponse({
+      formatVersion: 1,
+      objectClassifications: [record({ objectKey: 'BAPI_ONLY', tadirObjName: 'BAPI_ONLY', objectType: 'FUNC', tadirObject: 'FUGR', state: 'classicAPI' })],
+    }),
+  },
+  { ABAP_KEBAP_RELEASED_OBJECTS_TARGET: 'cloud-erp-private' },
+)
+
+test('the private edition defaults to maxLevel A, so an unclassified object is not allowed', async () => {
+  const payload = payloadOf(await handleCheckObjects(await privateContext(), { objects: ['MARA'], target: 'auto' } as never))
+  assert.equal(payload.maxLevel, 'A')
+  assert.equal(payload.results[0].verdict, 'blocked')
+  assert.equal(payload.results[0].matches[0].cleanCoreLevel, 'C')
+})
+
+test('an absent object on the private edition is implied Level C, and Level C is outside the default', async () => {
+  const payload = payloadOf(await handleCheckObjects(await privateContext(), { objects: ['ZZ_CUSTOM'], target: 'auto' } as never))
+  assert.equal(payload.impliedLevelWhenAbsent, 'C')
+  assert.equal(payload.results[0].impliedLevel, 'C')
+  assert.equal(payload.results[0].allowed, false)
+})
+
+test('maxLevel C is how a caller admits the unclassified objects the default keeps out', async () => {
+  const payload = payloadOf(await handleCheckObjects(await privateContext(), { objects: ['MARA'], target: 'auto', maxLevel: 'C' } as never))
+  assert.equal(payload.maxLevel, 'C')
+  assert.equal(payload.results[0].verdict, 'allowed')
+  assert.equal(payload.results[0].matches[0].cleanCoreLevel, 'C')
+})
+
+test('maxLevel B admits a classic API and still keeps the unclassified ones out', async () => {
+  const payload = payloadOf(await handleCheckObjects(await privateContext(), { objects: ['BAPI_ONLY', 'MARA'], target: 'auto', maxLevel: 'B' } as never))
+  assert.equal(payload.results[0].verdict, 'allowed')
+  assert.equal(payload.results[0].matches[0].cleanCoreLevel, 'B')
+  assert.equal(payload.results[1].verdict, 'blocked')
+})
+
 test('a version that does not exist upstream is an invalid argument, not an internal error', async () => {
   const missing: Route = { status: 404, headers: {}, body: null }
   const context = await contextFor(

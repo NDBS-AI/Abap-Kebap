@@ -188,10 +188,24 @@ test('a schemeless host:port systemUrl still yields its host', () => {
 
 test('an empty version is not a version and falls back to the pin', async () => {
   const config = await configFor(join(await workspace(), 'nope'), {
-    ABAP_KEBAP_RELEASED_OBJECTS_TARGET: 'cloud-erp',
+    ABAP_KEBAP_RELEASED_OBJECTS_TARGET: 'cloud-erp-private',
     ABAP_KEBAP_RELEASED_OBJECTS_VERSION: '2023',
   })
   assert.equal((await resolveTarget({ requested: 'auto', version: '', config })).version, '2023')
+})
+
+test('the version pin belongs to the private edition and is not carried onto other targets', async () => {
+  // Only cloud-erp-private has per-release files; pinning a version and then asking about BTP
+  // must not hand the datasets gate a version it is bound to reject.
+  const config = await configFor(join(await workspace(), 'nope'), { ABAP_KEBAP_RELEASED_OBJECTS_VERSION: '2023' })
+  assert.equal((await resolveTarget({ requested: 'btp-abap-environment', config })).version, 'latest')
+  assert.equal((await resolveTarget({ requested: 'cloud-erp', config })).version, 'latest')
+  assert.equal((await resolveTarget({ requested: 'cloud-erp-private', config })).version, '2023')
+})
+
+test('an explicit version still reaches a public target, so the refusal names the version', async () => {
+  const config = await configFor(join(await workspace(), 'nope'), { ABAP_KEBAP_RELEASED_OBJECTS_VERSION: '2023' })
+  assert.equal((await resolveTarget({ requested: 'cloud-erp', version: '2025_1', config })).version, '2025_1')
 })
 
 test('nothing to go on is unresolved rather than a silent default', async () => {
