@@ -65,15 +65,17 @@ export function resolveFiles(target: Target, version?: string): ResolvedFiles {
     }
   }
 
-  const effective = version ?? 'latest'
+  // An empty version is "no version given", exactly as it is for the other two targets.
+  const effective = version || 'latest'
   // The only gate between a caller-supplied string and a file name: nothing else may build a path.
   if (!VERSION_PATTERN.test(effective)) {
     throw new CacheError('UNKNOWN_VERSION', `"${effective}" is not a valid version (expected latest, YYYY or YYYY_N)`)
   }
   return {
     releaseInfoCandidates: versionFileNames(effective).map((fileName) => ({
-      // `latest` keeps the bootstrap's id so the downloaded file is not tracked twice.
-      id: effective === 'latest' ? latestId(target) : `${target}/${effective}:${fileName}`,
+      // Ids are keyed on the file, never on the spelling that asked for it: `2023` and `2023_0`
+      // name the same upstream file, and two ids for one file would be memoised and refreshed twice.
+      id: effective === 'latest' ? latestId(target) : `${target}/file:${fileName}`,
       fileName,
       arrayKey: 'objectReleaseInfo' as const,
       optional: false,
@@ -158,7 +160,16 @@ export class DatasetRegistry {
     const cached = this.loaded.get(spec.id)
     if (cached) return cached
     await this.cache.ensureFile(spec, timeoutMs)
-    const dataset = buildDataset(parseRecords(await this.cache.readFileText(spec), spec.arrayKey))
+    const records = parseRecords(await this.cache.readFileText(spec), spec.arrayKey)
+    // The cache never writes a payload with zero rows, so an empty parse means the file on disk
+    // was truncated or edited. Answering "not released" out of it would be a silent wrong answer.
+    if (records.length === 0) {
+      throw new CacheError(
+        'DATASET_UNAVAILABLE',
+        `${spec.fileName} is on disk but holds no records; it may be truncated — call dataset_info with refresh to re-download`,
+      )
+    }
+    const dataset = buildDataset(records)
     this.loaded.set(spec.id, dataset)
     return dataset
   }

@@ -77,10 +77,22 @@ test('the latest files carry the bootstrap ids, so one download serves both path
   assert.equal(resolveFiles('cloud-erp').releaseInfoCandidates[0]?.id, coreIdFor('objectReleaseInfoLatest.json'))
 })
 
-test('two versions never share a cache id', () => {
-  const idsOf = (version: string) => resolveFiles('cloud-erp-private', version).releaseInfoCandidates.map((spec) => spec.id)
-  const all = [...idsOf('2022'), ...idsOf('2023_2'), ...idsOf('latest')]
-  assert.equal(new Set(all).size, all.length)
+test('two spellings of the same release share one cache id, different files do not', () => {
+  const candidates = (version: string) => resolveFiles('cloud-erp-private', version).releaseInfoCandidates
+  // `2023` falls back to `_PCE2023_0.json`, which is what `2023_0` asks for directly.
+  const viaBareYear = candidates('2023')[1]
+  const viaExplicit = candidates('2023_0')[0]
+  assert.equal(viaBareYear?.fileName, viaExplicit?.fileName)
+  assert.equal(viaBareYear?.id, viaExplicit?.id)
+
+  const ids = [...candidates('2022'), ...candidates('2023'), ...candidates('latest')].map((spec) => spec.id)
+  const files = [...candidates('2022'), ...candidates('2023'), ...candidates('latest')].map((spec) => spec.fileName)
+  assert.equal(new Set(ids).size, new Set(files).size)
+})
+
+test('an empty version means latest for every target, not a rejection', () => {
+  assert.equal(resolveFiles('cloud-erp-private', '').releaseInfoCandidates[0]?.fileName, 'objectReleaseInfo_PCELatest.json')
+  assert.equal(resolveFiles('cloud-erp', '').releaseInfoCandidates[0]?.fileName, 'objectReleaseInfoLatest.json')
 })
 
 test('parseRecords reads the array and tolerates a string formatVersion', () => {
@@ -207,6 +219,19 @@ test('invalidate forgets one dataset and leaves the others alone', async () => {
 
   assert.equal((await registry.load(PCE_LATEST, 500)).records.length, 2)
   assert.equal(await registry.load(classification, 500), kept)
+})
+
+test('a file that holds no records is refused instead of answering as an empty dataset', async () => {
+  const { registry, dataDir } = await makeRegistry({ 'objectReleaseInfo_PCELatest.json': jsonResponse(payload(['CL_A'])) })
+  await registry.load(PCE_LATEST, 500)
+  // Truncated or hand-edited on disk: the cache itself never writes a payload with zero rows.
+  await writeFile(join(dataDir, 'objectReleaseInfo_PCELatest.json'), '{}', 'utf8')
+  registry.invalidate(PCE_LATEST.id)
+
+  await assert.rejects(
+    () => registry.load(PCE_LATEST, 500),
+    (error: unknown) => error instanceof CacheError && error.code === 'DATASET_UNAVAILABLE' && /truncated/.test(error.message),
+  )
 })
 
 test('loadFirstAvailable falls through a candidate that does not exist upstream', async () => {
