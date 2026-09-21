@@ -67,6 +67,7 @@ jobs:
       - name: Smoke-test the bundle with no node_modules reachable
         run: |
           TMP="$(mktemp -d)"
+          trap 'rm -rf "$TMP"' EXIT
           cp dist/index.js "$TMP/index.js"
           node scripts/smoke.mjs "$TMP/index.js"
         working-directory: mcp/released-objects

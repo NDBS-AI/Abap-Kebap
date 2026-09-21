@@ -184,12 +184,13 @@ This set is deliberately lean: free static checks and on-demand grounding do the
 
 Installing the plugin also installs an MCP server called `released-objects`. It exposes
 three tools — `check_objects` (is this object released for my target system?),
-`search_objects` (find a released object by name or description) and `dataset_info`
-(which data is loaded, and how old is it). No extra installation step is needed.
+`search_objects` (find a released object by name, type or application component) and
+`dataset_info` (which data is loaded, and how old is it). No extra installation step is
+needed.
 
 On first use the server downloads SAP's public released-object data from
 [`github.com/SAP/abap-atc-cr-cv-s4hc`](https://github.com/SAP/abap-atc-cr-cv-s4hc)
-into the plugin's data directory — roughly 30 MB across the four core files. After that
+into the plugin's data directory — tens of megabytes across the four core files. After that
 it re-checks once per local day using a conditional request and re-downloads only what
 actually changed, so a normal day costs one request per file and no download at all.
 Once the data is on disk the server works offline. It never sends your code or your
