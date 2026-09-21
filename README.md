@@ -173,9 +173,44 @@ Beyond agents and skills, the repo ships the machinery that makes the output pre
 |---|---|
 | **Remote grounding** | Agents verify uncertain syntax/annotations/released-API names against authoritative public sources (`raw.githubusercontent.com`, `help.sap.com`, …) **before asserting**, and cite the URL — instead of trusting frozen skill text. See [`docs/grounding-protocol.md`](docs/grounding-protocol.md). Enabled by the WebFetch/WebSearch allowlist in [`.claude/settings.json`](.claude/settings.json). |
 | **Two-tier evals (`evals/`)** | **Tier 1 — static** (`run-static.mjs`): deterministic token checks over the files, ~0 tokens, run on every change — catches content regressions like the `@Semantics.systemDate.*` drift. **Tier 2 — behavioral** (`abap-evals` workflow): Q&A cases dispatched to agents on a cheap model, skill-only, run at milestones. |
+| **`released-objects` MCP server** | A local server (`mcp/released-objects/`) that answers "is this SAP object released for my target system?" from SAP's own published lists, with the tools `check_objects`, `search_objects` and `dataset_info`. See [Released-object data](#released-object-data). |
 | **`/abap-learn` command** | Capture a correction you spot in agent output. It locates the root skill, proposes the fix **plus** a Tier-1 static rule (with a mandatory `grounded:` citation or `project convention` marker), and on your confirmation applies, verifies with both gates, records the decision in [`docs/lessons.md`](docs/lessons.md), and commits — so each mistake you catch is locked against regression. Human-in-the-loop, no background cost. See [`.claude/commands/abap-learn.md`](.claude/commands/abap-learn.md). |
 
 This set is deliberately lean: free static checks and on-demand grounding do the heavy lifting, and the only workflow is the milestone eval runner. There are **no multi-agent review workflows** — earlier parallel ones (review-panel, quality-gate) were removed as too token-heavy.
+
+---
+
+## Released-object data
+
+Installing the plugin also installs an MCP server called `released-objects`. It exposes
+three tools — `check_objects` (is this object released for my target system?),
+`search_objects` (find a released object by name or description) and `dataset_info`
+(which data is loaded, and how old is it). No extra installation step is needed.
+
+On first use the server downloads SAP's public released-object data from
+[`github.com/SAP/abap-atc-cr-cv-s4hc`](https://github.com/SAP/abap-atc-cr-cv-s4hc)
+into the plugin's data directory — roughly 30 MB across the four core files. After that
+it re-checks once per local day using a conditional request and re-downloads only what
+actually changed, so a normal day costs one request per file and no download at all.
+Once the data is on disk the server works offline. It never sends your code or your
+object names anywhere; every lookup is answered locally.
+
+Behind a corporate proxy, set `HTTPS_PROXY` and `NO_PROXY`, and set
+`NODE_EXTRA_CA_CERTS` as well when the proxy inspects TLS. If your organization keeps an
+internal mirror of the SAP repository, point the server at it with
+`ABAP_KEBAP_RELEASED_OBJECTS_BASE_URL`; that also turns off the GitHub API calls.
+
+By default the server resolves the target system from the connected ADT system, or asks
+you when it cannot. To override that and pin the target, set
+`ABAP_KEBAP_RELEASED_OBJECTS_TARGET` to `cloud-erp`, `cloud-erp-private` or
+`btp-abap-environment`, and set `ABAP_KEBAP_RELEASED_OBJECTS_VERSION` to the
+private-edition release (for example `2023`) when you use `cloud-erp-private`.
+
+The server needs Node 20 or newer. Run `/mcp` in Claude Code to turn it off.
+
+The data is SAP's, published under Apache-2.0, and SAP's own note applies: the license
+covers the released-object lists, not the use of the SAP APIs those lists describe. The
+server code itself is MIT, like the rest of this repository.
 
 ---
 
@@ -295,6 +330,9 @@ To add a whole new skill, start from the scaffold in [`templates/skill/`](templa
 Deferred improvements (content lift for thin skills, missing `examples/`, and the
 next skills to add — RFC/BAPI connectivity, ATC operations, CDS analytics, ALV
 authoring) are tracked in [`docs/roadmap.md`](docs/roadmap.md).
+
+For the `released-objects` server, successor-chain walking (following a deprecated object
+through its replacements) and automatic suggestion of alternatives are not in this version.
 
 ---
 

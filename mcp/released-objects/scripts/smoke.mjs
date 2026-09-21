@@ -5,7 +5,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const bundle = fileURLToPath(new URL('../dist/index.js', import.meta.url))
+// An optional first argument points the smoke test at a copy of the bundle, which lets CI
+// prove that dist/index.js runs with no node_modules reachable.
+const bundle = process.argv[2] ?? fileURLToPath(new URL('../dist/index.js', import.meta.url))
 const dataDir = await mkdtemp(join(tmpdir(), 'released-objects-smoke-'))
 const child = spawn(process.execPath, [bundle], {
   stdio: ['pipe', 'pipe', 'inherit'],

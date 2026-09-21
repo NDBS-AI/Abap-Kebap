@@ -39,3 +39,34 @@ jobs:
       - run: npm install -g @anthropic-ai/claude-code
       - name: Validate Claude Code plugin and marketplace
         run: claude plugin validate .
+
+  mcp-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Refuse a second MCP declaration
+        run: test ! -f .mcp.json
+      - name: Install dependencies
+        run: npm ci
+        working-directory: mcp/released-objects
+      - name: Type-check and test
+        run: npm test
+        working-directory: mcp/released-objects
+      - name: Rebuild the bundle
+        run: npm run build
+        working-directory: mcp/released-objects
+      - name: Fail if the committed bundle is stale
+        run: git diff --exit-code -- dist/index.js
+        working-directory: mcp/released-objects
+      - name: Smoke-test the bundle
+        run: node scripts/smoke.mjs
+        working-directory: mcp/released-objects
+      - name: Smoke-test the bundle with no node_modules reachable
+        run: |
+          TMP="$(mktemp -d)"
+          cp dist/index.js "$TMP/index.js"
+          node scripts/smoke.mjs "$TMP/index.js"
+        working-directory: mcp/released-objects

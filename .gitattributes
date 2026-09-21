@@ -1,0 +1,2 @@
+# The committed bundle must stay byte-stable so the CI "git diff --exit-code" check passes regardless of core.autocrlf.
+mcp/released-objects/dist/index.js -text
