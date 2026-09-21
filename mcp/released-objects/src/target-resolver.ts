@@ -45,14 +45,38 @@ export async function readDestinations(path: string): Promise<DestinationSummary
   return summaries
 }
 
-function hostOf(systemUrl: string): string {
+const SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i
+
+/**
+ * Drops any `user:password@` prefix from the authority. Applied to every spelling before a
+ * host is read, so a `user@host` systemUrl can never carry a name into a candidate list.
+ * Only the authority is touched: an `@` later in the path is left where it is.
+ */
+function stripUserInfo(systemUrl: string): string {
+  const scheme = SCHEME.exec(systemUrl)?.[0] ?? ''
+  const rest = systemUrl.slice(scheme.length)
+  const boundary = rest.search(/[/?#]/)
+  const authority = boundary === -1 ? rest : rest.slice(0, boundary)
+  const tail = boundary === -1 ? '' : rest.slice(boundary)
+  const lastAt = authority.lastIndexOf('@')
+  return `${scheme}${lastAt === -1 ? authority : authority.slice(lastAt + 1)}${tail}`
+}
+
+/** The host of an ADT `systemUrl`, with user info removed whichever spelling it arrives in. */
+export function hostOf(systemUrl: string): string {
   if (!systemUrl) return ''
-  try {
-    return new URL(systemUrl).hostname
-  } catch {
-    // RFC destinations carry a message-server string rather than a URL.
-    return systemUrl.replace(/^[a-z]+:\/\//i, '').split(/[/:]/)[0] ?? ''
+  const withoutUserInfo = stripUserInfo(systemUrl)
+  // A schemeless `host:port/path` parses as a URL whose scheme is the host — dots are legal
+  // scheme characters — and its `hostname` is empty, so only a real `://` spelling is parsed.
+  if (systemUrl.includes('://')) {
+    try {
+      return new URL(withoutUserInfo).hostname
+    } catch {
+      // Not a URL after all; read it textually below.
+    }
   }
+  // RFC destinations carry a message-server string rather than a URL.
+  return withoutUserInfo.replace(SCHEME, '').split(/[/:]/)[0] ?? ''
 }
 
 /** Anything shown to a model or a user keeps at most the last three labels. */
@@ -130,7 +154,8 @@ export class TargetResolutionError extends Error {
 
 export async function resolveTarget(input: ResolveInput): Promise<TargetResolution> {
   const { config } = input
-  const version = input.version ?? config.versionPin ?? 'latest'
+  // `||`, not `??`: an empty version string is "not given", and must not beat the pin.
+  const version = input.version || config.versionPin || 'latest'
 
   if (input.requested && input.requested !== 'auto') {
     return { target: input.requested, version, resolvedFrom: 'request', confidence: 'high' }

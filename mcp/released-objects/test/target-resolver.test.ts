@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { loadConfig } from '../src/config'
 import {
-  classifyDestination, lastLoggedOnDestination, readDestinations, redactHost,
+  classifyDestination, hostOf, lastLoggedOnDestination, readDestinations, redactHost,
   resolveTarget, TargetResolutionError,
 } from '../src/target-resolver'
 import type { ServerConfig } from '../src/config'
@@ -147,6 +147,51 @@ test('several destinations and no hint is ambiguous, with redacted candidates', 
   assert.equal(error.code, 'TARGET_AMBIGUOUS')
   assert.deepEqual(error.candidates.map((candidate) => candidate.id), ['DEV', 'PRD'])
   assert.equal(JSON.stringify(error.candidates).includes('my1.'), false)
+})
+
+/** Both entries carry every credential-like field an ADT destination can hold. */
+const CREDENTIALED = {
+  destinations: [
+    {
+      id: 'DEV', protocol: 'http',
+      properties: { systemUrl: 'SOME_USER@dev.example.com', systemId: 'S4D' },
+      user: 'SOME_USER', authenticationKind: 'basic', password: 'never-read-this', token: 'never-read-this-token',
+    },
+    {
+      id: 'QAS', protocol: 'http',
+      properties: { systemUrl: 'https://OTHER_USER:never-read-this@my1.host.example.com/sap/bc/adt', systemId: 'S4Q' },
+      user: 'OTHER_USER', authenticationKind: 'basic', password: 'never-read-this', token: 'never-read-this-token',
+    },
+  ],
+}
+
+test('user info in a systemUrl never reaches the candidate list or the error message', async () => {
+  const dir = await workspace()
+  await writeDestinations(dir, CREDENTIALED)
+  const config = await configFor(dir)
+  const error = await resolveTarget({ requested: 'auto', config }).then(() => null, (caught: unknown) => caught)
+  assert.ok(error instanceof TargetResolutionError)
+  assert.equal(error.code, 'TARGET_AMBIGUOUS')
+  const exposed = JSON.stringify(error.candidates) + error.message
+  for (const secret of ['SOME_USER', 'OTHER_USER', 'never-read-this', 'never-read-this-token', 'basic', 'authenticationKind', '@']) {
+    assert.equal(exposed.includes(secret), false, `${secret} leaked into the ambiguity report`)
+  }
+  assert.deepEqual(error.candidates.map((candidate) => candidate.host), ['dev.example.com', 'host.example.com'])
+})
+
+test('a schemeless host:port systemUrl still yields its host', () => {
+  assert.equal(hostOf('myhost.example.com:44300/sap/bc/adt'), 'myhost.example.com')
+  assert.equal(hostOf('https://my123456.s4hana.cloud.sap:443/sap/bc/adt'), 'my123456.s4hana.cloud.sap')
+  assert.equal(hostOf('SOME_USER@dev.example.com'), 'dev.example.com')
+  assert.equal(hostOf('sapmsPRD'), 'sapmsPRD')
+})
+
+test('an empty version is not a version and falls back to the pin', async () => {
+  const config = await configFor(join(await workspace(), 'nope'), {
+    ABAP_KEBAP_RELEASED_OBJECTS_TARGET: 'cloud-erp',
+    ABAP_KEBAP_RELEASED_OBJECTS_VERSION: '2023',
+  })
+  assert.equal((await resolveTarget({ requested: 'auto', version: '', config })).version, '2023')
 })
 
 test('nothing to go on is unresolved rather than a silent default', async () => {
