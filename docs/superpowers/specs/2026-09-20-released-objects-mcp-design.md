@@ -103,7 +103,7 @@ For SAP Cloud ERP and BTP ABAP Environment only Level A exists: an object is rel
 /plugin install abap-kebap@abgunes
         │  (git clone of this repo; no build step runs on the user's machine)
         ▼
-.claude-plugin/plugin.json ── mcpServers.released-objects ──► node mcp-server/dist/index.js
+.claude-plugin/plugin.json ── mcpServers.released-objects ──► node mcp/released-objects/dist/index.js
                                                                      │  (committed single-file bundle)
                                     ┌────────────────────────────────┼─────────────────────────────────┐
                                     │  tools/ (MCP layer)            │  cache.ts (freshness)            │
@@ -137,14 +137,14 @@ Three units, each testable alone:
     "released-objects": {
       "command": "node",
       "args": [
-        "${CLAUDE_PLUGIN_ROOT}/mcp-server/dist/index.js",
+        "${CLAUDE_PLUGIN_ROOT}/mcp/released-objects/dist/index.js",
         "--data-dir", "${CLAUDE_PLUGIN_DATA}/released-objects"
       ]
     }
   }
   ```
 
-- `mcp-server/dist/index.js` is a **committed, dependency-free single-file bundle** built with
+- `mcp/released-objects/dist/index.js` is a **committed, dependency-free single-file bundle** built with
   esbuild (MCP SDK, Zod and undici folded in). Runtime requirement: Node.js ≥ 20, which
   Claude Code itself already needs. The server checks `process.version` at startup and exits
   with a clear stderr message below 20.
@@ -495,7 +495,7 @@ instruction only, kept short. Exact phrases in bold are locked by static rules (
   three tools, data source and licensing note (data files Apache-2.0; using the SAP APIs they
   describe still requires a valid SAP license — SAP's REUSE note), cache location and size
   (~30–40 MB), proxy variables, disabling via `/mcp`, and a `.vscode/mcp.json` snippet for
-  Copilot users (`node <clone>/mcp-server/dist/index.js` — the committed bundle runs from a
+  Copilot users (`node <clone>/mcp/released-objects/dist/index.js` — the committed bundle runs from a
   clone with no build).
 - `docs/grounding-protocol.md` — remove the stale "five agents … fixed tools list (no MCP)"
   statement; add the bundled server as the preferred source for release state in the topic
@@ -508,9 +508,9 @@ instruction only, kept short. Exact phrases in bold are locked by static rules (
 
 All free and deterministic; added to `.github/workflows/validate.yml`:
 
-1. **Unit tests** — `cd mcp-server && npm ci && npm test` (Node's built-in test runner;
+1. **Unit tests** — `cd mcp/released-objects && npm ci && npm test` (Node's built-in test runner;
    `fetch` and the clock are injected; no network).
-2. **Bundle in sync** — `npm run build && git diff --exit-code -- mcp-server/dist` (same
+2. **Bundle in sync** — `npm run build && git diff --exit-code -- mcp/released-objects/dist` (same
    pattern as the skill-index gate; `package-lock.json` pins versions so the bundle is
    reproducible).
 3. **No root `.mcp.json`** — `test ! -f .mcp.json`.
@@ -599,7 +599,7 @@ unchanged.
 Repository layout:
 
 ```
-mcp-server/
+mcp/released-objects/
   package.json            private; engines.node >= 20; scripts: build, test, typecheck
   package-lock.json
   tsconfig.json
@@ -620,7 +620,7 @@ mcp-server/
 
 Runtime dependencies (bundled): `@modelcontextprotocol/sdk`, `zod`, `undici`. Dev
 dependencies: `typescript`, `esbuild`, `@types/node`. `.gitignore` gains
-`mcp-server/node_modules/` and the compiled test output; `dist/` is committed.
+`mcp/released-objects/node_modules/` and the compiled test output; `dist/` is committed.
 
 Process: the development loop in `CLAUDE.md` applies — plan first, TDD per task, independent
 review, gates before "done". Model assignment for this feature: the main session (Claude Fable

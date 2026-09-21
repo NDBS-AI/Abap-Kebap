@@ -4,7 +4,7 @@
 
 **Goal:** Ship a bundled, zero-setup MCP server named `released-objects` that answers "is this SAP object usable in ABAP Cloud / Clean Core on this target, and what is the successor?" from SAP's public Cloudification Repository, and wire the three ABAP agents to use it.
 
-**Architecture:** A Node/TypeScript stdio MCP server lives in `mcp-server/`, is compiled by esbuild into one committed dependency-free file `mcp-server/dist/index.js`, and is declared inline in `.claude-plugin/plugin.json` under `mcpServers` so installing the plugin auto-starts it. The server downloads SAP's JSON lists into `${CLAUDE_PLUGIN_DATA}/released-objects`, re-checks them once per local day with conditional GETs, and exposes three tools (`check_objects`, `search_objects`, `dataset_info`) over three layers: a cache manager (I/O and freshness), a query engine (pure functions over records), and a Zod-validated tool layer.
+**Architecture:** A Node/TypeScript stdio MCP server lives in `mcp/released-objects/`, is compiled by esbuild into one committed dependency-free file `mcp/released-objects/dist/index.js`, and is declared inline in `.claude-plugin/plugin.json` under `mcpServers` so installing the plugin auto-starts it. The server downloads SAP's JSON lists into `${CLAUDE_PLUGIN_DATA}/released-objects`, re-checks them once per local day with conditional GETs, and exposes three tools (`check_objects`, `search_objects`, `dataset_info`) over three layers: a cache manager (I/O and freshness), a query engine (pure functions over records), and a Zod-validated tool layer.
 
 **Tech Stack:** Node.js >= 20 · TypeScript 5.x · `@modelcontextprotocol/sdk` · `zod` · `undici` (proxy-aware fetch) · `esbuild` (bundler) · `node --test` (test runner) · GitHub Actions.
 
@@ -15,7 +15,7 @@
 Every task's requirements implicitly include this section.
 
 - **Runtime floor:** Node.js >= 20. The server checks `process.version` at startup and exits with a stderr message below 20. CI pins `node-version: "20"`.
-- **No install on the user's machine:** `mcp-server/dist/index.js` is a **committed** esbuild single-file bundle with every runtime dependency folded in. Plugin install is a git clone; no `npm install` ever runs for the end user.
+- **No install on the user's machine:** `mcp/released-objects/dist/index.js` is a **committed** esbuild single-file bundle with every runtime dependency folded in. Plugin install is a git clone; no `npm install` ever runs for the end user.
 - **Runtime dependencies (bundled, nothing else):** `@modelcontextprotocol/sdk`, `zod`, `undici`. Dev only: `typescript`, `esbuild`, `@types/node`.
 - **Exactly one MCP declaration:** inline `mcpServers` in `.claude-plugin/plugin.json`. **No `.mcp.json` at the repository root** — the plugin root *is* the repo root and a root `.mcp.json` would register the server twice. CI asserts `test ! -f .mcp.json`.
 - **stdout is the MCP transport.** All logging goes to **stderr only**. A stray `console.log` corrupts the protocol.
@@ -28,16 +28,16 @@ Every task's requirements implicitly include this section.
 - **Skill frontmatter** must stay exactly `{name, description}` — no extra keys.
 - **Commits and pushes need the repository owner's explicit approval, per commit.** A "Commit" step means: stage exactly the listed files, show `git diff --cached --stat` and the proposed message, then **wait**. Do not run `git commit` or `git push` unprompted.
 - **Model tiering for dispatch:** the main session (Claude Fable 5.1) owns the loop, dispatch and reviews. Each task below carries a **Model** line — Opus 5 for substantive code, Sonnet 5 for prose/manifest/CI edits.
-- **Definition of done for any task:** `cd mcp-server && npm test` green, `npm run typecheck` green, and — from the repo root — `python scripts/generate_skill_index.py && git diff --exit-code -- .claude/skill-index.json`, `python scripts/validate_skills.py`, `node evals/run-static.mjs` all green.
+- **Definition of done for any task:** `cd mcp/released-objects && npm test` green, `npm run typecheck` green, and — from the repo root — `python scripts/generate_skill_index.py && git diff --exit-code -- .claude/skill-index.json`, `python scripts/validate_skills.py`, `node evals/run-static.mjs` all green.
 
 ---
 
 ## File Structure
 
-New tree (everything under `mcp-server/` is new):
+New tree (everything under `mcp/released-objects/` is new):
 
 ```
-mcp-server/
+mcp/released-objects/
   package.json              private:true; engines.node>=20; scripts build/test/typecheck/update-partner-index
   package-lock.json         pins versions so the committed bundle is reproducible
   tsconfig.json             module node16, strict, outDir build/
@@ -73,7 +73,7 @@ Modified existing files:
 | File | Change | Task |
 |---|---|---|
 | `.claude-plugin/plugin.json` | version -> `0.3.0`, `mcpServers` block, description mentions the server | 14 |
-| `.gitignore` | add `mcp-server/node_modules/`, `mcp-server/build/` | 1 |
+| `.gitignore` | add `mcp/released-objects/node_modules/`, `mcp/released-objects/build/` | 1 |
 | `.claude/agents/abap-kebap-reviewer.md` | `check_objects` step + fallback sentence | 15 |
 | `.claude/agents/abap-kebap-developer.md` | `check_objects` step + fallback sentence | 15 |
 | `.claude/agents/abap-kebap-architect.md` | `search_objects` step + fallback sentence | 15 |
@@ -84,7 +84,7 @@ Modified existing files:
 | `README.md` | new "Bundled MCP server — released-objects" section | 16 |
 | `docs/grounding-protocol.md` | drop the stale no-MCP claim; new preferred source row | 16 |
 | `CLAUDE.md` | Done-gate row lists the new gates | 16 |
-| `.github/workflows/validate.yml` | `mcp-server` job: `npm ci`, `npm test`, bundle-in-sync, no-root-`.mcp.json` | 16 |
+| `.github/workflows/validate.yml` | `mcp/released-objects` job: `npm ci`, `npm test`, bundle-in-sync, no-root-`.mcp.json` | 16 |
 
 **Two deliberate deviations from the spec's §16 layout, both recorded here so a reviewer does not flag them:**
 
@@ -210,7 +210,7 @@ Then:
 npx esbuild entry.js --bundle --platform=node --target=node20 --format=cjs --outfile=out.js && node out.js
 ```
 
-Expected: `SPIKE bundle ok: function,function,function,function`. **Fallback if the SDK refuses CommonJS:** set `"type": "module"` in `mcp-server/package.json`, tsconfig `"module": "node16"` with `.js` extensions on relative imports, esbuild `--format=esm`, and replace `src/partner-index.json` with a generated `src/partner-index-builtin.ts` — ESM cannot import JSON on Node 20 without import attributes. Record which variant won; every later task's import style follows this decision.
+Expected: `SPIKE bundle ok: function,function,function,function`. **Fallback if the SDK refuses CommonJS:** set `"type": "module"` in `mcp/released-objects/package.json`, tsconfig `"module": "node16"` with `.js` extensions on relative imports, esbuild `--format=esm`, and replace `src/partner-index.json` with a generated `src/partner-index-builtin.ts` — ESM cannot import JSON on Node 20 without import attributes. Record which variant won; every later task's import style follows this decision.
 
 - [ ] **Step 7: Write the findings and clean up**
 
@@ -227,13 +227,13 @@ Report the findings to the repository owner before Task 1 begins. Any FAIL chang
 
 ---
 
-## Task 1: Scaffold `mcp-server/` and build `config.ts`
+## Task 1: Scaffold `mcp/released-objects/` and build `config.ts`
 
 **Model:** Opus 5.
 
 **Files:**
-- Create: `mcp-server/package.json`, `mcp-server/tsconfig.json`, `mcp-server/src/types.ts`, `mcp-server/src/config.ts`
-- Create: `mcp-server/test/config.test.ts`
+- Create: `mcp/released-objects/package.json`, `mcp/released-objects/tsconfig.json`, `mcp/released-objects/src/types.ts`, `mcp/released-objects/src/config.ts`
+- Create: `mcp/released-objects/test/config.test.ts`
 - Modify: `.gitignore` (append two lines)
 
 **Interfaces:**
@@ -243,14 +243,14 @@ Report the findings to the repository owner before Task 1 begins. Any FAIL chang
 - [ ] **Step 1: Create the package and install the dependency set**
 
 ```bash
-mkdir -p mcp-server/src/tools mcp-server/scripts mcp-server/test/helpers mcp-server/dist
-cd mcp-server
+mkdir -p mcp/released-objects/src/tools mcp/released-objects/scripts mcp/released-objects/test/helpers mcp/released-objects/dist
+cd mcp/released-objects
 npm init -y
 npm install --save-exact @modelcontextprotocol/sdk zod undici
 npm install --save-exact --save-dev typescript esbuild @types/node
 ```
 
-Then replace the generated `mcp-server/package.json` with the block below, **keeping the exact versions `npm install --save-exact` just resolved** in `dependencies` and `devDependencies`. Do not hand-write version numbers; `package-lock.json` pins them and CI runs `npm ci`.
+Then replace the generated `mcp/released-objects/package.json` with the block below, **keeping the exact versions `npm install --save-exact` just resolved** in `dependencies` and `devDependencies`. Do not hand-write version numbers; `package-lock.json` pins them and CI runs `npm ci`.
 
 ```json
 {
@@ -269,7 +269,7 @@ Then replace the generated `mcp-server/package.json` with the block below, **kee
 }
 ```
 
-Create `mcp-server/tsconfig.json`:
+Create `mcp/released-objects/tsconfig.json`:
 
 ```json
 {
@@ -295,13 +295,13 @@ Append to the repository-root `.gitignore`, under the existing "Local-only worki
 
 ```
 # MCP server build artifacts (dist/index.js IS committed)
-mcp-server/node_modules/
-mcp-server/build/
+mcp/released-objects/node_modules/
+mcp/released-objects/build/
 ```
 
 - [ ] **Step 2: Write the shared domain types**
 
-`mcp-server/src/types.ts`:
+`mcp/released-objects/src/types.ts`:
 
 ```ts
 /** The three products the Cloudification Repository covers (spec 6.1). */
@@ -358,7 +358,7 @@ export const ALL_TARGETS: Target[] = ['cloud-erp', 'cloud-erp-private', 'btp-aba
 
 - [ ] **Step 3: Write the failing test for `loadConfig`**
 
-`mcp-server/test/config.test.ts`:
+`mcp/released-objects/test/config.test.ts`:
 
 ```ts
 import { test } from 'node:test'
@@ -421,12 +421,12 @@ test('--verbose is recognised', () => {
 
 - [ ] **Step 4: Run the test to verify it fails**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: FAIL — `Cannot find module '../src/config'`.
 
 - [ ] **Step 5: Write `config.ts`**
 
-`mcp-server/src/config.ts`:
+`mcp/released-objects/src/config.ts`:
 
 ```ts
 import { homedir } from 'node:os'
@@ -513,13 +513,13 @@ export function loadConfig(argv: string[], env: NodeJS.ProcessEnv, home: string 
 
 - [ ] **Step 6: Run the tests to verify they pass**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: PASS — 8 tests, 0 failures.
 
 - [ ] **Step 7: Commit (stage, show, wait for approval)**
 
 ```bash
-git add mcp-server/package.json mcp-server/package-lock.json mcp-server/tsconfig.json mcp-server/src/types.ts mcp-server/src/config.ts mcp-server/test/config.test.ts .gitignore
+git add mcp/released-objects/package.json mcp/released-objects/package-lock.json mcp/released-objects/tsconfig.json mcp/released-objects/src/types.ts mcp/released-objects/src/config.ts mcp/released-objects/test/config.test.ts .gitignore
 git diff --cached --stat
 ```
 
@@ -534,7 +534,7 @@ Proposed message: `feat(mcp): scaffold the released-objects server with config r
 Spec 9. Node's built-in `fetch` ignores `HTTPS_PROXY`, which breaks every proxied corporate network; undici's `EnvHttpProxyAgent` fixes it. The client is an interface so every later test injects a fake and stays offline.
 
 **Files:**
-- Create: `mcp-server/src/http.ts`, `mcp-server/test/helpers/fixtures.ts`, `mcp-server/test/http.test.ts`
+- Create: `mcp/released-objects/src/http.ts`, `mcp/released-objects/test/helpers/fixtures.ts`, `mcp/released-objects/test/http.test.ts`
 
 **Interfaces:**
 - Consumes: nothing (the user-agent string is passed in).
@@ -542,7 +542,7 @@ Spec 9. Node's built-in `fetch` ignores `HTTPS_PROXY`, which breaks every proxie
 
 - [ ] **Step 1: Write the failing test**
 
-`mcp-server/test/http.test.ts` — a real loopback server, so no traffic leaves the machine:
+`mcp/released-objects/test/http.test.ts` — a real loopback server, so no traffic leaves the machine:
 
 ```ts
 import { test } from 'node:test'
@@ -619,7 +619,7 @@ test('a request that exceeds its timeout rejects instead of hanging', async () =
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: FAIL — `Cannot find module '../src/http'`.
 
 - [ ] **Step 3: Write `http.ts`**
@@ -686,7 +686,7 @@ export function createHttpClient(userAgent: string): HttpClient {
 
 - [ ] **Step 4: Write the shared test fixtures**
 
-`mcp-server/test/helpers/fixtures.ts`:
+`mcp/released-objects/test/helpers/fixtures.ts`:
 
 ```ts
 import type { HttpClient, HttpGetOptions, HttpResponse } from '../../src/http'
@@ -766,13 +766,13 @@ export function fakeClock(iso: string): FakeClock {
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: PASS — 12 tests total (8 from Task 1, 4 here), 0 failures.
 
 - [ ] **Step 6: Commit (stage, show, wait for approval)**
 
 ```bash
-git add mcp-server/src/http.ts mcp-server/test/http.test.ts mcp-server/test/helpers/fixtures.ts
+git add mcp/released-objects/src/http.ts mcp/released-objects/test/http.test.ts mcp/released-objects/test/helpers/fixtures.ts
 git diff --cached --stat
 ```
 
@@ -787,8 +787,8 @@ Proposed message: `feat(mcp): add a proxy-aware conditional HTTP client`
 Spec 8. Everything here is a pure function over data, so the whole daily-gate, backoff and truncation-guard matrix is testable without a disk or a socket.
 
 **Files:**
-- Create: `mcp-server/src/cache.ts` (policy half only — Task 4 appends the manager to the same file)
-- Create: `mcp-server/test/cache-policy.test.ts`
+- Create: `mcp/released-objects/src/cache.ts` (policy half only — Task 4 appends the manager to the same file)
+- Create: `mcp/released-objects/test/cache-policy.test.ts`
 
 **Interfaces:**
 - Consumes: nothing.
@@ -796,7 +796,7 @@ Spec 8. Everything here is a pure function over data, so the whole daily-gate, b
 
 - [ ] **Step 1: Write the failing test**
 
-`mcp-server/test/cache-policy.test.ts`:
+`mcp/released-objects/test/cache-policy.test.ts`:
 
 ```ts
 import { test } from 'node:test'
@@ -900,7 +900,7 @@ test('sha256 is stable and content-sensitive', () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: FAIL — `Cannot find module '../src/cache'`.
 
 - [ ] **Step 3: Write the policy half of `cache.ts`**
@@ -1021,13 +1021,13 @@ export function sha256(text: string): string {
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: PASS — 26 tests total, 0 failures.
 
 - [ ] **Step 5: Commit (stage, show, wait for approval)**
 
 ```bash
-git add mcp-server/src/cache.ts mcp-server/test/cache-policy.test.ts
+git add mcp/released-objects/src/cache.ts mcp/released-objects/test/cache-policy.test.ts
 git diff --cached --stat
 ```
 
@@ -1042,8 +1042,8 @@ Proposed message: `feat(mcp): add the cache manifest and freshness policy`
 Spec 8. This is the only module that writes to disk. Tests inject `fakeHttp` and `fakeClock` from Task 2 and run against a real temporary directory, so the atomic-rename path is genuinely exercised and no network is touched.
 
 **Files:**
-- Modify: `mcp-server/src/cache.ts` (append the manager below the policy functions)
-- Create: `mcp-server/test/cache.test.ts`
+- Modify: `mcp/released-objects/src/cache.ts` (append the manager below the policy functions)
+- Create: `mcp/released-objects/test/cache.test.ts`
 
 **Interfaces:**
 - Consumes: `HttpClient`, `HEADER_TIMEOUT_MS`, `DOWNLOAD_TIMEOUT_MS` (Task 2); the policy functions of Task 3.
@@ -1051,7 +1051,7 @@ Spec 8. This is the only module that writes to disk. Tests inject `fakeHttp` and
 
 - [ ] **Step 1: Write the failing test**
 
-`mcp-server/test/cache.test.ts`:
+`mcp/released-objects/test/cache.test.ts`:
 
 ```ts
 import { test } from 'node:test'
@@ -1213,7 +1213,7 @@ test('ensureFile returns the path when the file is already on disk', async () =>
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: FAIL — `CacheManager is not exported from '../src/cache'`.
 
 - [ ] **Step 3: Append the manager to `cache.ts`**
@@ -1497,13 +1497,13 @@ Note on `readManifest()`: it uses a synchronous read because `status()` and `off
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: PASS — 37 tests total, 0 failures.
 
 - [ ] **Step 5: Commit (stage, show, wait for approval)**
 
 ```bash
-git add mcp-server/src/cache.ts mcp-server/test/cache.test.ts
+git add mcp/released-objects/src/cache.ts mcp/released-objects/test/cache.test.ts
 git diff --cached --stat
 ```
 
@@ -1518,7 +1518,7 @@ Proposed message: `feat(mcp): add the cache manager with daily conditional refre
 Spec 6.1 and the "Loading" paragraph of 8. Maps a target plus an optional version onto concrete `FileSpec`s, parses a downloaded file into records, and builds the two upper-cased lookup indexes. The registry memoises parsed datasets and drops them when the cache swaps a file.
 
 **Files:**
-- Create: `mcp-server/src/datasets.ts`, `mcp-server/test/datasets.test.ts`
+- Create: `mcp/released-objects/src/datasets.ts`, `mcp/released-objects/test/datasets.test.ts`
 
 **Interfaces:**
 - Consumes: `Target`, `RawRecord` (Task 1); `FileSpec`, `CacheManager`, `CacheError` (Task 4).
@@ -1526,7 +1526,7 @@ Spec 6.1 and the "Loading" paragraph of 8. Maps a target plus an optional versio
 
 - [ ] **Step 1: Write the failing test**
 
-`mcp-server/test/datasets.test.ts`:
+`mcp/released-objects/test/datasets.test.ts`:
 
 ```ts
 import { test } from 'node:test'
@@ -1599,7 +1599,7 @@ test('several object types under one name all land in the same bucket', () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: FAIL — `Cannot find module '../src/datasets'`.
 
 - [ ] **Step 3: Write `datasets.ts`**
@@ -1755,13 +1755,13 @@ export class DatasetRegistry {
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: PASS — 46 tests total, 0 failures.
 
 - [ ] **Step 5: Commit (stage, show, wait for approval)**
 
 ```bash
-git add mcp-server/src/datasets.ts mcp-server/test/datasets.test.ts
+git add mcp/released-objects/src/datasets.ts mcp/released-objects/test/datasets.test.ts
 git diff --cached --stat
 ```
 
@@ -1776,7 +1776,7 @@ Proposed message: `feat(mcp): map targets and versions onto datasets with in-mem
 Spec 6.2 and 6.3, plus the `verdict` vocabulary of 7.1. Pure functions over records: no I/O, so the whole three-targets-by-every-state matrix is cheap to test.
 
 **Files:**
-- Create: `mcp-server/src/query.ts`, `mcp-server/test/query-lookup.test.ts`
+- Create: `mcp/released-objects/src/query.ts`, `mcp/released-objects/test/query-lookup.test.ts`
 
 **Interfaces:**
 - Consumes: `Target`, `CleanCoreLevel`, `MaxLevel`, `RawRecord`, `Match`, `Origin`, `Successor` (Task 1); `Dataset` (Task 5).
@@ -1784,7 +1784,7 @@ Spec 6.2 and 6.3, plus the `verdict` vocabulary of 7.1. Pure functions over reco
 
 - [ ] **Step 1: Write the failing test**
 
-`mcp-server/test/query-lookup.test.ts`:
+`mcp/released-objects/test/query-lookup.test.ts`:
 
 ```ts
 import { test } from 'node:test'
@@ -1922,7 +1922,7 @@ test('SAP data wins over a partner file for a namespace SAP also ships', () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: FAIL — `Cannot find module '../src/query'`.
 
 - [ ] **Step 3: Write the lookup half of `query.ts`**
@@ -2098,13 +2098,13 @@ export function lookupObject(sources: LookupSources, request: ObjectRequest, max
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: PASS — 59 tests total, 0 failures.
 
 - [ ] **Step 5: Commit (stage, show, wait for approval)**
 
 ```bash
-git add mcp-server/src/query.ts mcp-server/test/query-lookup.test.ts
+git add mcp/released-objects/src/query.ts mcp/released-objects/test/query-lookup.test.ts
 git diff --cached --stat
 ```
 
@@ -2119,8 +2119,8 @@ Proposed message: `feat(mcp): derive Clean Core levels and resolve object lookup
 Spec 7.2 (ranking) and the `suggestions` paragraph of 7.1. A bounded Levenshtein keeps the typo recovery cheap over roughly 43k records.
 
 **Files:**
-- Modify: `mcp-server/src/query.ts` (append)
-- Create: `mcp-server/test/query-search.test.ts`
+- Modify: `mcp/released-objects/src/query.ts` (append)
+- Create: `mcp/released-objects/test/query-search.test.ts`
 
 **Interfaces:**
 - Consumes: everything Task 6 produced; `Dataset` (Task 5).
@@ -2128,7 +2128,7 @@ Spec 7.2 (ranking) and the `suggestions` paragraph of 7.1. A bounded Levenshtein
 
 - [ ] **Step 1: Write the failing test**
 
-`mcp-server/test/query-search.test.ts`:
+`mcp/released-objects/test/query-search.test.ts`:
 
 ```ts
 import { test } from 'node:test'
@@ -2230,7 +2230,7 @@ test('suggestions are capped at five', () => {
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: FAIL — `searchObjects is not exported from '../src/query'`.
 
 - [ ] **Step 3: Append the search half of `query.ts`**
@@ -2413,13 +2413,13 @@ export function suggestNearMatches(
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: PASS — 70 tests total, 0 failures.
 
 - [ ] **Step 5: Commit (stage, show, wait for approval)**
 
 ```bash
-git add mcp-server/src/query.ts mcp-server/test/query-search.test.ts
+git add mcp/released-objects/src/query.ts mcp/released-objects/test/query-search.test.ts
 git diff --cached --stat
 ```
 
@@ -2435,8 +2435,8 @@ Proposed message: `feat(mcp): add ranked search and near-match suggestions`
 Spec 6.4. Two hard rules the tests must pin down: a credential-like field from the ADT destinations file may never reach memory as a named value or a serialized output, and an unresolved target is an error rather than a default.
 
 **Files:**
-- Create: `mcp-server/src/target-resolver.ts`, `mcp-server/test/target-resolver.test.ts`
-- Modify: `mcp-server/src/config.ts`, `mcp-server/test/config.test.ts`
+- Create: `mcp/released-objects/src/target-resolver.ts`, `mcp/released-objects/test/target-resolver.test.ts`
+- Modify: `mcp/released-objects/src/config.ts`, `mcp/released-objects/test/config.test.ts`
 
 **Interfaces:**
 - Consumes: `Target` (Task 1); `ServerConfig`, `loadConfig` (Task 1).
@@ -2470,7 +2470,7 @@ test('the version pin accepts latest, a year and a feature pack, and warns other
 
 - [ ] **Step 2: Write the failing test**
 
-`mcp-server/test/target-resolver.test.ts`:
+`mcp/released-objects/test/target-resolver.test.ts`:
 
 ```ts
 import { test } from 'node:test'
@@ -2621,7 +2621,7 @@ test('nothing to go on is unresolved rather than a silent default', async () => 
 
 - [ ] **Step 3: Run the test to verify it fails**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: FAIL — `Cannot find module '../src/target-resolver'`.
 
 - [ ] **Step 4: Write `target-resolver.ts`**
@@ -2820,13 +2820,13 @@ export async function resolveTarget(input: ResolveInput): Promise<TargetResoluti
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: PASS — 84 tests total (70 + 1 config case + 13 here), 0 failures.
 
 - [ ] **Step 6: Commit (stage, show, wait for approval)**
 
 ```bash
-git add mcp-server/src/target-resolver.ts mcp-server/src/config.ts mcp-server/test/target-resolver.test.ts mcp-server/test/config.test.ts
+git add mcp/released-objects/src/target-resolver.ts mcp/released-objects/src/config.ts mcp/released-objects/test/target-resolver.test.ts mcp/released-objects/test/config.test.ts
 git diff --cached --stat
 ```
 
@@ -2841,8 +2841,8 @@ Proposed message: `feat(mcp): resolve the target system from ADT state without g
 Spec 6.5. Partner namespaces live in one file per namespace, discovered through the GitHub contents API, with a committed list as the offline and rate-limited fallback. The template file is skipped by name, never by shape.
 
 **Files:**
-- Create: `mcp-server/src/partner-index.ts`, `mcp-server/src/partner-index.json`, `mcp-server/test/partner-index.test.ts`, `mcp-server/scripts/update-partner-index.mjs`
-- Modify: `mcp-server/package.json` (the `update-partner-index` script)
+- Create: `mcp/released-objects/src/partner-index.ts`, `mcp/released-objects/src/partner-index.json`, `mcp/released-objects/test/partner-index.test.ts`, `mcp/released-objects/scripts/update-partner-index.mjs`
+- Modify: `mcp/released-objects/package.json` (the `update-partner-index` script)
 
 **Interfaces:**
 - Consumes: `HttpClient`, `HEADER_TIMEOUT_MS` (Task 2); `FileSpec` (Task 4).
@@ -2850,7 +2850,7 @@ Spec 6.5. Partner namespaces live in one file per namespace, discovered through 
 
 - [ ] **Step 1: Write the failing test**
 
-`mcp-server/test/partner-index.test.ts`:
+`mcp/released-objects/test/partner-index.test.ts`:
 
 ```ts
 import { test } from 'node:test'
@@ -2952,7 +2952,7 @@ test('a partner file spec is optional and lands under partner/ in the cache', as
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: FAIL — `Cannot find module '../src/partner-index'`.
 
 - [ ] **Step 3: Write `src/partner-index.json`**
@@ -3082,7 +3082,7 @@ export class PartnerIndex {
 
 - [ ] **Step 5: Write the regeneration script**
 
-`mcp-server/scripts/update-partner-index.mjs` — a maintainer tool, not part of the runtime. Plain ESM, global `fetch`, rewrites `src/partner-index.json`. Add `"update-partner-index": "node scripts/update-partner-index.mjs"` to `package.json` scripts.
+`mcp/released-objects/scripts/update-partner-index.mjs` — a maintainer tool, not part of the runtime. Plain ESM, global `fetch`, rewrites `src/partner-index.json`. Add `"update-partner-index": "node scripts/update-partner-index.mjs"` to `package.json` scripts.
 
 ```js
 #!/usr/bin/env node
@@ -3133,13 +3133,13 @@ Note the `console.error`: every script in this server writes progress to stderr,
 
 - [ ] **Step 6: Run the tests to verify they pass**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: PASS — 95 tests total, 0 failures.
 
 - [ ] **Step 7: Commit (stage, show, wait for approval)**
 
 ```bash
-git add mcp-server/src/partner-index.ts mcp-server/src/partner-index.json mcp-server/scripts/update-partner-index.mjs mcp-server/test/partner-index.test.ts mcp-server/package.json
+git add mcp/released-objects/src/partner-index.ts mcp/released-objects/src/partner-index.json mcp/released-objects/scripts/update-partner-index.mjs mcp/released-objects/test/partner-index.test.ts mcp/released-objects/package.json
 git diff --cached --stat
 ```
 
@@ -3154,7 +3154,7 @@ Proposed message: `feat(mcp): discover partner namespaces with a committed fallb
 Spec 7.1 to 7.3. The `.describe()` text is not decoration: it is the only documentation the calling model sees, so it carries the vocabulary (`DDLS` for a CDS entity, `FUNC` for a function module) and the rule that Clean Core levels exist only on the private target.
 
 **Files:**
-- Create: `mcp-server/src/schemas.ts`, `mcp-server/test/schemas.test.ts`
+- Create: `mcp/released-objects/src/schemas.ts`, `mcp/released-objects/test/schemas.test.ts`
 
 **Interfaces:**
 - Consumes: `VERSION_PATTERN` (Task 5).
@@ -3162,7 +3162,7 @@ Spec 7.1 to 7.3. The `.describe()` text is not decoration: it is the only docume
 
 - [ ] **Step 1: Write the failing test**
 
-`mcp-server/test/schemas.test.ts`:
+`mcp/released-objects/test/schemas.test.ts`:
 
 ```ts
 import { test } from 'node:test'
@@ -3245,7 +3245,7 @@ test('every public field carries description text for the calling model', () => 
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: FAIL — `Cannot find module '../src/schemas'`.
 
 - [ ] **Step 3: Write `schemas.ts`**
@@ -3366,13 +3366,13 @@ export type DatasetInfoInput = z.infer<typeof datasetInfoSchema>
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: PASS — 105 tests total, 0 failures.
 
 - [ ] **Step 5: Commit (stage, show, wait for approval)**
 
 ```bash
-git add mcp-server/src/schemas.ts mcp-server/test/schemas.test.ts
+git add mcp/released-objects/src/schemas.ts mcp/released-objects/test/schemas.test.ts
 git diff --cached --stat
 ```
 
@@ -3386,10 +3386,10 @@ Proposed message: `feat(mcp): define tool input schemas with model-facing docume
 
 Spec 7.1 and 7.4. This is the tool that matters: an agent asks "may I use these objects on this system" and gets a verdict per object, with the successor when there is one.
 
-**File Structure addendum:** this task adds `mcp-server/src/tools/context.ts`, a third deviation from spec 16 with the same rationale as the two recorded earlier — it holds the per-request wiring the spec left implicit, and putting it in `types.ts` would invert the layering.
+**File Structure addendum:** this task adds `mcp/released-objects/src/tools/context.ts`, a third deviation from spec 16 with the same rationale as the two recorded earlier — it holds the per-request wiring the spec left implicit, and putting it in `types.ts` would invert the layering.
 
 **Files:**
-- Create: `mcp-server/src/tools/context.ts`, `mcp-server/src/tools/check-objects.ts`, `mcp-server/test/check-objects.test.ts`
+- Create: `mcp/released-objects/src/tools/context.ts`, `mcp/released-objects/src/tools/check-objects.ts`, `mcp/released-objects/test/check-objects.test.ts`
 
 **Interfaces:**
 - Consumes: `CacheManager`, `CacheError`, `FileSpec`, `ManifestFileEntry` (Tasks 3 and 4); `DatasetRegistry`, `resolveFiles`, `coreFileSpecs` (Task 5); `lookupObject`, `suggestNearMatches`, `vendorHint`, `impliedLevelFor`, `SearchPool`, `ClassificationLookup` (Tasks 6 and 7); `resolveTarget`, `TargetResolutionError` (Task 8); `PartnerIndex`, `namespaceOf` (Task 9); `ServerConfig` (Task 1); `normalizeObjectRef`, `CheckObjectsInput` (Task 10).
@@ -3397,7 +3397,7 @@ Spec 7.1 and 7.4. This is the tool that matters: an agent asks "may I use these 
 
 - [ ] **Step 1: Write the failing test**
 
-`mcp-server/test/check-objects.test.ts`:
+`mcp/released-objects/test/check-objects.test.ts`:
 
 ```ts
 import { test } from 'node:test'
@@ -3512,7 +3512,7 @@ test('an unavailable dataset is an error result with a recovery hint', async () 
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: FAIL — `Cannot find module '../src/tools/check-objects'`.
 
 - [ ] **Step 3: Write `src/tools/context.ts`**
@@ -3748,13 +3748,13 @@ export async function handleCheckObjects(context: ServerContext, input: CheckObj
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: PASS — 114 tests total, 0 failures.
 
 - [ ] **Step 6: Commit (stage, show, wait for approval)**
 
 ```bash
-git add mcp-server/src/tools/context.ts mcp-server/src/tools/check-objects.ts mcp-server/test/check-objects.test.ts
+git add mcp/released-objects/src/tools/context.ts mcp/released-objects/src/tools/check-objects.ts mcp/released-objects/test/check-objects.test.ts
 git diff --cached --stat
 ```
 
@@ -3769,7 +3769,7 @@ Proposed message: `feat(mcp): add the check_objects tool`
 Spec 7.2. The complement to `check_objects`: the agent knows what it wants to do but not what SAP called it, so it searches for a released replacement instead of inventing one.
 
 **Files:**
-- Create: `mcp-server/src/tools/search-objects.ts`, `mcp-server/test/search-objects.test.ts`
+- Create: `mcp/released-objects/src/tools/search-objects.ts`, `mcp/released-objects/test/search-objects.test.ts`
 
 **Interfaces:**
 - Consumes: `loadTarget`, `toolSuccess`, `toolFailure`, `failureFor`, `ServerContext`, `ToolResult` (Task 11); `searchObjects`, `SearchRequest` (Task 7); `SearchObjectsInput` (Task 10).
@@ -3777,7 +3777,7 @@ Spec 7.2. The complement to `check_objects`: the agent knows what it wants to do
 
 - [ ] **Step 1: Write the failing test**
 
-`mcp-server/test/search-objects.test.ts`:
+`mcp/released-objects/test/search-objects.test.ts`:
 
 ```ts
 import { test } from 'node:test'
@@ -3902,7 +3902,7 @@ test('no match returns an empty list with a hint rather than an error', async ()
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: FAIL — `Cannot find module '../src/tools/search-objects'`.
 
 - [ ] **Step 3: Write `src/tools/search-objects.ts`**
@@ -3972,13 +3972,13 @@ export async function handleSearchObjects(context: ServerContext, input: SearchO
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: PASS — 123 tests total, 0 failures.
 
 - [ ] **Step 5: Commit (stage, show, wait for approval)**
 
 ```bash
-git add mcp-server/src/tools/search-objects.ts mcp-server/test/search-objects.test.ts
+git add mcp/released-objects/src/tools/search-objects.ts mcp/released-objects/test/search-objects.test.ts
 git diff --cached --stat
 ```
 
@@ -3993,7 +3993,7 @@ Proposed message: `feat(mcp): add the search_objects tool`
 Spec 7.3. This is the tool that makes the cache auditable: which SAP files are on disk, how large, when they were downloaded, when SAP last changed them, and whether the daily check succeeded. It is also the only way to force a refresh, and unlike the other two it always answers — a target that cannot be resolved is reported as a field, not raised as an error, because the caller may be running it precisely to find out why.
 
 **Files:**
-- Create: `mcp-server/src/tools/dataset-info.ts`, `mcp-server/test/dataset-info.test.ts`
+- Create: `mcp/released-objects/src/tools/dataset-info.ts`, `mcp/released-objects/test/dataset-info.test.ts`
 
 **Interfaces:**
 - Consumes: `CacheManager`, `FileSpec` (Tasks 3 and 4); `resolveFiles`, `coreFileSpecs` (Task 5); `resolveTarget`, `TargetResolutionError` (Task 8); `PartnerIndex` (Task 9); `SERVER_VERSION`, `SOURCE_REPO`, `DEFAULT_BASE_URL` (Task 1); `DatasetInfoInput` (Task 10); `failureFor`, `toolSuccess`, `FileSummary`, `ServerContext` (Task 11).
@@ -4001,7 +4001,7 @@ Spec 7.3. This is the tool that makes the cache auditable: which SAP files are o
 
 - [ ] **Step 1: Write the failing test**
 
-`mcp-server/test/dataset-info.test.ts`:
+`mcp/released-objects/test/dataset-info.test.ts`:
 
 ```ts
 import { test } from 'node:test'
@@ -4119,7 +4119,7 @@ test('an unresolved target is reported as a field, and the core files are still 
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: FAIL — `Cannot find module '../src/tools/dataset-info'`.
 
 - [ ] **Step 3: Write `src/tools/dataset-info.ts`**
@@ -4225,13 +4225,13 @@ import type { DatasetInfoInput } from '../schemas'
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: PASS — 130 tests total, 0 failures.
 
 - [ ] **Step 5: Commit (stage, show, wait for approval)**
 
 ```bash
-git add mcp-server/src/tools/dataset-info.ts mcp-server/test/dataset-info.test.ts
+git add mcp/released-objects/src/tools/dataset-info.ts mcp/released-objects/test/dataset-info.test.ts
 git diff --cached --stat
 ```
 
@@ -4246,9 +4246,9 @@ Proposed message: `feat(mcp): add the dataset_info tool`
 Spec 5 and 12. This is the task that makes the whole thing auto-provision: the plugin manifest declares the server, the committed bundle means nothing is installed on the user's machine, and the entry point wires the pieces together. Everything the server says goes to stderr, because stdout is the protocol channel.
 
 **Files:**
-- Create: `mcp-server/src/index.ts`, `mcp-server/test/index.test.ts`, `mcp-server/scripts/smoke.mjs`
-- Modify: `mcp-server/src/config.ts` (add `SOURCE_REPO_SLUG`), `.claude-plugin/plugin.json`
-- Generate and commit: `mcp-server/dist/index.js`
+- Create: `mcp/released-objects/src/index.ts`, `mcp/released-objects/test/index.test.ts`, `mcp/released-objects/scripts/smoke.mjs`
+- Modify: `mcp/released-objects/src/config.ts` (add `SOURCE_REPO_SLUG`), `.claude-plugin/plugin.json`
+- Generate and commit: `mcp/released-objects/dist/index.js`
 
 **Interfaces:**
 - Consumes: `loadConfig`, `SERVER_VERSION`, `DEFAULT_BASE_URL`, `SOURCE_REPO_SLUG` (Task 1); `createHttpClient` (Task 2); `CacheManager` (Tasks 3 and 4); `DatasetRegistry`, `coreFileSpecs` (Task 5); `PartnerIndex` (Task 9); the three shapes (Task 10); the three handlers and `ServerContext` (Tasks 11 to 13).
@@ -4265,7 +4265,7 @@ export const SOURCE_REPO_SLUG = 'SAP/abap-atc-cr-cv-s4hc'
 
 - [ ] **Step 2: Write the failing test**
 
-`mcp-server/test/index.test.ts`:
+`mcp/released-objects/test/index.test.ts`:
 
 ```ts
 import { test } from 'node:test'
@@ -4332,7 +4332,7 @@ test('the logger writes to stderr only, because stdout carries the protocol', ()
 
 - [ ] **Step 3: Run the test to verify it fails**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: FAIL — `Cannot find module '../src/index'`.
 
 - [ ] **Step 4: Write `src/index.ts`**
@@ -4447,12 +4447,12 @@ if (require.main === module) {
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `cd mcp-server && npm test`
+Run: `cd mcp/released-objects && npm test`
 Expected: PASS — 136 tests total, 0 failures.
 
 - [ ] **Step 6: Write the smoke script**
 
-`mcp-server/scripts/smoke.mjs` — speaks the protocol to the built bundle over a pipe and exits non-zero if the three tools do not come back. This is what CI runs against `dist/`, so it exercises the artifact that ships rather than the TypeScript.
+`mcp/released-objects/scripts/smoke.mjs` — speaks the protocol to the built bundle over a pipe and exits non-zero if the three tools do not come back. This is what CI runs against `dist/`, so it exercises the artifact that ships rather than the TypeScript.
 
 ```js
 #!/usr/bin/env node
@@ -4528,13 +4528,13 @@ console.log(`smoke: ok — ${expected.join(', ')}`)
 
 Run:
 ```bash
-cd mcp-server && npm run build && node scripts/smoke.mjs
+cd mcp/released-objects && npm run build && node scripts/smoke.mjs
 ```
-Expected: `smoke: ok — check_objects, dataset_info, search_objects`, and `mcp-server/dist/index.js` exists as a single file with no `require` of anything outside Node's built-ins.
+Expected: `smoke: ok — check_objects, dataset_info, search_objects`, and `mcp/released-objects/dist/index.js` exists as a single file with no `require` of anything outside Node's built-ins.
 
 Verify that last point explicitly:
 ```bash
-node -e "const s=require('fs').readFileSync('mcp-server/dist/index.js','utf8'); const m=[...s.matchAll(/require\(\"([^\"]+)\"\)/g)].map(x=>x[1]).filter(n=>!n.startsWith('node:')); console.log(new Set(m))"
+node -e "const s=require('fs').readFileSync('mcp/released-objects/dist/index.js','utf8'); const m=[...s.matchAll(/require\(\"([^\"]+)\"\)/g)].map(x=>x[1]).filter(n=>!n.startsWith('node:')); console.log(new Set(m))"
 ```
 Expected: an empty set. Anything listed is a dependency that failed to bundle and would break on a user's machine.
 
@@ -4546,7 +4546,7 @@ In `.claude-plugin/plugin.json`, raise `"version"` to `"0.3.0"` and add, as a si
   "mcpServers": {
     "released-objects": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp-server/dist/index.js"],
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/released-objects/dist/index.js"],
       "env": {
         "ABAP_KEBAP_RELEASED_OBJECTS_DATA_DIR": "${CLAUDE_PLUGIN_DATA}/released-objects"
       }
@@ -4576,7 +4576,7 @@ Expected: all three pass.
 - [ ] **Step 11: Commit (stage, show, wait for approval)**
 
 ```bash
-git add mcp-server/src/index.ts mcp-server/src/config.ts mcp-server/test/index.test.ts mcp-server/scripts/smoke.mjs mcp-server/dist/index.js .claude-plugin/plugin.json
+git add mcp/released-objects/src/index.ts mcp/released-objects/src/config.ts mcp/released-objects/test/index.test.ts mcp/released-objects/scripts/smoke.mjs mcp/released-objects/dist/index.js .claude-plugin/plugin.json
 git diff --cached --stat
 ```
 
@@ -4660,14 +4660,14 @@ Append to the rules array in `evals/static-checks.json`, after `skills-no-custom
 |---|---|---|---|---|
 | `mcp-server-declared-in-plugin` | required | `released-objects` | `.claude-plugin/plugin.json` | the plugin must declare the server or nothing auto-provisions |
 | `mcp-data-dir-uses-plugin-data` | required | `${CLAUDE_PLUGIN_DATA}` | `.claude-plugin/plugin.json` | data must survive plugin updates |
-| `mcp-bundle-path-uses-plugin-root` | required | `${CLAUDE_PLUGIN_ROOT}/mcp-server/dist/index.js` | `.claude-plugin/plugin.json` | the bundle is referenced by placeholder, never by a relative path |
+| `mcp-bundle-path-uses-plugin-root` | required | `${CLAUDE_PLUGIN_ROOT}/mcp/released-objects/dist/index.js` | `.claude-plugin/plugin.json` | the bundle is referenced by placeholder, never by a relative path |
 | `agents-know-check-objects` | required | `check_objects` | `.claude/agents/` | every agent must know the tool exists |
 | `agents-never-guess-target` | required | `TARGET_AMBIGUOUS` | `.claude/agents/` | every agent must know to ask rather than assume a system |
 | `cloud-skill-points-at-mcp` | required | `released-objects` | `.claude/skills/abap-cloud-development/SKILL.md` | the manual route must not drift back to being the only route |
 | `review-skill-points-at-mcp` | required | `check_objects` | `.claude/skills/abap-code-review/SKILL.md` | the review gate must call the tool |
-| `mcp-server-never-writes-stdout` | forbidden | `console.log(` | `mcp-server/src/` | stdout is the MCP transport; a stray log breaks the protocol |
-| `mcp-server-never-writes-stdout-raw` | forbidden | `process.stdout.write` | `mcp-server/src/` | same reason, for the raw stream |
-| `mcp-server-no-credential-fields` | forbidden | `authenticationKind` | `mcp-server/src/` | the ADT destinations file is read for host and protocol only |
+| `mcp-server-never-writes-stdout` | forbidden | `console.log(` | `mcp/released-objects/src/` | stdout is the MCP transport; a stray log breaks the protocol |
+| `mcp-server-never-writes-stdout-raw` | forbidden | `process.stdout.write` | `mcp/released-objects/src/` | same reason, for the raw stream |
+| `mcp-server-no-credential-fields` | forbidden | `authenticationKind` | `mcp/released-objects/src/` | the ADT destinations file is read for host and protocol only |
 
 Each rule's `note` is the sentence in the right-hand column, written as prose.
 
@@ -4726,14 +4726,14 @@ Add a one-line entry for the server to the `What's inside` list, and one line to
 
 - [ ] **Step 3: Extend the done gate in `CLAUDE.md`**
 
-In the `Done gate` row of the development-loop table at `CLAUDE.md:17`, add the server's own gate to the existing list: `cd mcp-server && npm test`. Keep the sentence structure and the existing three gates untouched.
+In the `Done gate` row of the development-loop table at `CLAUDE.md:17`, add the server's own gate to the existing list: `cd mcp/released-objects && npm test`. Keep the sentence structure and the existing three gates untouched.
 
 - [ ] **Step 4: Add the CI job**
 
 Add a third job to `.github/workflows/validate.yml`, alongside `gates` and `plugin`:
 
 ```yaml
-  mcp-server:
+  mcp/released-objects:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -4744,19 +4744,19 @@ Add a third job to `.github/workflows/validate.yml`, alongside `gates` and `plug
         run: test ! -f .mcp.json
       - name: Install dependencies
         run: npm ci
-        working-directory: mcp-server
+        working-directory: mcp/released-objects
       - name: Type-check and test
         run: npm test
-        working-directory: mcp-server
+        working-directory: mcp/released-objects
       - name: Rebuild the bundle
         run: npm run build
-        working-directory: mcp-server
+        working-directory: mcp/released-objects
       - name: Fail if the committed bundle is stale
         run: git diff --exit-code -- dist/index.js
-        working-directory: mcp-server
+        working-directory: mcp/released-objects
       - name: Smoke-test the bundle
         run: node scripts/smoke.mjs
-        working-directory: mcp-server
+        working-directory: mcp/released-objects
 ```
 
 The stale-bundle step is the important one: it is what stops a source change from shipping without a rebuilt `dist/index.js`. It requires `package-lock.json` to be committed, so make sure Task 1 committed it.
@@ -4840,7 +4840,7 @@ Write `docs/superpowers/plans/2026-09-21-released-objects-mcp-verification.md` w
 python scripts/generate_skill_index.py
 python scripts/validate_skills.py
 node evals/run-static.mjs
-cd mcp-server && npm test && npm run build && node scripts/smoke.mjs
+cd mcp/released-objects && npm test && npm run build && node scripts/smoke.mjs
 claude plugin validate .
 ```
 

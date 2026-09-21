@@ -31,5 +31,5 @@ example/
 .axet-code/
 
 # MCP server build artifacts (dist/index.js IS committed)
-mcp-server/node_modules/
-mcp-server/build/
+mcp/released-objects/node_modules/
+mcp/released-objects/build/
