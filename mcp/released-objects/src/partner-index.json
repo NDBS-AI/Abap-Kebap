@@ -1,0 +1,118 @@
+{
+  "generatedAt": "2026-09-21",
+  "source": "https://github.com/SAP/abap-atc-cr-cv-s4hc/tree/main/src/partner",
+  "namespaces": [
+    {
+      "namespace": "/CDE/",
+      "file": "objectClassifications_CDE.json"
+    },
+    {
+      "namespace": "/CLR/",
+      "file": "objectClassifications_CLR.json"
+    },
+    {
+      "namespace": "/COCKPIT/",
+      "file": "objectClassifications_COCKPIT.json"
+    },
+    {
+      "namespace": "/CONLUTIO/",
+      "file": "objectClassifications_CONLUTIO.json"
+    },
+    {
+      "namespace": "/EBY/",
+      "file": "objectClassifications_EBY.json"
+    },
+    {
+      "namespace": "/ENSX/",
+      "file": "objectClassifications_ENSX.json"
+    },
+    {
+      "namespace": "/EYINTINV/",
+      "file": "objectClassifications_EYINTINV.json"
+    },
+    {
+      "namespace": "/FINATO/",
+      "file": "objectClassifications_FINATO.json"
+    },
+    {
+      "namespace": "/ICO/",
+      "file": "objectClassifications_ICO.json"
+    },
+    {
+      "namespace": "/INFHCM/",
+      "file": "objectClassifications_INFHCM.json"
+    },
+    {
+      "namespace": "/INVICL/",
+      "file": "objectClassifications_INVICL.json"
+    },
+    {
+      "namespace": "/IXBX/",
+      "file": "objectClassifications_IXBX.json"
+    },
+    {
+      "namespace": "/IXOS/",
+      "file": "objectClassifications_IXOS.json"
+    },
+    {
+      "namespace": "/MIC/",
+      "file": "objectClassifications_MIC.json"
+    },
+    {
+      "namespace": "/OBZERVR/",
+      "file": "objectClassifications_OBZERVR.json"
+    },
+    {
+      "namespace": "/OPT/",
+      "file": "objectClassifications_OPT.json"
+    },
+    {
+      "namespace": "/ORS/",
+      "file": "objectClassifications_ORS.json"
+    },
+    {
+      "namespace": "/OTX/",
+      "file": "objectClassifications_OTX.json"
+    },
+    {
+      "namespace": "/OTXAF/",
+      "file": "objectClassifications_OTXAF.json"
+    },
+    {
+      "namespace": "/PAT/",
+      "file": "objectClassifications_PAT.json"
+    },
+    {
+      "namespace": "/PROS/",
+      "file": "objectClassifications_PROS.json"
+    },
+    {
+      "namespace": "/QTYW/",
+      "file": "objectClassifications_QTYW.json"
+    },
+    {
+      "namespace": "/SAAR/",
+      "file": "objectClassifications_SAAR.json"
+    },
+    {
+      "namespace": "/SERPEWM/",
+      "file": "objectClassifications_SERPEWM.json"
+    },
+    {
+      "namespace": "/SIAV/",
+      "file": "objectClassifications_SIAV.json"
+    },
+    {
+      "namespace": "/TFTO/",
+      "file": "objectClassifications_TFTO.json"
+    },
+    {
+      "namespace": "/TOP/",
+      "file": "objectClassifications_TOP.json"
+    },
+    {
+      "namespace": "/XPR/",
+      "file": "objectClassifications_XPR.json"
+    }
+  ]
+}
