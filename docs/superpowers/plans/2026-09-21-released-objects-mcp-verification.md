@@ -10,13 +10,15 @@ provisions the data by itself, that the daily gate and the offline path behave, 
 targets disagree where SAP's data says they should, and that a review agent actually reaches
 for the tool instead of recalling.
 
-**Summary: checks 1-5 and 7 PASS. Check 6, the behavioural eval, is not yet reliable.** Two
-agent-side fixes landed while this record was being written and each did what it set out to do:
-`36c1cf5` made the deferred tools discoverable, and `dd11075` made the agent search the data
-before naming a replacement. Both are verified working. What is not yet settled is how often the
-routing fires at all: on haiku the reviewer reached the tools in 2 of 5 runs of the same prompt.
-The full history — the original failure, its diagnosis, and both re-runs — is recorded under
-Check 6 and the two re-run sections that follow it.
+**Summary: checks 1-5 and 7 PASS. Check 6, the behavioural eval, FAILS on haiku — 1 of 3 runs —
+and PASSES on opus, 1 of 1.** Three agent-side fixes landed while this record was being written:
+`36c1cf5` made the deferred tools discoverable, `dd11075` told the agent to search the data before
+naming a replacement, and `273575f` promoted the released-object check into the mandatory
+preflight. The first and third are fully verified: the check now fires on 4 of 4 runs across both
+models, up from 2 of 5. The second holds on opus but not on haiku, which calls `check_objects`,
+gets `not-found`, then names a remembered entity instead of calling `search_objects`. The full
+history — the original failure, its diagnosis, and three measured re-runs — is recorded under
+Check 6 and the sections that follow it.
 
 Two harnesses were used, and each check names the one it used:
 
@@ -497,6 +499,99 @@ separate those two causes, and if placement is implicated, move the released-obj
 the preflight. No server change is indicated; this remains entirely agent-side, and the static
 checks that guard the prose all pass.
 
+
+---
+
+## Behavioural eval — after preflight step `273575f` — FAIL (haiku 1/3, opus 1/1)
+
+Commit `273575f` promoted the released-object check to the first paragraph of each agent's
+`## Skill routing — mandatory preflight` section, stating that it "is not satisfied by loading a
+skill". That targets the placement hypothesis raised in the previous section.
+
+Four runs of the same prompt and command: three on haiku, one on opus.
+
+| Run | Model | Tool-call sequence | (a) verdict from data | (b) replacement discipline |
+|---|---|---|---|---|
+| h1 | haiku | `ToolSearch` → `check_objects` → `Skill` | **PASS** | **FAIL** |
+| h2 | haiku | `ToolSearch` → `check_objects` → `Skill` | **PASS** | **FAIL** |
+| h3 | haiku | `ToolSearch` → `Skill` ×2 → `check_objects` → `search_objects` ×2 | **PASS** | **PASS** |
+| o1 | opus | `ToolSearch` → `Skill` → `check_objects` → `search_objects` ×2 | **PASS** | **PASS** |
+
+**Criterion (a): 4 of 4 — haiku 3/3, opus 1/1.**
+**Criterion (b): 2 of 4 — haiku 1/3, opus 1/1.**
+**Both criteria together: haiku 1/3, opus 1/1 → FAIL** against the stated bar of haiku ≥ 2/3 and
+opus 1/1.
+
+### The preflight step worked — criterion (a) is solved
+
+Every run called `check_objects` with the right target and read the result correctly; all four
+returned `verdict: "not-found"`, `found: false`. In h1 and h2 the `ToolSearch` and the
+`check_objects` call happen **before any skill is loaded** — the ordering the preflight paragraph
+asks for, and a direct reversal of the failing runs in the previous section, where the agent
+loaded a skill and answered without ever looking. Tool invocation across the prompt's history
+went from 2 of 5 runs to 4 of 4.
+
+The answers cite the tool rather than paraphrasing memory. From h1:
+
+> "**[line 1] `MARA` table is not released for BTP ABAP Cloud** — The `released-objects` tool
+> (fresh as of today) reports this table as `not-found` in the BTP ABAP environment catalog. This
+> code will fail at syntax-check time in ADT with 'not a released object.'"
+
+### Criterion (b) is where haiku still fails
+
+All six `search_objects` calls made across h3 and o1 returned `total: 0`, confirming the BTP
+dataset carries no material-master entity (consistent with Check 3).
+
+**h3 — PASS.** Searched `"material master"` and then `"I_Material"` directly, both `total: 0`, and
+reported the absence instead of asserting a name:
+
+> "the released-objects data shows no material master CDS on BTP ABAP as of the latest refresh
+> 2026-07-29" … "The released-objects data shows no `I_Material` or equivalent on BTP ABAP."
+
+**o1 (opus) — PASS, and the best answer of the four.** Searched `"product"` and `"material"`, both
+`total: 0`, and then drew the distinction the data actually supports:
+
+> "If you actually meant S/4HANA Cloud (public or private), say so — `I_Product` exists there and
+> the verdict changes; it does not exist on standalone Steampunk."
+
+That is exactly right per Check 3: `I_PRODUCT` is `allowed` level `A` on both ERP targets and
+`not-found` on BTP. The model named an object only where the data supports it and scoped the
+claim to the target where it holds.
+
+**h1 and h2 — FAIL.** Both called `check_objects`, got `not-found`, and then skipped
+`search_objects` entirely and supplied a remembered entity as the fix:
+
+> h1: "**Next step:** Identify the released CDS entity that provides material master data (likely
+> `I_Material` or in the Materials application component)" — followed by a rewritten statement
+> selecting `FROM i_material`.
+>
+> h2: "**Fix:** Search for the released CDS entity that exposes material data (typically
+> `I_Material`, `I_MaterialPlant`, or a custom consumption view), then use `SELECT … FROM
+> i_material …`."
+
+Neither states that the data lists no released replacement, and neither name is in the dataset for
+any target (`I_Material` and `I_MaterialPlant` both return `not-found` on BTP; the real successors
+on the ERP targets are `I_PRODUCT` and its siblings). h1 and h2 both instruct the *user* to run
+`search_objects` — the agent knows the tool is the right move and delegates it rather than doing
+it. They hedge ("likely", "typically", "depends on your configuration"), but a hedge attached to a
+concrete wrong name in a code rewrite is not the behaviour the rule asks for.
+
+### Reading: the misses are now model-dependent, not placement-dependent
+
+The placement change resolved what it was aimed at, completely. The released-object *check* is now
+structural: it fires first, on every run, on both models, and its result is quoted accurately.
+What did not transfer is the *second* rule in the same block — search before naming a replacement.
+Opus follows both rules; haiku follows the first reliably and the second in one run of three. The
+distinguishing factor is no longer where the instruction sits, because both rules now sit in the
+same promoted paragraph and only one of them is obeyed. It is that the first rule is a single
+unconditional action at the start of the task, while the second is conditional, fires later, and
+competes with a strong prior — the model "knows" a material CDS entity exists and reaches for it.
+Promoting the sentence further is unlikely to help; the options worth considering are making the
+successor lookup unconditional whenever a verdict is not `allowed`, so it is a step rather than a
+judgement, or reserving the reviewer role for a stronger model when released-object accuracy
+matters. Note also that the `not-found` case is the expensive one to get wrong: it is where the
+data is silent, so a remembered name faces no contradiction and reads as authoritative.
+
 ---
 
 ## Check 7 — the gates — PASS
@@ -560,14 +655,16 @@ All green. The committed bundle is reproducible from the committed source.
 | 3 | The three targets disagree | PASS — all three objects differ |
 | 4 | Target resolution and credential safety | PASS — resolves with `low` confidence; no secrets |
 | 5 | Offline path | PASS — cache served, `usesGithubApi: false` |
-| 6 | Behavioural eval | **Not reliable** — fixes verified, routing fires in 2 of 5 haiku runs |
+| 6 | Behavioural eval | **FAIL on haiku (1/3)**, PASS on opus (1/1) — see preflight measurement |
 | 7 | Gates | PASS |
 
-**The server is verified. The routing is correct but not yet dependable.** Every mechanical
-property the design promised holds under test, and both agent-side defects found here were fixed
-and the fixes confirmed: the tools are discoverable, and when the agent does consult them it now
-reports what the data says — including that the data has no answer — instead of a remembered
-name. What remains is frequency, not correctness: on the cheapest model the reviewer performs the
-lookup in a minority of runs. That should be settled on a stronger model, and if the gap is one
-of instruction placement rather than model strength, by moving the released-objects call into the
-same mandatory preflight the agent already executes reliably.
+**The server is verified. The routing half-works, and the remaining gap is model strength.**
+Every mechanical property the design promised holds under test. Three agent-side fixes were made
+and measured here, and two of them are done: the tools are discoverable, and the released-object
+*check* now runs as a preflight step on every run of both models, with its verdict quoted
+accurately. The third rule — search the data before naming a replacement — is obeyed by opus and
+by haiku only once in three, and the failure mode is specific: after a `not-found` verdict, where
+the data is silent and a remembered name meets no contradiction, haiku supplies one anyway. The
+two options worth weighing are making the successor lookup unconditional for any non-`allowed`
+verdict, so it becomes a step rather than a judgement, and running the reviewer on a stronger
+model where released-object accuracy matters. Neither is a server change.
