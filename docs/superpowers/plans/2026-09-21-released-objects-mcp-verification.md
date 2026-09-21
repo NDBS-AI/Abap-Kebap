@@ -10,9 +10,11 @@ provisions the data by itself, that the daily gate and the offline path behave, 
 targets disagree where SAP's data says they should, and that a review agent actually reaches
 for the tool instead of recalling.
 
-**Summary: 6 of 7 checks PASS. Check 6 (the behavioural eval) FAILS.** The server itself is
-sound; the agent-side routing added in Task 15 does not fire in practice. Details and the
-reopen recommendation are under Check 6.
+**Summary: all 7 checks now PASS.** Check 6, the behavioural eval, failed on the first pass and
+passes after the deferred-tool fix in commit `36c1cf5`; the original failure and the re-run are
+both recorded below, under Check 6 and under "Behavioural eval — re-run after 36c1cf5". One
+residual weakness survives the fix and is written up there: the reviewer now consults the data
+for the *verdict* but still names a replacement object from memory.
 
 Two harnesses were used, and each check names the one it used:
 
@@ -302,6 +304,98 @@ cover it.
 
 ---
 
+
+---
+
+## Behavioural eval — re-run after `36c1cf5` — PASS
+
+Commit `36c1cf5` ("fix(agents): load the deferred released-objects tools before calling them")
+changed the shared released-objects block in all three `abap-kebap-*` agents to address the
+mechanism diagnosed in Check 6. It now tells the agent to load the tools with a **keyword**
+`ToolSearch` query, `released-objects check_objects`, explicitly warning against `select:` with
+the bare name, and to refuse a release verdict from memory when no tool is found.
+
+The eval was re-run with the identical command and prompt.
+
+```bash
+claude --plugin-dir . --model haiku --agent abap-kebap-reviewer --output-format stream-json --verbose   --allowedTools "mcp__plugin_abap-kebap_released-objects__check_objects" "...search_objects" "...dataset_info"     "Read" "Grep" "Glob" "Skill" "ToolSearch"   -p "Review this ABAP for a BTP ABAP environment target: SELECT * FROM mara INTO TABLE @DATA(lt_mara) WHERE matnr = @lv_matnr. Give your findings."
+```
+
+**Result: PASS.** The tool was found and called. 11 turns, 52 s.
+
+### Evidence
+
+The keyword query resolves, where the old `select:` lookup returned nothing:
+
+```
+TOOL_USE: ToolSearch {"query":"released-objects check_objects","max_results":5}
+  RESULT: [{"type":"tool_reference","tool_name":"mcp__plugin_abap-kebap_released-objects__check_objects"},
+           {"type":"tool_reference","tool_name":"mcp__plugin_abap-kebap_released-objects__dataset_info"}, ...]
+```
+
+The agent then called the tool by the name `ToolSearch` returned, with the right target and a
+correctly narrowed object type:
+
+```
+TOOL_USE: mcp__plugin_abap-kebap_released-objects__check_objects
+          {"objects":[{"name":"MARA","type":"TABL"}],"target":"btp-abap-environment"}
+  RESULT: verdict: not-found | found: false | impliedLevel: none | allowed: false
+          summary: {"total":1,"allowed":0,"blocked":0,"deprecated":0,"notFound":1,"ambiguous":0}
+```
+
+The answer's headline matches what the tool returned:
+
+> "**[line 1] `MARA` table is not released for ABAP Cloud / BTP environment** — the statement
+> will not activate."
+
+That is the correct reading of `not-found` on this target, and it is now sourced from the data
+rather than from recall. Both eval criteria — the tool is called, and the answer cites what it
+returned — are met.
+
+### Residual weakness — the replacement object is still named from memory
+
+The same answer continues:
+
+> "Use the released CDS entity `I_Material` or `I_MaterialPlant` instead."
+
+**`search_objects` was never called**, and neither name is in the data. Queried directly against
+the same dataset:
+
+```
+check_objects ["I_Material","I_MaterialPlant"] target btp-abap-environment
+  → I_Material:      verdict "not-found", found false
+  → I_MaterialPlant: verdict "not-found", found false
+```
+
+So the agent opens with "I have the skills and the released-objects data" and then supplies a
+successor it did not get from that data, presented with the same confidence as the verdict it
+did. This is the original Check 6 failure mode, now confined to the successor rather than the
+verdict — a smaller blast radius, but the same kind of error.
+
+Three things are worth separating here:
+
+1. The fix in `36c1cf5` did what it set out to do. Tool discovery was the blocker; it is gone.
+2. The agent block tells the agent to call `search_objects` "when an object comes back blocked or
+   deprecated". `not-found` is neither, so on this target the instruction does not fire —
+   and `not-found` is precisely the case where the agent has *least* information and is most
+   likely to fall back on memory. Widening that trigger to include `not-found` would close it.
+3. As recorded under Check 3, the BTP dataset contains no material-master entity at all, so
+   `search_objects` may legitimately find nothing. The right behaviour is then to say so, not to
+   supply a remembered name. The "refuse a verdict from memory" rule added by `36c1cf5` covers a
+   missing *tool*; it does not yet cover a missing *answer*.
+
+None of this blocks the milestone. It is a follow-up worth one more small agent-prose change,
+and a candidate for a future eval assertion.
+
+### Model note
+
+The coordinator's fallback — re-run on `--model opus` if haiku still did not call the tool — was
+**not triggered**, because haiku did call it. The wiring is therefore proven on the cheapest
+model, which is the stronger result. An opus run would only be informative for the residual
+successor-naming weakness above, and was skipped as an unnecessary cost.
+
+---
+
 ## Check 7 — the gates — PASS
 
 Repository root:
@@ -363,11 +457,12 @@ All green. The committed bundle is reproducible from the committed source.
 | 3 | The three targets disagree | PASS — all three objects differ |
 | 4 | Target resolution and credential safety | PASS — resolves with `low` confidence; no secrets |
 | 5 | Offline path | PASS — cache served, `usesGithubApi: false` |
-| 6 | Behavioural eval | **FAIL — reviewer never calls `check_objects`** |
+| 6 | Behavioural eval | FAIL on first pass → **PASS after `36c1cf5`** (see re-run) |
 | 7 | Gates | PASS |
 
-**The server is verified. The feature is not yet done.** Every mechanical property the design
-promised holds under test, and the one thing the milestone was really for — proving an agent
-reaches for the data instead of recalling it — does not. Task 15 has to be reopened and this
-eval re-run before the branch is called complete; the failure has a precise, cheap fix and a
-static check that would hold it.
+**The server is verified, and the routing now works.** Every mechanical property the design
+promised holds under test. The one thing the milestone was really for — proving an agent reaches
+for the data instead of recalling it — failed on the first pass, was diagnosed to a precise
+cause, and passes after the fix. The remaining gap is narrower and is recorded in the re-run
+section: the verdict now comes from the data, but the *replacement object* is still named from
+memory.
