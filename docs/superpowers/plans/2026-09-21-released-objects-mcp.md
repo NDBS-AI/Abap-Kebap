@@ -2979,7 +2979,7 @@ import { HEADER_TIMEOUT_MS, type HttpClient } from './http'
 import builtIn from './partner-index.json'
 
 export const PARTNER_DIR = 'partner'
-export const TEMPLATE_FILE = 'objectClassifications__NAMESPACE.json'
+export const TEMPLATE_FILE = 'objectClassifications_NAMESPACE.json'
 
 const FILE_PREFIX = 'objectClassifications_'
 
@@ -3093,7 +3093,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
 const API_URL = 'https://api.github.com/repos/SAP/abap-atc-cr-cv-s4hc/contents/src/partner'
-const TEMPLATE_FILE = 'objectClassifications__NAMESPACE.json'
+const TEMPLATE_FILE = 'objectClassifications_NAMESPACE.json'
 const FILE_PREFIX = 'objectClassifications_'
 
 const namespaceFromFileName = (fileName) => {
