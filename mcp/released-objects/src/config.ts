@@ -6,6 +6,8 @@ export const SERVER_VERSION = '0.3.0'
 export const DEFAULT_BASE_URL = 'https://raw.githubusercontent.com/SAP/abap-atc-cr-cv-s4hc/main/src'
 export const DEFAULT_GITHUB_API = 'https://api.github.com'
 export const SOURCE_REPO = 'https://github.com/SAP/abap-atc-cr-cv-s4hc'
+/** Owner and repository as the GitHub API addresses it; derived form of SOURCE_REPO. */
+export const SOURCE_REPO_SLUG = 'SAP/abap-atc-cr-cv-s4hc'
 
 export interface ServerConfig {
   dataDir: string
