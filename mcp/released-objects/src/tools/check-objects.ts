@@ -1,7 +1,7 @@
 import { namespaceOf } from '../partner-index'
 import { impliedLevelFor, lookupObject, suggestNearMatches, vendorHint, type ObjectResult } from '../query'
 import { normalizeObjectRef, type CheckObjectsInput } from '../schemas'
-import { failureFor, loadTarget, toolFailure, toolSuccess, type LoadedTarget, type ServerContext, type ToolResult } from './context'
+import { failureFor, loadTarget, refuseMaxLevelOnNonPrivate, toolSuccess, type LoadedTarget, type ServerContext, type ToolResult } from './context'
 import type { MaxLevel } from '../types'
 
 export const CHECK_OBJECTS_DESCRIPTION =
@@ -19,12 +19,8 @@ export async function handleCheckObjects(context: ServerContext, input: CheckObj
   }
 
   const { resolution } = loaded
-  if (input.maxLevel && resolution.target !== 'cloud-erp-private') {
-    return toolFailure(
-      'INVALID_ARGUMENT',
-      `\`maxLevel\` applies only to cloud-erp-private, and this request resolved to ${resolution.target}, where an object is either released or it is not.`,
-    )
-  }
+  const refusal = refuseMaxLevelOnNonPrivate(resolution, input.maxLevel)
+  if (refusal) return refusal
   const maxLevel: MaxLevel = input.maxLevel ?? (resolution.target === 'cloud-erp-private' ? 'C' : 'A')
 
   const results: ObjectResult[] = []

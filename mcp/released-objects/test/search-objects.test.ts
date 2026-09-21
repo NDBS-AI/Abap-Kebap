@@ -72,6 +72,14 @@ test('a fragment matches every object that contains it', async () => {
   const payload = await search({ query: 'purchaseorder' })
   assert.equal(payload.total, 2)
   assert.deepEqual(payload.results.map((hit: { objectKey: string }) => hit.objectKey), ['I_PURCHASEORDER', 'I_PURCHASEORDERITEM'])
+  assert.equal(payload.hint, undefined)
+})
+
+test('a result set echoes the resolved target and the file it was read from', async () => {
+  const payload = await search({ query: 'purchaseorder' })
+  assert.equal(payload.target, 'btp-abap-environment')
+  assert.equal(payload.resolvedFrom, 'environment')
+  assert.equal(payload.dataset.files[0].fileName, BTP_FILE)
 })
 
 test('paging reports the full total and returns only the requested window', async () => {
@@ -122,4 +130,11 @@ test('no match returns an empty list with a hint rather than an error', async ()
   assert.equal(payload.total, 0)
   assert.deepEqual(payload.results, [])
   assert.ok(payload.hint.length > 0)
+})
+
+test('a namespace with no published file says so instead of blaming the query', async () => {
+  const payload = await search({ query: '/ABC/CL_X' })
+  assert.equal(payload.total, 0)
+  assert.ok(payload.hint.includes('/ABC/'))
+  assert.ok(payload.hint.includes('vendor'))
 })

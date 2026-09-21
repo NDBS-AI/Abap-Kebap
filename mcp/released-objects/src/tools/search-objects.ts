@@ -1,11 +1,13 @@
-import { searchObjects, type SearchRequest } from '../query'
+import { namespaceOf } from '../partner-index'
+import { searchObjects, vendorHint, type SearchRequest } from '../query'
 import type { SearchObjectsInput } from '../schemas'
-import { failureFor, loadTarget, toolFailure, toolSuccess, type LoadedTarget, type ServerContext, type ToolResult } from './context'
+import { failureFor, loadTarget, refuseMaxLevelOnNonPrivate, toolSuccess, type LoadedTarget, type ServerContext, type ToolResult } from './context'
 
 export const SEARCH_OBJECTS_DESCRIPTION =
   'Searches SAP\'s released-object data by name fragment, object type, application component, state or label. ' +
   'Use it to find the released API for a task, or the replacement for an object that check_objects reported as blocked or deprecated. ' +
-  'Returns the matches with their Clean Core level for the resolved system, plus the full match count for paging.'
+  'Returns the matches with their Clean Core level for the resolved system, plus the full match count for paging. ' +
+  'A result carries that level, not a usage verdict: call check_objects for the verdict on an object you mean to use.'
 
 export const EMPTY_RESULT_HINT =
   'Nothing matched. Try a shorter fragment or the SAP business term rather than a table name, drop the filters, ' +
@@ -20,15 +22,11 @@ export async function handleSearchObjects(context: ServerContext, input: SearchO
   }
 
   const { resolution } = loaded
-  if (input.maxLevel && resolution.target !== 'cloud-erp-private') {
-    return toolFailure(
-      'INVALID_ARGUMENT',
-      `\`maxLevel\` applies only to cloud-erp-private, and this request resolved to ${resolution.target}, where an object is either released or it is not.`,
-    )
-  }
+  const refusal = refuseMaxLevelOnNonPrivate(resolution, input.maxLevel)
+  if (refusal) return refusal
 
   // A query written in a partner namespace only makes sense if that partner's file is in the pool.
-  await loaded.partnerFor(input.query)
+  const partner = await loaded.partnerFor(input.query)
 
   const request: SearchRequest = {
     query: input.query,
@@ -41,6 +39,13 @@ export async function handleSearchObjects(context: ServerContext, input: SearchO
     offset: input.offset,
   }
   const outcome = searchObjects(loaded.pools(), request, resolution.target, loaded.classificationOf)
+
+  // Nothing found in a vendor namespace usually means the vendor published no file, not that the
+  // object is unknown; say so rather than let the generic hint imply the query was at fault.
+  const namespace = namespaceOf(input.query)
+  const hint = outcome.total > 0
+    ? null
+    : namespace && !partner ? `${EMPTY_RESULT_HINT} ${vendorHint(namespace)}` : EMPTY_RESULT_HINT
 
   return toolSuccess({
     target: resolution.target,
@@ -55,6 +60,6 @@ export async function handleSearchObjects(context: ServerContext, input: SearchO
     limit: input.limit,
     dataset: { status: loaded.datasetStatus(), files: loaded.fileSummaries() },
     results: outcome.results,
-    ...(outcome.total === 0 ? { hint: EMPTY_RESULT_HINT } : {}),
+    ...(hint ? { hint } : {}),
   })
 }

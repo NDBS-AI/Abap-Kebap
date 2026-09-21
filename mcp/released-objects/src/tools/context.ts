@@ -4,7 +4,7 @@ import { buildDataset, resolveFiles, type Dataset, type DatasetRegistry } from '
 import { namespaceOf, type PartnerIndex } from '../partner-index'
 import type { ClassificationLookup, SearchPool } from '../query'
 import { resolveTarget, TargetResolutionError, type TargetResolution } from '../target-resolver'
-import type { RawRecord, Target } from '../types'
+import type { MaxLevel, RawRecord, Target } from '../types'
 
 export interface ServerContext {
   cache: CacheManager
@@ -46,6 +46,19 @@ export function failureFor(error: unknown): ToolResult {
     return toolFailure('INVALID_ARGUMENT', error.message)
   }
   return toolFailure('INTERNAL_ERROR', error instanceof Error ? error.message : String(error))
+}
+
+/**
+ * A Clean Core level only exists on the private target, but the schema cannot refuse `maxLevel`
+ * while `target` is still `auto`: only resolution knows what the system turned out to be. Every
+ * tool that accepts `maxLevel` makes the same call afterwards, so it lives here once.
+ */
+export function refuseMaxLevelOnNonPrivate(resolution: TargetResolution, maxLevel: MaxLevel | undefined): ToolResult | null {
+  if (!maxLevel || resolution.target === 'cloud-erp-private') return null
+  return toolFailure(
+    'INVALID_ARGUMENT',
+    `\`maxLevel\` applies only to cloud-erp-private, and this request resolved to ${resolution.target}, where an object is either released or it is not.`,
+  )
 }
 
 /** One concrete object, keyed exactly as `lookupObject` keys it: type plus upper-cased key. */
