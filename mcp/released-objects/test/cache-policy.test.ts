@@ -2,10 +2,11 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { emptyManifest, localDateKey, parseManifest, shouldCheck, validatePayload, sha256, SCHEMA_VERSION } from '../src/cache'
 
-// The daily gate is deliberately local-time, so these fixtures only mean what they say under a
-// known zone: pin one (+03) instead of inheriting the developer's or CI's. Node re-reads TZ on
-// assignment, and `node --test` gives every test file its own process, so this stays local.
-process.env.TZ = 'Europe/Istanbul'
+// The daily gate compares local calendar days, so a fixture written with a fixed UTC offset only
+// means what it says on a machine at that offset. Build the instant from local wall-clock parts
+// instead - the manager stores the same absolute UTC string a real check would.
+const localIso = (year: number, monthIndex: number, day: number, hour: number, minute: number) =>
+  new Date(year, monthIndex, day, hour, minute).toISOString()
 
 const releaseInfo = (entries: number) =>
   JSON.stringify({
@@ -25,14 +26,14 @@ test('a manifest with no lastCheckedAt always wants a check', () => {
 
 test('a second call on the same local day does not check again', () => {
   const manifest = emptyManifest()
-  manifest.lastCheckedAt = '2026-09-21T06:00:00+03:00'
-  assert.equal(shouldCheck(manifest, new Date('2026-09-21T20:00:00+03:00')), false)
+  manifest.lastCheckedAt = localIso(2026, 8, 21, 6, 0)
+  assert.equal(shouldCheck(manifest, new Date(2026, 8, 21, 20, 0)), false)
 })
 
 test('the first call after local midnight checks again', () => {
   const manifest = emptyManifest()
-  manifest.lastCheckedAt = '2026-09-21T23:30:00+03:00'
-  assert.equal(shouldCheck(manifest, new Date('2026-09-22T00:10:00+03:00')), true)
+  manifest.lastCheckedAt = localIso(2026, 8, 21, 23, 50)
+  assert.equal(shouldCheck(manifest, new Date(2026, 8, 22, 0, 10)), true)
 })
 
 test('a one-hour backoff suppresses checks even on a brand-new manifest', () => {
@@ -45,9 +46,9 @@ test('a one-hour backoff suppresses checks even on a brand-new manifest', () => 
 
 test('force bypasses both the daily gate and the backoff', () => {
   const manifest = emptyManifest()
-  manifest.lastCheckedAt = '2026-09-21T06:00:00+03:00'
+  manifest.lastCheckedAt = localIso(2026, 8, 21, 6, 0)
   manifest.nextCheckAt = '2099-01-01T00:00:00Z'
-  assert.equal(shouldCheck(manifest, new Date('2026-09-21T07:00:00+03:00'), true), true)
+  assert.equal(shouldCheck(manifest, new Date(2026, 8, 21, 7, 0), true), true)
 })
 
 test('localDateKey uses local components, not UTC', () => {
@@ -92,7 +93,7 @@ test('a corrupt or foreign-schema manifest degrades to an empty one instead of t
 
 test('a well-formed manifest round-trips', () => {
   const manifest = emptyManifest()
-  manifest.lastCheckedAt = '2026-09-21T06:00:00+03:00'
+  manifest.lastCheckedAt = localIso(2026, 8, 21, 6, 0)
   assert.deepEqual(parseManifest(JSON.stringify(manifest)), manifest)
 })
 
