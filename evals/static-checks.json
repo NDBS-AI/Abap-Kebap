@@ -378,6 +378,27 @@
       "note": "A not-found verdict tempts this agent to recall a successor; every replacement must come from search_objects or be declared absent."
     },
     {
+      "id": "agents-preflight-check-objects-architect",
+      "kind": "required",
+      "pattern": "is not satisfied by loading a skill",
+      "in": ".claude/agents/abap-kebap-architect.md",
+      "note": "This agent obeys its skill-routing preflight every run but skipped the released-object block below it; the check must sit inside the preflight itself."
+    },
+    {
+      "id": "agents-preflight-check-objects-developer",
+      "kind": "required",
+      "pattern": "is not satisfied by loading a skill",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "This agent obeys its skill-routing preflight every run but skipped the released-object block below it; the check must sit inside the preflight itself."
+    },
+    {
+      "id": "agents-preflight-check-objects-reviewer",
+      "kind": "required",
+      "pattern": "is not satisfied by loading a skill",
+      "in": ".claude/agents/abap-kebap-reviewer.md",
+      "note": "This agent obeys its skill-routing preflight every run but skipped the released-object block below it; the check must sit inside the preflight itself."
+    },
+    {
       "id": "cloud-skill-points-at-mcp",
       "kind": "required",
       "pattern": "`released-objects` MCP server",

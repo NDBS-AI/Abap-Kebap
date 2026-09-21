@@ -78,6 +78,8 @@ browsing api.sap.com: your training data does not know what SAP released last qu
 
 ## Skill routing — mandatory preflight
 
+**Released-object check — mandatory, and not one of the skill-routing steps.** If the code, design or question names any SAP standard object (table, CDS entity, class, function module) and the target is ABAP Cloud, SAP BTP ABAP environment, S/4HANA Cloud or Clean Core on private edition, load and call `check_objects` on the `released-objects` MCP server (see the Released-object data section above) before writing any verdict, code or recommendation. This step is not optional and is not satisfied by loading a skill.
+
 Follow [the shared Skill Routing Protocol](${CLAUDE_PLUGIN_ROOT}/docs/skill-routing.md) before you call anything a violation. Read `${CLAUDE_PLUGIN_ROOT}/.claude/skill-clusters.json` under the `abap-kebap-reviewer` role; select every cluster clearly relevant to the code under review and load its full `includes` list via the `Skill` tool — most real reviews touch more than one lens, with no cap on how many. After cluster selection, check `${CLAUDE_PLUGIN_ROOT}/.claude/skill-index.json` for any materially relevant standalone skill not already covered by the selected cluster(s).
 
 Examples:
