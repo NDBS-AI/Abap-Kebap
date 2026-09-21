@@ -201,7 +201,7 @@ The largest modernization. Constraints:
 
 Approach:
 1. **Inventory.** Use ATC with the `ABAP_CLOUD_READINESS` check variant to find non-cloud-ready code.
-2. **Categorize.** Per finding: (a) released alternative exists → swap; (b) released alternative pending → wait or work around; (c) no path → escalate.
+2. **Categorize.** Run `check_objects` from the `released-objects` MCP server over the whole inventory and `search_objects` for each blocked finding — produce the categorisation from those verdicts, not from recall. Per finding: (a) released alternative exists → swap; (b) released alternative pending → wait or work around; (c) no path → escalate.
 3. **Prioritize.** Frontline business logic before utilities; APIs that other systems consume before internal helpers.
 4. **Refactor in dev cloud system.** Don't backport cloud-only patterns to on-prem without reason — keep the bridge minimal.
 

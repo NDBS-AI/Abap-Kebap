@@ -48,6 +48,24 @@ Your skills are distilled summaries; they can lag releases or carry transcriptio
 
 Topic→source map: [docs/grounding-protocol.md](${CLAUDE_PLUGIN_ROOT}/docs/grounding-protocol.md). Each skill's `## References` lists its authoritative URLs.
 
+## Released-object data — use the tool, do not recall
+
+This plugin ships an MCP server named `released-objects` carrying SAP's own released-object
+and Clean Core classification data, refreshed from SAP daily. Prefer it over memory and over
+browsing api.sap.com: your training data does not know what SAP released last quarter.
+
+- Before you settle on a data model, a released API, or a build-versus-extend recommendation, call `check_objects` with every SAP standard object involved.
+- When an object comes back blocked or deprecated, call `search_objects` to find the released
+  replacement before you propose one.
+- If an answer looks wrong or stale, call `dataset_info`, optionally with `refresh`.
+- Resolve the target system in this order: the system ADT is connected to, then what the prompt
+  states, then ask. If the tool answers `TARGET_AMBIGUOUS` or `TARGET_UNRESOLVED`, ask which
+  system this code targets. Never assume a target.
+- A `not-found` verdict is not permission. It means SAP does not list the object, which for
+  Cloud ERP and the BTP ABAP environment means it is not released.
+- If the tool is unavailable, say so in your answer and fall back to the manual routes in
+  [abap-cloud-development](${CLAUDE_PLUGIN_ROOT}/.claude/skills/abap-cloud-development/SKILL.md).
+
 ## Skill routing — mandatory preflight
 
 Follow [the shared Skill Routing Protocol](${CLAUDE_PLUGIN_ROOT}/docs/skill-routing.md) before you commit to an architecture. Read `${CLAUDE_PLUGIN_ROOT}/.claude/skill-clusters.json` under the `abap-kebap-architect` role; select every cluster clearly relevant to the design question and load its full `includes` list via the `Skill` tool — there is no cap on how many clusters or skills a real design decision takes. After cluster selection, check `${CLAUDE_PLUGIN_ROOT}/.claude/skill-index.json` for any materially relevant standalone skill not already covered by the selected cluster(s).

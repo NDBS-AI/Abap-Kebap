@@ -5,7 +5,8 @@
     ".claude/agents",
     ".claude-plugin",
     ".github",
-    "docs"
+    "docs",
+    "mcp/released-objects/src"
   ],
   "scanFiles": [
     "CLAUDE.md",
@@ -19,7 +20,8 @@
     ".ddls",
     ".ddlx",
     ".dcls",
-    ".xml"
+    ".xml",
+    ".ts"
   ],
   "rules": [
     {
@@ -269,6 +271,76 @@
       "pattern": "zprd_",
       "in": ".claude/skills",
       "note": "Skills are global: no customer/project object names from retrospectives. Port lessons as self-contained generic examples in the skill's existing domain (inventory job, ZSC_TRAVEL proxy, rate service), never as renamed project code."
+    },
+    {
+      "id": "mcp-server-declared-in-plugin",
+      "kind": "required",
+      "pattern": "released-objects",
+      "in": ".claude-plugin/plugin.json",
+      "note": "The plugin must declare the server or nothing auto-provisions it."
+    },
+    {
+      "id": "mcp-data-dir-uses-plugin-data",
+      "kind": "required",
+      "pattern": "${CLAUDE_PLUGIN_DATA}",
+      "in": ".claude-plugin/plugin.json",
+      "note": "Data must survive plugin updates."
+    },
+    {
+      "id": "mcp-bundle-path-uses-plugin-root",
+      "kind": "required",
+      "pattern": "${CLAUDE_PLUGIN_ROOT}/mcp/released-objects/dist/index.js",
+      "in": ".claude-plugin/plugin.json",
+      "note": "The bundle is referenced by placeholder, never by a relative path."
+    },
+    {
+      "id": "agents-know-check-objects",
+      "kind": "required",
+      "pattern": "check_objects",
+      "in": ".claude/agents/",
+      "note": "Every agent must know the tool exists."
+    },
+    {
+      "id": "agents-never-guess-target",
+      "kind": "required",
+      "pattern": "TARGET_AMBIGUOUS",
+      "in": ".claude/agents/",
+      "note": "Every agent must know to ask rather than assume a system."
+    },
+    {
+      "id": "cloud-skill-points-at-mcp",
+      "kind": "required",
+      "pattern": "released-objects",
+      "in": ".claude/skills/abap-cloud-development/SKILL.md",
+      "note": "The manual route must not drift back to being the only route."
+    },
+    {
+      "id": "review-skill-points-at-mcp",
+      "kind": "required",
+      "pattern": "check_objects",
+      "in": ".claude/skills/abap-code-review/SKILL.md",
+      "note": "The review gate must call the tool."
+    },
+    {
+      "id": "mcp-server-never-writes-stdout",
+      "kind": "forbidden",
+      "pattern": "console.log(",
+      "in": "mcp/released-objects/src/",
+      "note": "Stdout is the MCP transport; a stray log breaks the protocol."
+    },
+    {
+      "id": "mcp-server-never-writes-stdout-raw",
+      "kind": "forbidden",
+      "pattern": "process.stdout.write",
+      "in": "mcp/released-objects/src/",
+      "note": "Same reason, for the raw stream."
+    },
+    {
+      "id": "mcp-server-no-credential-fields",
+      "kind": "forbidden",
+      "pattern": "authenticationKind",
+      "in": "mcp/released-objects/src/",
+      "note": "The ADT destinations file is read for host and protocol only."
     }
   ]
 }
