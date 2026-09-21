@@ -1,6 +1,15 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { emptyManifest, localDateKey, parseManifest, shouldCheck, validatePayload, sha256, SCHEMA_VERSION } from '../src/cache'
+import {
+  emptyManifest,
+  localDateKey,
+  parseManifest,
+  shouldCheck,
+  validatePayload,
+  sha256,
+  SCHEMA_VERSION,
+  type ManifestFileEntry,
+} from '../src/cache'
 
 // The daily gate compares local calendar days, so a fixture written with a fixed UTC offset only
 // means what it says on a machine at that offset. Build the instant from local wall-clock parts
@@ -95,6 +104,42 @@ test('a well-formed manifest round-trips', () => {
   const manifest = emptyManifest()
   manifest.lastCheckedAt = localIso(2026, 8, 21, 6, 0)
   assert.deepEqual(parseManifest(JSON.stringify(manifest)), manifest)
+})
+
+test('a hand-edited manifest cannot smuggle malformed file entries past the guards', () => {
+  const sound: ManifestFileEntry = {
+    url: 'https://example.invalid/src/objectReleaseInfoLatest.json',
+    etag: '"e1"',
+    sha256: sha256('payload'),
+    bytes: 1024,
+    entries: 37030,
+    downloadedAt: localIso(2026, 8, 21, 6, 0),
+    upstreamCommittedAt: null,
+    lastError: null,
+  }
+  const manifest = parseManifest(
+    JSON.stringify({
+      schemaVersion: SCHEMA_VERSION,
+      files: {
+        // `entries: null` would disarm the truncation guard if it survived as-is.
+        'cloud-erp/latest': { url: 17, etag: '"e2"', bytes: '1024', entries: null, downloadedAt: false },
+        'partner//OTX/': ['not', 'an', 'entry'],
+        'btp/latest': sound,
+      },
+    }),
+  )
+
+  assert.equal(manifest.files['cloud-erp/latest']?.entries, null)
+  assert.equal(manifest.files['cloud-erp/latest']?.bytes, null)
+  assert.equal(manifest.files['cloud-erp/latest']?.url, null)
+  assert.equal(manifest.files['cloud-erp/latest']?.downloadedAt, null)
+  assert.equal(manifest.files['cloud-erp/latest']?.etag, '"e2"')
+  assert.equal(manifest.files['partner//OTX/'], undefined)
+  assert.deepEqual(manifest.files['btp/latest'], sound)
+})
+
+test('a manifest whose files member is an array degrades to an empty one', () => {
+  assert.deepEqual(parseManifest(JSON.stringify({ schemaVersion: SCHEMA_VERSION, files: [] })), emptyManifest())
 })
 
 test('sha256 is stable and content-sensitive', () => {
