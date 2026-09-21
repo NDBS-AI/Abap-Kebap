@@ -349,17 +349,23 @@ export class CacheManager {
 
     this.refreshing = (async () => {
       let requiredFailure: string | null = null
+      // `offline` means "this machine has no network", so only a failure the transport itself
+      // produced may set it: a 404 or a payload that fails validation is an upstream answer, and
+      // an answer proves the network works. `ensureFile` draws the same line.
+      let transportFailed = false
       for (const spec of specs) {
         try {
           await this.downloadOne(spec, true)
         } catch (error) {
           const message = (error as Error).message
           this.options.log(`refresh failed for ${spec.fileName}: ${message}`)
-          if (!spec.optional) requiredFailure = message
+          if (spec.optional) continue
+          requiredFailure = message
+          if (!(error instanceof CacheError) && !(error instanceof UpstreamError)) transportFailed = true
         }
       }
       const now = this.options.now()
-      this.lastNetworkFailed = requiredFailure !== null
+      this.lastNetworkFailed = transportFailed
       if (requiredFailure) {
         manifest.lastCheckError = requiredFailure
         manifest.nextCheckAt = new Date(now.getTime() + BACKOFF_MS).toISOString()

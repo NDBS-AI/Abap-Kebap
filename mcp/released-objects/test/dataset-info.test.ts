@@ -13,11 +13,22 @@ import type { FakeHttp, Route } from './helpers/fixtures'
 import type { ServerContext } from '../src/tools/context'
 
 const BTP_FILE = 'objectReleaseInfo_BTPLatest.json'
+const ERP_FILE = 'objectReleaseInfoLatest.json'
+const PCE_2023 = 'objectReleaseInfo_PCE2023.json'
+const PCE_2023_0 = 'objectReleaseInfo_PCE2023_0.json'
+const CLASSIFICATION_FILE = 'objectClassifications_SAP.json'
 
 const corpus = (etag = '"v1"') => jsonResponse({
   formatVersion: 1,
   objectReleaseInfo: [
     { tadirObject: 'TABL', tadirObjName: 'MARA', objectType: 'TABL', objectKey: 'MARA', state: 'notToBeReleased' },
+  ],
+}, etag)
+
+const classifications = (etag = '"c1"') => jsonResponse({
+  formatVersion: 1,
+  objectClassifications: [
+    { tadirObject: 'CLAS', tadirObjName: 'CL_OLD', objectType: 'CLAS', objectKey: 'CL_OLD', state: 'classicAPI' },
   ],
 }, etag)
 
@@ -27,13 +38,12 @@ after(async () => {
   for (const dir of tempDirs) await rm(dir, { recursive: true, force: true }).catch(() => {})
 })
 
-async function makeContext(route: Route = corpus(), env: NodeJS.ProcessEnv = {}): Promise<{ context: ServerContext; http: FakeHttp }> {
+async function contextFor(routes: Record<string, Route>, env: NodeJS.ProcessEnv = {}): Promise<{ context: ServerContext; http: FakeHttp }> {
   const dataDir = await mkdtemp(join(tmpdir(), 'ro-info-'))
   tempDirs.push(dataDir)
-  const http = fakeHttp({ [BTP_FILE]: route })
+  const http = fakeHttp(routes)
   const config = loadConfig([], {
     ABAP_KEBAP_RELEASED_OBJECTS_DATA_DIR: dataDir,
-    ABAP_KEBAP_RELEASED_OBJECTS_TARGET: 'btp-abap-environment',
     ABAP_KEBAP_ADT_STATE_DIR: join(dataDir, 'no-adt'),
     ...env,
   }, dataDir)
@@ -50,6 +60,10 @@ async function makeContext(route: Route = corpus(), env: NodeJS.ProcessEnv = {})
   return { context, http }
 }
 
+/** The BTP target, whose only file is the one route the caller supplies. */
+const makeContext = (route: Route = corpus(), env: NodeJS.ProcessEnv = {}) =>
+  contextFor({ [BTP_FILE]: route }, { ABAP_KEBAP_RELEASED_OBJECTS_TARGET: 'btp-abap-environment', ...env })
+
 const payloadOf = (result: { content: { text: string }[] }) => JSON.parse(result.content[0]?.text ?? '{}')
 const info = async (context: ServerContext, input: Record<string, unknown> = {}) =>
   payloadOf(await handleDatasetInfo(context, { target: 'auto', refresh: false, ...input } as never))
@@ -60,6 +74,8 @@ test('the server names itself and cites the SAP repository it copies from', asyn
   assert.equal(payload.server.name, 'released-objects')
   assert.match(payload.source.repo, /abap-atc-cr-cv-s4hc/)
   assert.equal(payload.source.usesGithubApi, false)
+  // The pin is a fact, not an assumption, so there is no sentence to quote.
+  assert.equal(payload.assumption, undefined)
 })
 
 test('a downloaded file is reported with its size, entry count and download time', async () => {
@@ -99,6 +115,10 @@ test('a failed check is reported without discarding the copy already on disk', a
   const payload = await info(context, { refresh: true })
   assert.match(payload.lastCheckError, /socket hang up/)
   assert.equal(payload.files.find((entry: { fileName: string }) => entry.fileName === BTP_FILE).status, 'ready')
+  // The transport failed, so the machine is offline - but the cached copy still answers, and the
+  // hint has to say that rather than "no SAP data is cached".
+  assert.equal(payload.offline, true)
+  assert.match(payload.hint, /cached copy/)
 })
 
 test('with nothing cached and no network, the answer says offline and names the missing file', async () => {
@@ -107,6 +127,34 @@ test('with nothing cached and no network, the answer says offline and names the 
   assert.equal(payload.offline, true)
   assert.equal(payload.files.find((entry: { fileName: string }) => entry.fileName === BTP_FILE).status, 'missing')
   assert.ok(payload.hint.length > 0)
+})
+
+test('the spelling of a bare year that SAP does not publish is not a failed check', async () => {
+  // A bare `2023` has two possible file names upstream and only one of them exists; the other's
+  // 404 must not become this call's check error, nor arm the backoff.
+  const { context } = await contextFor(
+    { [PCE_2023_0]: corpus(), [CLASSIFICATION_FILE]: classifications() },
+    { ABAP_KEBAP_RELEASED_OBJECTS_TARGET: 'cloud-erp-private' },
+  )
+  const payload = await info(context, { version: '2023', refresh: true })
+  assert.equal(payload.lastCheckError, null)
+  assert.equal(payload.offline, false)
+  assert.equal(payload.nextCheckAt, null)
+  assert.equal(payload.files.find((entry: { fileName: string }) => entry.fileName === PCE_2023_0).status, 'ready')
+  assert.equal(payload.files.find((entry: { fileName: string }) => entry.fileName === PCE_2023).status, 'missing')
+})
+
+test('the answer lists the core files the request did not target', async () => {
+  const { context } = await makeContext()
+  const payload = await info(context)
+  assert.ok(payload.files.some((entry: { fileName: string }) => entry.fileName === ERP_FILE))
+})
+
+test('a forced refresh only goes back to SAP for the files of the resolved target', async () => {
+  const { context, http } = await makeContext()
+  await info(context, { refresh: true })
+  assert.ok(http.calls.length > 0)
+  for (const call of http.calls) assert.match(call.url, /objectReleaseInfo_BTPLatest\.json$/)
 })
 
 test('a version that the resolved system has no files for is an argument error, not a crash', async () => {

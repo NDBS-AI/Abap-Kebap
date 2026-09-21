@@ -192,6 +192,17 @@ test('a download made by ensureFile survives into the next process', async () =>
   assert.equal(restarted.status(CORE.id), 'ready')
 })
 
+test('a refresh separates an upstream answer from an outage the same way ensureFile does', async () => {
+  const { cache, http } = await makeCache({ 'objectReleaseInfo_BTPLatest.json': { status: 404, headers: {}, body: 'not found' } })
+  await cache.refresh([CORE], true)
+  assert.equal(cache.offline, false, 'a 404 arrived, so the network works')
+  assert.ok(cache.readManifest().lastCheckError, 'the check still failed and must say so')
+
+  http.setRoute('objectReleaseInfo_BTPLatest.json', unreachable())
+  await cache.refresh([CORE], true)
+  assert.equal(cache.offline, true, 'nothing arrived at all')
+})
+
 test('a 404 is an upstream answer, not an outage - offline stays false', async () => {
   const { cache } = await makeCache({ 'objectReleaseInfo_BTPLatest.json': { status: 404, headers: {}, body: 'not found' } })
   await assert.rejects(
