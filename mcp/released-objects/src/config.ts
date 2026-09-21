@@ -12,6 +12,7 @@ export interface ServerConfig {
   baseUrl: string
   githubApiBaseUrl: string
   targetPin: Target | null
+  versionPin: string | null
   adtDestinationsPath: string
   adtStateDir: string
   verbose: boolean
@@ -63,6 +64,13 @@ export function loadConfig(argv: string[], env: NodeJS.ProcessEnv, home: string 
     else warnings.push(`ABAP_KEBAP_RELEASED_OBJECTS_TARGET="${pin}" is not one of ${ALL_TARGETS.join(', ')}; ignoring it.`)
   }
 
+  const rawVersion = env.ABAP_KEBAP_RELEASED_OBJECTS_VERSION?.trim()
+  let versionPin: string | null = null
+  if (rawVersion) {
+    if (/^(latest|\d{4}(_\d+)?)$/.test(rawVersion)) versionPin = rawVersion
+    else warnings.push(`ABAP_KEBAP_RELEASED_OBJECTS_VERSION="${rawVersion}" is not latest, YYYY or YYYY_N; ignoring it.`)
+  }
+
   const adtStateDir = env.ABAP_KEBAP_ADT_STATE_DIR?.trim() || join(home, '.adtls')
   const adtDestinationsPath = env.ABAP_KEBAP_ADT_DESTINATIONS_PATH?.trim() || join(adtStateDir, 'destinations.json')
 
@@ -71,6 +79,7 @@ export function loadConfig(argv: string[], env: NodeJS.ProcessEnv, home: string 
     baseUrl,
     githubApiBaseUrl: DEFAULT_GITHUB_API,
     targetPin,
+    versionPin,
     adtDestinationsPath,
     adtStateDir,
     verbose: argv.includes('--verbose'),

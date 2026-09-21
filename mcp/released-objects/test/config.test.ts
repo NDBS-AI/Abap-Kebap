@@ -55,3 +55,11 @@ test('ADT paths default under the state directory and are individually overridab
 test('--verbose is recognised', () => {
   assert.equal(loadConfig(['--verbose'], {}, HOME).verbose, true)
 })
+
+test('the version pin accepts latest, a year and a feature pack, and warns otherwise', () => {
+  assert.equal(loadConfig([], { ABAP_KEBAP_RELEASED_OBJECTS_VERSION: '2023' }, HOME).versionPin, '2023')
+  assert.equal(loadConfig([], { ABAP_KEBAP_RELEASED_OBJECTS_VERSION: '2021_1' }, HOME).versionPin, '2021_1')
+  const bad = loadConfig([], { ABAP_KEBAP_RELEASED_OBJECTS_VERSION: 'FPS1' }, HOME)
+  assert.equal(bad.versionPin, null)
+  assert.match(bad.warnings.join(' '), /VERSION/)
+})
