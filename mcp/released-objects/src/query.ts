@@ -175,3 +175,169 @@ export function lookupObject(sources: LookupSources, request: ObjectRequest, max
   const verdict: Verdict = allAllowed ? (anyDeprecated ? 'allowed-deprecated' : 'allowed') : 'blocked'
   return { name: request.name, verdict, found: true, matches }
 }
+
+export const SUGGESTION_LIMIT = 5
+
+export interface SearchPool {
+  dataset: Dataset
+  origin: Origin
+}
+
+export interface SearchRequest {
+  query: string
+  objectType?: string
+  /** Case-insensitive prefix on the SAP application component path, e.g. `MM-PUR`. */
+  applicationComponent?: string
+  state?: string
+  maxLevel?: MaxLevel
+  label?: string
+  limit: number
+  offset: number
+}
+
+export interface SearchHit extends Match {}
+
+export interface SearchOutcome {
+  total: number
+  results: SearchHit[]
+}
+
+/** Supplies the SAP classification state for a record, or null when there is none. */
+export type ClassificationLookup = (record: RawRecord) => string | null
+
+const RANK_EXACT = 0
+const RANK_PREFIX = 1
+const RANK_SUBSTRING = 2
+const RANK_TOKENS = 3
+
+function rankOf(query: string, record: RawRecord): number | null {
+  const haystacks = [record.objectKey.toUpperCase(), record.tadirObjName.toUpperCase()]
+  const needle = query.toUpperCase().trim()
+  if (haystacks.some((value) => value === needle)) return RANK_EXACT
+  if (haystacks.some((value) => value.startsWith(needle))) return RANK_PREFIX
+  if (haystacks.some((value) => value.includes(needle))) return RANK_SUBSTRING
+  const tokens = needle.split(/\s+/).filter(Boolean)
+  if (tokens.length > 1 && haystacks.some((value) => tokens.every((token) => value.includes(token)))) return RANK_TOKENS
+  return null
+}
+
+function toHit(record: RawRecord, origin: Origin, target: Target, classificationOf: ClassificationLookup, maxLevel: MaxLevel): SearchHit {
+  const isClassificationRecord = record.state === 'classicAPI' || record.state === 'noAPI'
+  const releaseState = isClassificationRecord ? null : record.state
+  const classification = isClassificationRecord ? record.state : classificationOf(record)
+  const level = deriveLevel(target, releaseState, classification)
+  return {
+    objectType: record.objectType,
+    objectKey: record.objectKey,
+    tadirObject: record.tadirObject,
+    tadirObjName: record.tadirObjName,
+    softwareComponent: record.softwareComponent ?? null,
+    applicationComponent: record.applicationComponent ?? null,
+    releaseState,
+    classification,
+    origin,
+    cleanCoreLevel: level,
+    allowed: isAllowed(level, maxLevel),
+    deprecated: releaseState === 'deprecated',
+    successors: normalizeSuccessors(record),
+    successorClassification: record.successorClassification ?? null,
+    // A copy: the hit outlives the call, and the dataset behind `record` is memoised and reused.
+    labels: [...(record.labels ?? [])],
+  }
+}
+
+export function searchObjects(pools: SearchPool[], request: SearchRequest, target: Target, classificationOf: ClassificationLookup): SearchOutcome {
+  const maxLevel: MaxLevel = request.maxLevel ?? 'D'
+  const wantedType = request.objectType?.toUpperCase()
+  const wantedComponent = request.applicationComponent?.toUpperCase()
+  const wantedState = request.state?.toLowerCase()
+  const wantedLabel = request.label?.toLowerCase()
+
+  const scored: { rank: number; hit: SearchHit }[] = []
+  for (const { dataset, origin } of pools) {
+    for (const record of dataset.records) {
+      if (wantedType && record.objectType.toUpperCase() !== wantedType && record.tadirObject.toUpperCase() !== wantedType) continue
+      if (wantedComponent && !(record.applicationComponent ?? '').toUpperCase().startsWith(wantedComponent)) continue
+      if (wantedState && record.state.toLowerCase() !== wantedState) continue
+      if (wantedLabel && !(record.labels ?? []).some((label) => label.toLowerCase() === wantedLabel)) continue
+      const rank = rankOf(request.query, record)
+      if (rank === null) continue
+      const hit = toHit(record, origin, target, classificationOf, maxLevel)
+      if (request.maxLevel && !hit.allowed) continue
+      scored.push({ rank, hit })
+    }
+  }
+
+  scored.sort((left, right) => (left.rank - right.rank) || left.hit.objectKey.localeCompare(right.hit.objectKey))
+  return { total: scored.length, results: scored.slice(request.offset, request.offset + request.limit).map((entry) => entry.hit) }
+}
+
+/** Distance, or null as soon as it is certain to exceed `max` - keeps a 43k scan cheap. */
+export function boundedLevenshtein(left: string, right: string, max: number): number | null {
+  if (Math.abs(left.length - right.length) > max) return null
+  let previous = Array.from({ length: right.length + 1 }, (_unused, index) => index)
+  for (let i = 1; i <= left.length; i += 1) {
+    const current = [i]
+    let best = i
+    for (let j = 1; j <= right.length; j += 1) {
+      const cost = left[i - 1] === right[j - 1] ? 0 : 1
+      const value = Math.min((previous[j] ?? 0) + 1, (current[j - 1] ?? 0) + 1, (previous[j - 1] ?? 0) + cost)
+      current[j] = value
+      if (value < best) best = value
+    }
+    if (best > max) return null
+    previous = current
+  }
+  const distance = previous[right.length]
+  return distance !== undefined && distance <= max ? distance : null
+}
+
+const REASON_RANK: Record<SuggestionReason, number> = {
+  'exact-other-type': 0,
+  'namespace-variant': 1,
+  'edit-distance': 2,
+  prefix: 3,
+  substring: 4,
+}
+
+/** Slashes and underscores are noise when a user mistypes a namespace. */
+const flatten = (value: string) => value.toUpperCase().replace(/[/_]/g, '')
+
+export function suggestNearMatches(
+  pools: SearchPool[],
+  name: string,
+  target: Target,
+  classificationOf: ClassificationLookup,
+  limit = SUGGESTION_LIMIT,
+): Suggestion[] {
+  const needle = name.trim().toUpperCase()
+  const flatNeedle = flatten(needle)
+  const found: { rank: number; suggestion: Suggestion }[] = []
+
+  for (const { dataset, origin } of pools) {
+    for (const record of dataset.records) {
+      const key = record.objectKey.toUpperCase()
+      let reason: SuggestionReason | null = null
+      if (key === needle) reason = 'exact-other-type'
+      else if (flatten(key) === flatNeedle) reason = 'namespace-variant'
+      else if (boundedLevenshtein(key, needle, 2) !== null) reason = 'edit-distance'
+      else if (needle.length >= 4 && key.startsWith(needle)) reason = 'prefix'
+      else if (needle.length >= 6 && key.includes(needle)) reason = 'substring'
+      if (!reason) continue
+      const hit = toHit(record, origin, target, classificationOf, 'D')
+      found.push({ rank: REASON_RANK[reason], suggestion: { objectType: record.objectType, objectKey: record.objectKey, cleanCoreLevel: hit.cleanCoreLevel, reason } })
+    }
+  }
+
+  found.sort((left, right) => (left.rank - right.rank) || left.suggestion.objectKey.localeCompare(right.suggestion.objectKey))
+  const seen = new Set<string>()
+  const unique: Suggestion[] = []
+  for (const { suggestion } of found) {
+    const id = `${suggestion.objectType}\u0000${suggestion.objectKey}`
+    if (seen.has(id)) continue
+    seen.add(id)
+    unique.push(suggestion)
+    if (unique.length === limit) break
+  }
+  return unique
+}
