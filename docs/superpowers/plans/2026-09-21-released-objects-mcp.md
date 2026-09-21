@@ -22,8 +22,8 @@ Every task's requirements implicitly include this section.
 - **Offline-first:** every tool answers from the disk cache when the network is down. The server never crashes on bad input or bad network; failures come back as typed tool errors (§7.4).
 - **Never guess a target.** `auto` resolution echoes `resolvedTarget`, `resolvedFrom`, `confidence` and (at medium confidence) an `assumption` sentence, or fails with `TARGET_AMBIGUOUS` / `TARGET_UNRESOLVED` (§6.4).
 - **Credential hygiene:** the ADT destinations file is opened read-only; only `id`, `protocol`, the host part of `properties.systemUrl` and `properties.systemId` are parsed. `user`, tokens and `authenticationKind` are never read into memory as named values, never returned, never logged. Hosts in candidate lists are reduced to their last three labels.
-- **No third-party reference-tool or package names** in any shipped content (spec, code, comments, docs, commit messages). The community MCP wrapper studied under the gitignored `example/` folder during design is reference only — do not name it anywhere. This is a review-the-diff discipline, deliberately **not** a static-check rule.
-- **Never cite the local `example/` folder or any machine-local path** in shipped content — existing static rules `no-machine-local-paths` and `no-local-example-folder-citations` enforce this.
+- **No third-party reference-tool or package names** in any shipped content (spec, code, comments, docs, commit messages). Third-party material consulted during design is reference only — do not name it anywhere. This is a review-the-diff discipline, deliberately **not** a static-check rule.
+- **Never cite local reference folders or any machine-local path** in shipped content — existing static rules `no-machine-local-paths` and `no-local-example-folder-citations` enforce this.
 - **Agent-file links:** every local markdown link inside `.claude/agents/*.md` must be prefixed `${CLAUDE_PLUGIN_ROOT}/` — `scripts/validate_skills.py` fails the build otherwise.
 - **Skill frontmatter** must stay exactly `{name, description}` — no extra keys.
 - **Commits and pushes need the repository owner's explicit approval, per commit.** A "Commit" step means: stage exactly the listed files, show `git diff --cached --stat` and the proposed message, then **wait**. Do not run `git commit` or `git push` unprompted.
@@ -90,6 +90,21 @@ Modified existing files:
 
 1. `src/types.ts` is added. The spec's layout implies each module owns its types; a single shared type module keeps `Target`, `CleanCoreLevel` and `RawRecord` identical across nine modules and prevents drift.
 2. `cache.ts` holds both the pure freshness policy and the I/O manager (Tasks 3 and 4 both write to it), rather than splitting into two files, because they share the manifest type and always change together.
+
+---
+
+## Spec deviations accepted during execution
+
+Recorded here so the next reader does not re-derive them from the diff. Each was ruled on in the execution ledger.
+
+- Server folder is `mcp/released-objects/` (user directive: one folder per server under `mcp/`).
+- Error code `INVALID_ARGUMENT` (spec said `INVALID_INPUT`); `objects` batch cap 100 (spec 200); `query` max length 120 (spec 200); search `limit` max 200, default 20 (spec 100 / 25).
+- Confidence vocabulary is `high | medium | low`; unknown hosts classify as `cloud-erp-private` at `low`.
+- No `dataAsOf`, `source` per result, `summary.byLevel` or `resolvedFile` fields; provenance is carried by `dataset {status, files[]}` on every answer.
+- `dataset_info` refreshes only the request's files (core files when no target resolves) to keep a bare private year's unpublished spelling out of `lastCheckError`; it lists target, core and cached partner files.
+- `loadFirstAvailable` treats an upstream 404 (`UNKNOWN_VERSION`) like `DATASET_UNAVAILABLE` for candidate fall-through; when every candidate 404s the caller sees `UNKNOWN_VERSION` → `INVALID_ARGUMENT`.
+- The plan's "no `require` outside `node:`" bundle one-liner is not a valid check (bundled library code-generation strings match it); CI proves the property by running the bundle from a directory with no `node_modules`.
+- Agent routing to `check_objects` is verified on every model tried; the follow-up `search_objects` lookup before naming a replacement is reliable on Opus-class models and intermittent on Haiku (README states this; structural enforcement is a roadmap item).
 
 ---
 
