@@ -63,7 +63,9 @@ test('a request that exceeds its timeout rejects instead of hanging', async () =
     // deliberately never respond
   })
   try {
-    await assert.rejects(() => createHttpClient('test-agent/1').get(`${base}/slow`, { timeoutMs: 120 }))
+    await assert.rejects(() => createHttpClient('test-agent/1').get(`${base}/slow`, { timeoutMs: 120 }), {
+      name: 'TimeoutError',
+    })
   } finally {
     server.close()
   }
