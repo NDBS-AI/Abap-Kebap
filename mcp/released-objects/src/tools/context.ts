@@ -1,4 +1,4 @@
-import { CacheError, type CacheManager, type FileSpec } from '../cache'
+import { CacheError, type CacheManager, type FileSpec, type FileStatus } from '../cache'
 import type { ServerConfig } from '../config'
 import { buildDataset, resolveFiles, type Dataset, type DatasetRegistry } from '../datasets'
 import { namespaceOf, type PartnerIndex } from '../partner-index'
@@ -48,16 +48,34 @@ export function failureFor(error: unknown): ToolResult {
   return toolFailure('INTERNAL_ERROR', error instanceof Error ? error.message : String(error))
 }
 
+/** One concrete object, keyed exactly as `lookupObject` keys it: type plus upper-cased key. */
+const identityOf = (record: RawRecord): string => `${record.objectType}\u0000${record.objectKey.toUpperCase()}`
+
 /** One cached file as reported to the caller; drawn from the manifest, never guessed. */
 export interface FileSummary {
   id: string
   fileName: string
-  status: string
+  status: FileStatus
   entries: number | null
   bytes: number | null
   downloadedAt: string | null
   upstreamCommittedAt: string | null
   error: string | null
+}
+
+/** Provenance for one file, straight out of the manifest. Shared by every tool that reports it. */
+export function summarizeFile(cache: CacheManager, spec: FileSpec): FileSummary {
+  const entry = cache.readManifest().files[spec.id] ?? null
+  return {
+    id: spec.id,
+    fileName: spec.fileName,
+    status: cache.status(spec.id),
+    entries: entry?.entries ?? null,
+    bytes: entry?.bytes ?? null,
+    downloadedAt: entry?.downloadedAt ?? null,
+    upstreamCommittedAt: entry?.upstreamCommittedAt ?? null,
+    error: entry?.lastError ?? null,
+  }
 }
 
 export interface LoadedTarget {
@@ -95,11 +113,16 @@ export async function loadTarget(context: ServerContext, request: { target?: Tar
    * as a second pool would list those objects twice. Only what release info does not carry is
    * searchable out of the classification pool; `classificationOf` still supplies the state for the
    * rest. Built at most once per request, and only if a pool is actually asked for.
+   *
+   * The key alone does not identify an object — `identity()` in query.ts pairs it with the object
+   * type, and a name really is reused across types (a table and the view over it). Filtering on the
+   * key would silently drop the classification of every such sibling from search.
    */
   let searchClassification: Dataset | null | undefined
   function classificationPool(): Dataset | null {
     if (searchClassification === undefined) {
-      const extra = classification?.records.filter((record) => !releaseInfo.byKey.has(record.objectKey.toUpperCase())) ?? []
+      const released = new Set(releaseInfo.records.map(identityOf))
+      const extra = classification?.records.filter((record) => !released.has(identityOf(record))) ?? []
       searchClassification = extra.length > 0 ? buildDataset(extra) : null
     }
     return searchClassification
@@ -114,20 +137,7 @@ export async function loadTarget(context: ServerContext, request: { target?: Tar
     classificationOf,
     specs,
     fileSummaries() {
-      const manifest = context.cache.readManifest()
-      return specs.map((spec) => {
-        const entry = manifest.files[spec.id] ?? null
-        return {
-          id: spec.id,
-          fileName: spec.fileName,
-          status: context.cache.status(spec.id),
-          entries: entry?.entries ?? null,
-          bytes: entry?.bytes ?? null,
-          downloadedAt: entry?.downloadedAt ?? null,
-          upstreamCommittedAt: entry?.upstreamCommittedAt ?? null,
-          error: entry?.lastError ?? null,
-        }
-      })
+      return specs.map((spec) => summarizeFile(context.cache, spec))
     },
     datasetStatus() {
       const manifest = context.cache.readManifest()

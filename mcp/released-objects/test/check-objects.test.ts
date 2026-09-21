@@ -124,6 +124,8 @@ test('the classification pool holds only what release info does not, so nothing 
         formatVersion: 1,
         objectClassifications: [
           record({ objectKey: 'MARA', tadirObjName: 'MARA', state: 'classicAPI' }),
+          // Same key, different type: a distinct object, and release info says nothing about it.
+          record({ objectKey: 'MARA', tadirObjName: 'MARA', objectType: 'VIEW', tadirObject: 'VIEW', state: 'classicAPI' }),
           record({ objectKey: 'BAPI_ONLY', tadirObjName: 'BAPI_ONLY', objectType: 'FUNC', tadirObject: 'FUGR', state: 'classicAPI' }),
         ],
       }),
@@ -133,9 +135,28 @@ test('the classification pool holds only what release info does not, so nothing 
   const loaded = await loadTarget(context, { target: 'auto' })
   const pools = loaded.pools()
   assert.equal(pools.length, 2)
-  assert.deepEqual(pools[1]?.dataset.records.map((entry) => entry.objectKey), ['BAPI_ONLY'])
+  // The TABL duplicate is filtered; the VIEW of the same name is a different object and survives.
+  assert.deepEqual(
+    pools[1]?.dataset.records.map((entry) => `${entry.objectType}:${entry.objectKey}`),
+    ['VIEW:MARA', 'FUNC:BAPI_ONLY'],
+  )
   // The whole classification file is still what a lookup sees, so MARA keeps its Level B state.
-  assert.equal(loaded.classification?.records.length, 2)
+  assert.equal(loaded.classification?.records.length, 3)
+})
+
+test('a version that does not exist upstream is an invalid argument, not an internal error', async () => {
+  const missing: Route = { status: 404, headers: {}, body: null }
+  const context = await contextFor(
+    {
+      'objectReleaseInfo_PCE2099.json': missing,
+      'objectReleaseInfo_PCE2099_0.json': missing,
+      'objectClassifications_SAP.json': jsonResponse({ formatVersion: 1, objectClassifications: [record({})] }),
+    },
+    { ABAP_KEBAP_RELEASED_OBJECTS_TARGET: 'cloud-erp-private' },
+  )
+  const result = await handleCheckObjects(context, { objects: ['MARA'], target: 'auto', version: '2099' } as never)
+  assert.equal(result.isError, true)
+  assert.equal(payloadOf(result).error.code, 'INVALID_ARGUMENT')
 })
 
 test('an unavailable dataset is an error result with a recovery hint', async () => {
