@@ -190,7 +190,7 @@ needed.
 
 On first use the server downloads SAP's public released-object data from
 [`github.com/SAP/abap-atc-cr-cv-s4hc`](https://github.com/SAP/abap-atc-cr-cv-s4hc)
-into the plugin's data directory — tens of megabytes across the four core files. After that
+into the plugin's data directory — roughly 25 MB across the four core files. After that
 it re-checks once per local day using a conditional request and re-downloads only what
 actually changed, so a normal day costs one request per file and no download at all.
 Once the data is on disk the server works offline. It never sends your code or your
