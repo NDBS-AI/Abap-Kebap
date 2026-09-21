@@ -10,11 +10,13 @@ provisions the data by itself, that the daily gate and the offline path behave, 
 targets disagree where SAP's data says they should, and that a review agent actually reaches
 for the tool instead of recalling.
 
-**Summary: all 7 checks now PASS.** Check 6, the behavioural eval, failed on the first pass and
-passes after the deferred-tool fix in commit `36c1cf5`; the original failure and the re-run are
-both recorded below, under Check 6 and under "Behavioural eval — re-run after 36c1cf5". One
-residual weakness survives the fix and is written up there: the reviewer now consults the data
-for the *verdict* but still names a replacement object from memory.
+**Summary: checks 1-5 and 7 PASS. Check 6, the behavioural eval, is not yet reliable.** Two
+agent-side fixes landed while this record was being written and each did what it set out to do:
+`36c1cf5` made the deferred tools discoverable, and `dd11075` made the agent search the data
+before naming a replacement. Both are verified working. What is not yet settled is how often the
+routing fires at all: on haiku the reviewer reached the tools in 2 of 5 runs of the same prompt.
+The full history — the original failure, its diagnosis, and both re-runs — is recorded under
+Check 6 and the two re-run sections that follow it.
 
 Two harnesses were used, and each check names the one it used:
 
@@ -394,6 +396,107 @@ The coordinator's fallback — re-run on `--model opus` if haiku still did not c
 model, which is the stronger result. An opus run would only be informative for the residual
 successor-naming weakness above, and was skipped as an unnecessary cost.
 
+
+---
+
+## Behavioural eval — re-run after `dd11075` — MIXED (the designated run FAILS)
+
+Commit `dd11075` ("fix(agents): search the data before naming any replacement object") widened the
+`search_objects` trigger in the shared agent block to cover `not-found` as well as `blocked` and
+`deprecated`, and added the rule: name only what `search_objects` returns, and if it returns
+nothing, say the data lists no released replacement for this target — never supply one from
+memory. That targets exactly the residual recorded in the previous section.
+
+The eval was re-run with the same command and prompt as before, on haiku.
+
+**The designated run (`eval3`) FAILS both criteria: it made no released-objects tool call at
+all.** Because a single sample contradicted the previous run, the eval was repeated twice more to
+tell a regression from run-to-run variance. Across three post-`dd11075` runs:
+
+| Run | `ToolSearch` | `check_objects` | `search_objects` | (a) verdict from data | (b) replacement discipline |
+|---|---|---|---|---|---|
+| 3 (designated) | not called | not called | not called | **FAIL** | **FAIL** |
+| 4 | called | called | called x3 | **PASS** | **PASS** |
+| 5 | not called | not called | not called | **FAIL** | **FAIL** |
+
+The MCP server was `pending` at init in all three, exactly as it was in the passing run of the
+previous section, so the difference is not a connection race — it is whether the model elects to
+do the lookup at all.
+
+### Run 4 — the chain fires, and `dd11075` does its job
+
+```
+TOOL_USE: Skill {"skill":"abap-cloud-development"}
+TOOL_USE: ToolSearch {"query":"released-objects check_objects","max_results":3}
+TOOL_USE: ...__check_objects  {"objects":["MARA"],"target":"btp-abap-environment"}
+  RESULT: verdict "not-found", found false, summary {"total":1,"notFound":1,...}
+TOOL_USE: ...__search_objects {"query":"material master mara","target":"btp-abap-environment","limit":10}
+  RESULT: total 0, hits []
+TOOL_USE: ...__search_objects {"query":"material master released","target":"btp-abap-environment","objectType":"DDLS","limit":15}
+  RESULT: total 0, hits []
+TOOL_USE: ...__search_objects {"query":"material","target":"btp-abap-environment","objectType":"DDLS","limit":20}
+  RESULT: total 0, hits []
+```
+
+Criterion (a) — the text matches the verdict:
+
+> "Code will not compile in BTP ABAP environment — `MARA` is not a released SAP table for ABAP
+> for Cloud Development."
+
+Criterion (b) — the agent searched three times, got nothing, and **said so** rather than
+asserting a remembered name:
+
+> "The search results returned no results for 'material master' in BTP released objects — you may
+> need to check whether a VDM entity like `I_Product` covers your needs, or whether you should be
+> reading via a released RAP BO service instead of direct SQL."
+
+This is the behaviour `dd11075` asked for, and it is a real improvement on the previous section's
+run, which flatly instructed "Use the released CDS entity `I_Material`". The disclosure satisfies
+the "states that the data lists no released replacement" branch. It is worth noting that the
+answer still floats `I_Product` and `I_Material*` as hedged suggestions under a "Questions (need
+context)" heading; they are framed as things for the developer to verify rather than as the
+answer, and they sit next to the explicit statement that the search found nothing, so the
+criterion is met — but the instinct to reach for a remembered name has not disappeared, it has
+been demoted.
+
+### Runs 3 and 5 — no lookup at all
+
+Both produced a competent-looking review from memory in three turns, after loading only the
+`abap-cloud-development` skill, and both named replacement entities that no search returned:
+
+> Run 3: "Candidates: `I_Material`, `I_MaterialBasic`, or similar — verify in ADT, Project
+> Explorer, Released Objects ... or use the `released-objects` MCP server's `search_objects` tool
+> (available once connecting completes)."
+>
+> Run 5: "Use the released CDS entity `I_Material` or `I_ProductValuation` instead."
+
+Run 3's parenthetical is telling: the agent believed the server was still connecting and
+proceeded anyway instead of retrying or declaring the data unavailable — the exact fallback the
+agent block forbids.
+
+### Reading
+
+The *content* of `dd11075` is correct and verified: when the chain fires, the agent now searches
+before naming anything and reports honestly when the data has no answer (run 4). The problem has
+moved. It is no longer "the agent names the wrong object" or "the agent cannot find the tool" —
+it is that on haiku the routing fires only sometimes. Counting the run from the previous section,
+the tool was reached in 2 of 5 runs of this prompt.
+
+Two candidate causes, not distinguished here:
+
+1. **Model strength.** Haiku is the cheapest model and was chosen for cost. The agent block is
+   long, and the released-objects rules sit well below the skill-routing preflight that the agent
+   does reliably execute. A stronger model may well follow it every time.
+2. **Instruction placement.** In every failing run the agent loaded a skill and answered
+   immediately; in both passing runs it did the lookup right after the skill load. Making the
+   released-objects check part of the same mandatory preflight as skill routing — rather than a
+   rule further down — would make it structural rather than discretionary.
+
+Recommended before the branch is called done: one run of this eval on a stronger model to
+separate those two causes, and if placement is implicated, move the released-objects call into
+the preflight. No server change is indicated; this remains entirely agent-side, and the static
+checks that guard the prose all pass.
+
 ---
 
 ## Check 7 — the gates — PASS
@@ -457,12 +560,14 @@ All green. The committed bundle is reproducible from the committed source.
 | 3 | The three targets disagree | PASS — all three objects differ |
 | 4 | Target resolution and credential safety | PASS — resolves with `low` confidence; no secrets |
 | 5 | Offline path | PASS — cache served, `usesGithubApi: false` |
-| 6 | Behavioural eval | FAIL on first pass → **PASS after `36c1cf5`** (see re-run) |
+| 6 | Behavioural eval | **Not reliable** — fixes verified, routing fires in 2 of 5 haiku runs |
 | 7 | Gates | PASS |
 
-**The server is verified, and the routing now works.** Every mechanical property the design
-promised holds under test. The one thing the milestone was really for — proving an agent reaches
-for the data instead of recalling it — failed on the first pass, was diagnosed to a precise
-cause, and passes after the fix. The remaining gap is narrower and is recorded in the re-run
-section: the verdict now comes from the data, but the *replacement object* is still named from
-memory.
+**The server is verified. The routing is correct but not yet dependable.** Every mechanical
+property the design promised holds under test, and both agent-side defects found here were fixed
+and the fixes confirmed: the tools are discoverable, and when the agent does consult them it now
+reports what the data says — including that the data has no answer — instead of a remembered
+name. What remains is frequency, not correctness: on the cheapest model the reviewer performs the
+lookup in a minority of runs. That should be settled on a stronger model, and if the gap is one
+of instruction placement rather than model strength, by moving the released-objects call into the
+same mandatory preflight the agent already executes reliably.
