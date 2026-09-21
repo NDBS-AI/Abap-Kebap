@@ -294,25 +294,53 @@
       "note": "The bundle is referenced by placeholder, never by a relative path."
     },
     {
-      "id": "agents-know-check-objects",
+      "id": "agents-know-check-objects-architect",
       "kind": "required",
       "pattern": "check_objects",
-      "in": ".claude/agents/",
-      "note": "Every agent must know the tool exists."
+      "in": ".claude/agents/abap-kebap-architect.md",
+      "note": "This agent must know the tool exists."
     },
     {
-      "id": "agents-never-guess-target",
+      "id": "agents-know-check-objects-developer",
+      "kind": "required",
+      "pattern": "check_objects",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "This agent must know the tool exists."
+    },
+    {
+      "id": "agents-know-check-objects-reviewer",
+      "kind": "required",
+      "pattern": "check_objects",
+      "in": ".claude/agents/abap-kebap-reviewer.md",
+      "note": "This agent must know the tool exists."
+    },
+    {
+      "id": "agents-never-guess-target-architect",
       "kind": "required",
       "pattern": "TARGET_AMBIGUOUS",
-      "in": ".claude/agents/",
-      "note": "Every agent must know to ask rather than assume a system."
+      "in": ".claude/agents/abap-kebap-architect.md",
+      "note": "This agent must know to ask rather than assume a system."
+    },
+    {
+      "id": "agents-never-guess-target-developer",
+      "kind": "required",
+      "pattern": "TARGET_AMBIGUOUS",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "This agent must know to ask rather than assume a system."
+    },
+    {
+      "id": "agents-never-guess-target-reviewer",
+      "kind": "required",
+      "pattern": "TARGET_AMBIGUOUS",
+      "in": ".claude/agents/abap-kebap-reviewer.md",
+      "note": "This agent must know to ask rather than assume a system."
     },
     {
       "id": "cloud-skill-points-at-mcp",
       "kind": "required",
-      "pattern": "released-objects",
+      "pattern": "`released-objects` MCP server",
       "in": ".claude/skills/abap-cloud-development/SKILL.md",
-      "note": "The manual route must not drift back to being the only route."
+      "note": "The manual route must not drift back to being the only route: the skill must name the MCP server itself, not merely the released-objects CDS views."
     },
     {
       "id": "review-skill-points-at-mcp",

@@ -59,8 +59,11 @@ browsing api.sap.com: your training data does not know what SAP released last qu
 - Resolve the target system in this order: the system ADT is connected to, then what the prompt
   states, then ask. If the tool answers `TARGET_AMBIGUOUS` or `TARGET_UNRESOLVED`, ask which
   system this code targets. Never assume a target.
-- A `not-found` verdict is not permission. It means SAP does not list the object, which for
-  Cloud ERP and the BTP ABAP environment means it is not released.
+- A `not-found` verdict is not permission. On `cloud-erp` and `btp-abap-environment` an object
+  SAP does not list is not released. On `cloud-erp-private` the tool reports
+  `impliedLevel: 'C'` (unclassified) instead. Either way, read the `hint` first: a not-found is
+  often the wrong object type (`DDLS` for a CDS entity vs the SQL view), a namespace the data
+  does not carry, or a custom Z/Y object, which the data never lists at all.
 - If the tool is unavailable, say so in your answer and fall back to the manual routes in
   [abap-cloud-development](${CLAUDE_PLUGIN_ROOT}/.claude/skills/abap-cloud-development/SKILL.md).
 
