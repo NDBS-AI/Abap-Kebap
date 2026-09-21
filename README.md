@@ -196,6 +196,14 @@ actually changed, so a normal day costs one request per file and no download at 
 Once the data is on disk the server works offline. It never sends your code or your
 object names anywhere; every lookup is answered locally.
 
+The agents are instructed to check every SAP standard object against the server before they
+give a verdict, and to search the data before they name a replacement for an object that is
+not usable. In testing the verdict step held on every model tried; the replacement lookup was
+reliable on Opus-class models and intermittent on Haiku, which sometimes names a replacement
+from memory instead. For a review that targets ABAP Cloud or the BTP ABAP environment, run the
+reviewer agent on an Opus-class model, or ask it explicitly to search the released-objects data
+before it names a replacement.
+
 Behind a corporate proxy, set `HTTPS_PROXY` and `NO_PROXY`, and set
 `NODE_EXTRA_CA_CERTS` as well when the proxy inspects TLS. If your organization keeps an
 internal mirror of the SAP repository, point the server at it with
@@ -333,7 +341,9 @@ next skills to add — RFC/BAPI connectivity, ATC operations, CDS analytics, ALV
 authoring) are tracked in [`docs/roadmap.md`](docs/roadmap.md).
 
 For the `released-objects` server, successor-chain walking (following a deprecated object
-through its replacements) and automatic suggestion of alternatives are not in this version.
+through its replacements) and automatic suggestion of alternatives are not in this version. A
+further item is to enforce the replacement lookup structurally — a hook or a tool-result check
+— instead of by instruction to the agent.
 
 ---
 

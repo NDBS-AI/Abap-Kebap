@@ -668,3 +668,14 @@ the data is silent and a remembered name meets no contradiction, haiku supplies 
 two options worth weighing are making the successor lookup unconditional for any non-`allowed`
 verdict, so it becomes a step rather than a judgement, and running the reviewer on a stronger
 model where released-object accuracy matters. Neither is a server change.
+
+---
+
+## Disposition
+
+Ship. The verdict step is verified across every model tried: the agents call `check_objects`
+before they judge an object, and they quote the verdict accurately. The replacement lookup is
+model-dependent, and that dependence is measured rather than suspected — opus 1 of 1, haiku 1 of
+3 — so it is stated in the README as guidance (use an Opus-class model, or ask for the search
+explicitly) and carried as a roadmap item to enforce structurally with a hook or a tool-result
+check. No server change is indicated; the gap is entirely on the agent-instruction side.
