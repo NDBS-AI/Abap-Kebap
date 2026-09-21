@@ -215,7 +215,10 @@ you when it cannot. To override that and pin the target, set
 `btp-abap-environment`, and set `ABAP_KEBAP_RELEASED_OBJECTS_VERSION` to the
 private-edition release (for example `2023`) when you use `cloud-erp-private`.
 
-The server needs Node 20 or newer. Run `/mcp` in Claude Code to turn it off.
+The data is cached under the plugin's data directory; set
+`ABAP_KEBAP_RELEASED_OBJECTS_DATA_DIR` to an absolute path to keep it somewhere else.
+
+The server needs Node 20.18 or newer. Run `/mcp` in Claude Code to turn it off.
 
 The data is SAP's, published under Apache-2.0, and SAP's own note applies: the license
 covers the released-object lists, not the use of the SAP APIs those lists describe. The

@@ -65,6 +65,9 @@ browsing api.sap.com: your training data does not know what SAP released last qu
   verdict alike — call `search_objects` (by business term, object type or application component)
   and name only what it returns. If it returns nothing, say that the data lists no released
   replacement for this target — never supply one from memory.
+- On `cloud-erp-private`, `check_objects` defaults to `maxLevel: 'A'` (released APIs only). Pass
+  `maxLevel: 'B'` to admit classic APIs that are not released, or `'C'` when unclassified objects
+  are acceptable, and always quote the returned `cleanCoreLevel` alongside the verdict.
 - If an answer looks wrong or stale, call `dataset_info`, optionally with `refresh`.
 - The tools may be deferred. Before the first call, load them with `ToolSearch` using the keyword
   query `released-objects check_objects` (a keyword search, not `select:` with the bare name,
@@ -72,8 +75,9 @@ browsing api.sap.com: your training data does not know what SAP released last qu
   `mcp__plugin_abap-kebap_released-objects__check_objects`). Then call the tool by the name
   ToolSearch returned.
 - Resolve the target system in this order: the system ADT is connected to, then what the prompt
-  states, then ask. If the tool answers `TARGET_AMBIGUOUS` or `TARGET_UNRESOLVED`, ask which
-  system this code targets. Never assume a target.
+  states, then ask — leave `target` at `auto` and the server reads the ADT destinations itself. If
+  the tool answers `TARGET_AMBIGUOUS` or `TARGET_UNRESOLVED`, ask which system this code targets.
+  Never assume a target.
 - A `not-found` verdict is not permission. On `cloud-erp` and `btp-abap-environment` an object
   SAP does not list is not released. On `cloud-erp-private` the tool reports
   `impliedLevel: 'C'` (unclassified) instead. Either way, read the `hint` first: a not-found is
