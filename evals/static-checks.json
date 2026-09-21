@@ -336,6 +336,27 @@
       "note": "This agent must know to ask rather than assume a system."
     },
     {
+      "id": "agents-load-deferred-tool-architect",
+      "kind": "required",
+      "pattern": "released-objects check_objects",
+      "in": ".claude/agents/abap-kebap-architect.md",
+      "note": "Plugin MCP tools arrive deferred under a prefixed name; without the ToolSearch keyword query this agent cannot call them and answers from memory instead."
+    },
+    {
+      "id": "agents-load-deferred-tool-developer",
+      "kind": "required",
+      "pattern": "released-objects check_objects",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "Plugin MCP tools arrive deferred under a prefixed name; without the ToolSearch keyword query this agent cannot call them and answers from memory instead."
+    },
+    {
+      "id": "agents-load-deferred-tool-reviewer",
+      "kind": "required",
+      "pattern": "released-objects check_objects",
+      "in": ".claude/agents/abap-kebap-reviewer.md",
+      "note": "Plugin MCP tools arrive deferred under a prefixed name; without the ToolSearch keyword query this agent cannot call them and answers from memory instead."
+    },
+    {
       "id": "cloud-skill-points-at-mcp",
       "kind": "required",
       "pattern": "`released-objects` MCP server",

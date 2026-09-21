@@ -64,6 +64,11 @@ browsing api.sap.com: your training data does not know what SAP released last qu
 - When an object comes back blocked or deprecated, call `search_objects` to find the released
   replacement before you propose one.
 - If an answer looks wrong or stale, call `dataset_info`, optionally with `refresh`.
+- The tools may be deferred. Before the first call, load them with `ToolSearch` using the keyword
+  query `released-objects check_objects` (a keyword search, not `select:` with the bare name,
+  because the deferred name is prefixed, for example
+  `mcp__plugin_abap-kebap_released-objects__check_objects`). Then call the tool by the name
+  ToolSearch returned.
 - Resolve the target system in this order: the system ADT is connected to, then what the prompt
   states, then ask. If the tool answers `TARGET_AMBIGUOUS` or `TARGET_UNRESOLVED`, ask which
   system this code targets. Never assume a target.
@@ -72,7 +77,9 @@ browsing api.sap.com: your training data does not know what SAP released last qu
   `impliedLevel: 'C'` (unclassified) instead. Either way, read the `hint` first: a not-found is
   often the wrong object type (`DDLS` for a CDS entity vs the SQL view), a namespace the data
   does not carry, or a custom Z/Y object, which the data never lists at all.
-- If the tool is unavailable, say so in your answer and fall back to the manual routes in
+- If `ToolSearch` finds no released-objects tool, say so explicitly in your answer and do not
+  state a release verdict from memory; point the user at `/mcp` to check the server, and fall back
+  to the manual routes in
   [abap-cloud-development](${CLAUDE_PLUGIN_ROOT}/.claude/skills/abap-cloud-development/SKILL.md).
 
 ## Skill routing — mandatory preflight

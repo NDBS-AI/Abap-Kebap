@@ -94,8 +94,12 @@ Access to SAP-delivered objects is gated by a **release contract**. A *released 
 **How to check if an object is released:**
 1. **Ask the `released-objects` MCP server** (shipped with this plugin, refreshed from SAP daily) —
    `check_objects` for a verdict per object and `search_objects` for the released replacement.
-   This is the fastest and the most current route. The routes below are the fallback when the
-   server is unavailable, and the ADT and ATC routes remain authoritative for the running system.
+   This is the fastest and the most current route. Its tools may be deferred, so load them first
+   with `ToolSearch` using the keyword query `released-objects check_objects` — a keyword search,
+   not `select:` with the bare name, because the deferred name is prefixed (for example
+   `mcp__plugin_abap-kebap_released-objects__check_objects`) — then call the tool by the name
+   ToolSearch returned. The routes below are the fallback when the server is unavailable, and the
+   ADT and ATC routes remain authoritative for the running system.
 2. **ADT Properties tab** — open the object, *Properties → API State* shows the release contract (e.g. C1). Works in both cloud and classic systems.
 3. **Released Objects view** in ADT Project Explorer — browse everything released.
 4. **api.sap.com** — the SAP Business Accelerator Hub lists released APIs.
