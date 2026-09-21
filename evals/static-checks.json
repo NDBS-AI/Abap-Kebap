@@ -357,6 +357,27 @@
       "note": "Plugin MCP tools arrive deferred under a prefixed name; without the ToolSearch keyword query this agent cannot call them and answers from memory instead."
     },
     {
+      "id": "agents-search-before-replacement-architect",
+      "kind": "required",
+      "pattern": "never supply one from memory",
+      "in": ".claude/agents/abap-kebap-architect.md",
+      "note": "A not-found verdict tempts this agent to recall a successor; every replacement must come from search_objects or be declared absent."
+    },
+    {
+      "id": "agents-search-before-replacement-developer",
+      "kind": "required",
+      "pattern": "never supply one from memory",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "A not-found verdict tempts this agent to recall a successor; every replacement must come from search_objects or be declared absent."
+    },
+    {
+      "id": "agents-search-before-replacement-reviewer",
+      "kind": "required",
+      "pattern": "never supply one from memory",
+      "in": ".claude/agents/abap-kebap-reviewer.md",
+      "note": "A not-found verdict tempts this agent to recall a successor; every replacement must come from search_objects or be declared absent."
+    },
+    {
       "id": "cloud-skill-points-at-mcp",
       "kind": "required",
       "pattern": "`released-objects` MCP server",

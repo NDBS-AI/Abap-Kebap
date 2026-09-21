@@ -55,8 +55,10 @@ and Clean Core classification data, refreshed from SAP daily. Prefer it over mem
 browsing api.sap.com: your training data does not know what SAP released last quarter.
 
 - Before you settle on a data model, a released API, or a build-versus-extend recommendation, call `check_objects` with every SAP standard object involved.
-- When an object comes back blocked or deprecated, call `search_objects` to find the released
-  replacement before you propose one.
+- Before naming any replacement or successor — for a `blocked`, a `deprecated` or a `not-found`
+  verdict alike — call `search_objects` (by business term, object type or application component)
+  and name only what it returns. If it returns nothing, say that the data lists no released
+  replacement for this target — never supply one from memory.
 - If an answer looks wrong or stale, call `dataset_info`, optionally with `refresh`.
 - The tools may be deferred. Before the first call, load them with `ToolSearch` using the keyword
   query `released-objects check_objects` (a keyword search, not `select:` with the bare name,
