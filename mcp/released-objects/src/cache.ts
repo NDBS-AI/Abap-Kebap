@@ -143,6 +143,9 @@ export function validatePayload(text: string, arrayKey: string, previousEntries:
   return { ok: true, entries: rows.length }
 }
 
+/** Distinguishes temp files written within the same millisecond by the same process. */
+let writeSequence = 0
+
 export function sha256(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex')
 }
@@ -203,6 +206,8 @@ export class CacheManager {
   private readonly inFlight = new Map<string, Promise<void>>()
   private readonly listeners: ((id: string) => void)[] = []
   private refreshing: Promise<void> | null = null
+  /** The tail of the manifest write queue; never rejects, so a failed write ends with its caller. */
+  private manifestWrite: Promise<void> = Promise.resolve()
   private lastNetworkFailed = false
 
   constructor(private readonly options: CacheOptions) {
@@ -233,8 +238,20 @@ export class CacheManager {
     return this.manifest
   }
 
-  private async saveManifest(): Promise<void> {
-    await this.atomicWrite(this.manifestPath(), JSON.stringify(this.readManifest(), null, 2))
+  /**
+   * Manifest writers take turns, and each serialises the manifest at the moment its turn comes
+   * rather than when it asked: a lazy download and the daily check both save, and without the
+   * queue the slower rename lands last and puts a snapshot back on disk that no longer holds
+   * the other one's entry. The file would then be missing a file the cache has, so the next
+   * process re-downloads it - with no etag to earn a 304. The chain itself never rejects, so one
+   * failed write cannot fail every write after it; the caller still sees its own failure.
+   */
+  private saveManifest(): Promise<void> {
+    const write = this.manifestWrite.then(() =>
+      this.atomicWrite(this.manifestPath(), JSON.stringify(this.readManifest(), null, 2)),
+    )
+    this.manifestWrite = write.catch(() => undefined)
+    return write
   }
 
   get offline(): boolean {
@@ -265,7 +282,11 @@ export class CacheManager {
   /** Temp file then rename, so a reader never sees a half-written dataset. */
   private async atomicWrite(target: string, text: string): Promise<void> {
     mkdirSync(dirname(target), { recursive: true })
-    const temp = `${target}.${process.pid}.${Date.now()}.tmp`
+    // The counter is what makes the name unique, not the clock: a lazy download and the daily
+    // check both save the manifest, and two of those starting in the same millisecond would
+    // otherwise write the same temp file and rename it twice - leaving the loser's bytes appended
+    // to the winner's and a manifest that no longer parses.
+    const temp = `${target}.${process.pid}.${Date.now()}.${(writeSequence += 1)}.tmp`
     try {
       await writeFile(temp, text, 'utf8')
     } catch (error) {

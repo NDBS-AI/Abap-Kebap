@@ -144,6 +144,12 @@ rename can lose to a virus scanner or an open handle, so `EPERM`, `EBUSY` and `E
 retried five times with a growing delay; any other error cleans up the temp file and
 propagates.
 
+Each write picks its own temp name from a process-wide counter rather than the clock, and
+manifest writes queue behind one another. Both exist for the same moment: a lazy download and
+the daily check saving the manifest at once. Sharing a temp name renames it twice and leaves
+the manifest unparseable; writing in parallel lets the slower rename land a snapshot that no
+longer holds the other's entry, so the next process re-downloads a file it already has.
+
 ### Repairing a corrupt cache
 
 A file that is on disk but holds zero records was truncated or hand-edited. The cache would
@@ -261,6 +267,9 @@ input — only resolution knows what the system turns out to be — so every too
 - **Background freshness.** `ensureFresh()` is deliberately `void`: server start and every
   tool call open the daily gate without blocking on it. A lookup waits only for a file that is
   genuinely missing, and then only up to 30 seconds before answering `DATASET_DOWNLOADING`.
+- **Serialised manifest writes.** Every save queues behind the one before it and serialises
+  the manifest when its turn comes, so the copy on disk is the newest one rather than whichever
+  rename finished last. See [Atomic writes](#atomic-writes).
 - **Memoised parses.** `DatasetRegistry` parses each file at most once per process and
   subscribes to the cache, so a file that is rewritten or evicted drops out of the memo
   automatically.
