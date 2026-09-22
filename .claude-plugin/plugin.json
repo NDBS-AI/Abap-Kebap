@@ -1,7 +1,7 @@
 {
   "name": "abap-kebap",
   "displayName": "ABAP Kebap — SAP ABAP Agent Team",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "SAP ABAP agent team for Claude Code: 3 role agents (architect designs, developer implements and tests, reviewer independently checks Clean ABAP + security + performance) and 36 deep ABAP/RAP/CDS/ABAP-Cloud skills grounded exclusively in public SAP sources.",
   "author": { "name": "Abdullah GÜNEŞ" },
   "license": "MIT",
@@ -11,5 +11,14 @@
     "./.claude/agents/abap-kebap-architect.md",
     "./.claude/agents/abap-kebap-developer.md",
     "./.claude/agents/abap-kebap-reviewer.md"
-  ]
+  ],
+  "mcpServers": {
+    "released-objects": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/mcp/released-objects/dist/index.js"],
+      "env": {
+        "ABAP_KEBAP_RELEASED_OBJECTS_DATA_DIR": "${CLAUDE_PLUGIN_DATA}/released-objects"
+      }
+    }
+  }
 }

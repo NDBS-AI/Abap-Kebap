@@ -194,14 +194,14 @@ See [enhancements-extensibility](../enhancements-extensibility/SKILL.md) for the
 The largest modernization. Constraints:
 
 - No native SQL, no MODIFY on SAP-owned tables, only released DDIC.
-- Only released APIs (`api.sap.com`).
+- Only released APIs — confirm each one with `check_objects` on the `released-objects` MCP server; `api.sap.com` is the fallback when the server is unavailable.
 - No classical dynpro (`DIALOG`, screens). Frontend is Fiori via RAP / OData.
 - No SAP GUI artifacts (SmartForms, classical ALV) — replaced by Forms Service for Adobe, RAP-Fiori.
 - Custom DDIC must be cloud-released.
 
 Approach:
 1. **Inventory.** Use ATC with the `ABAP_CLOUD_READINESS` check variant to find non-cloud-ready code.
-2. **Categorize.** Per finding: (a) released alternative exists → swap; (b) released alternative pending → wait or work around; (c) no path → escalate.
+2. **Categorize.** Run `check_objects` from the `released-objects` MCP server over the whole inventory, in batches of up to 100 objects per call, and `search_objects` for each blocked finding — produce the categorisation from those verdicts, not from recall. Per finding: (a) released alternative exists → swap; (b) released alternative pending → wait or work around; (c) no path → escalate.
 3. **Prioritize.** Frontline business logic before utilities; APIs that other systems consume before internal helpers.
 4. **Refactor in dev cloud system.** Don't backport cloud-only patterns to on-prem without reason — keep the bridge minimal.
 

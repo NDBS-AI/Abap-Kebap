@@ -92,10 +92,18 @@ DATA(lo_ixml_instance) = cl_ixml=>create( ).             " classic, not released
 Access to SAP-delivered objects is gated by a **release contract**. A *released API* is a repository object SAP has classified with a contract that guarantees a stability promise. Contracts are coded **C0, C1, …** — C1 is the common "use it in ABAP for Cloud Development" contract for APIs (see SAP Help for full contract rules). Released objects appear in the ADT *Project Explorer → Released Objects* node (classes under *Source Code Library*).
 
 **How to check if an object is released:**
-1. **ADT Properties tab** — open the object, *Properties → API State* shows the release contract (e.g. C1). Works in both cloud and classic systems.
-2. **Released Objects view** in ADT Project Explorer — browse everything released.
-3. **api.sap.com** — the SAP Business Accelerator Hub lists released APIs.
-4. **Programmatically** — query the released-objects CDS views:
+1. **Ask the `released-objects` MCP server** (shipped with this plugin, refreshed from SAP daily) —
+   `check_objects` for a verdict per object and `search_objects` for the released replacement.
+   This is the fastest and the most current route. Its tools may be deferred, so load them first
+   with `ToolSearch` using the keyword query `released-objects check_objects` — a keyword search,
+   not `select:` with the bare name, because the deferred name is prefixed (for example
+   `mcp__plugin_abap-kebap_released-objects__check_objects`) — then call the tool by the name
+   ToolSearch returned. The routes below are the fallback when the server is unavailable, and the
+   ADT and ATC routes remain authoritative for the running system.
+2. **ADT Properties tab** — open the object, *Properties → API State* shows the release contract (e.g. C1). Works in both cloud and classic systems.
+3. **Released Objects view** in ADT Project Explorer — browse everything released.
+4. **api.sap.com** — the SAP Business Accelerator Hub lists released APIs.
+5. **Programmatically** — query the released-objects CDS views:
 
 ```abap
 " All released classes:
@@ -204,7 +212,7 @@ Key types/exceptions: `IF_AIC_COMPLETION_API`, `IF_AIC_COMPLETION_API_RESULT`, `
 | Using `sy-datum`/`sy-uzeit` | Not allowed in cloud | `cl_abap_context_info`, `xco_cp=>sy->date/time` |
 | Assuming "released" = "forever frozen" | Code breaks when API is extended | C1 promises compatibility, not immutability — read the contract |
 | Writing a report/`WRITE` to test | Not allowed | Implement `IF_OO_ADT_CLASSRUN`, run with F9, `out->write( )` |
-| Guessing whether something is released | Wasted refactor | Check ADT API State / Released Objects / api.sap.com |
+| Guessing whether something is released | Wasted refactor | Ask the `released-objects` MCP server (`check_objects`); otherwise ADT API State / Released Objects / api.sap.com |
 | Guessing a framework method name for the third time | Activation ping-pong; a fallback built on a wrong conclusion | Read the class under System Library after the second miss |
 | Concluding a released API "cannot" do something from a compile error on a narrow interface | Static typing ≠ runtime capability | Check the implementing class for a cast guard; `CAST` if none |
 | Comm-scenario / service-id / proxy-model literals typed from memory | "destination not found" at runtime only | Diff against the object names in the package; comment the constant with the object it must match |

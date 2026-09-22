@@ -110,6 +110,7 @@ For every review, walk through the bullets below. Each maps to a deeper skill �
 | Dynamic code | [abap-dynamic-programming](../abap-dynamic-programming/SKILL.md) | Unnecessary dynamic where static works, unvalidated dynamic SQL/WHERE (injection), lost type safety, RTTI without guards |
 | Strings | [abap-strings-regex](../abap-strings-regex/SKILL.md) | `CONCATENATE` for new code, deprecated POSIX regex instead of PCRE, building messages by string concat instead of templates |
 | ABAP Cloud compatibility (Steampunk targets only) | [abap-cloud-development](../abap-cloud-development/SKILL.md) | Use of unreleased DDIC, native SQL/`EXEC SQL`, classic dynpro, MODIFY on SAP-owned table, non-released class/FM/BAPI — see its forbidden-vs-allowed table |
+| Released-object state — is this SAP object usable on the target system? | `check_objects` on the `released-objects` MCP server (`search_objects` for a replacement) | Mandatory before you assert either way: never call an SAP table, CDS entity, class or function module released — or blocked — from memory. Resolve the target from the connected ADT system, then the prompt, then ask; a `not-found` verdict is not permission |
 
 See [references/review-checklist.md](references/review-checklist.md) for a step-by-step manual checklist you can copy into a transport note.
 

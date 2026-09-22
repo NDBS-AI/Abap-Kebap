@@ -66,8 +66,9 @@ Constraints — read before relying on it:
   legitimately come back empty (e.g. there is no dedicated "unmanaged RAP
   scenario" tutorial indexed as of 2026-08). Fall back to the source preference
   order above when it does.
-- The five ABAP agents carry a fixed tools list (no MCP), so these tools serve
-  the **main session**; the agents keep grounding via WebFetch per this protocol.
+- These tools serve the **main session**. The ABAP agents keep grounding via
+  WebFetch per this protocol, and they additionally have the `released-objects`
+  MCP server available alongside their tools list.
 - Reach for it when the question is tutorial-shaped ("how does the RAP
   tutorial wire the draft action"). For exact-token verification the source
   preference order above still wins.
@@ -98,7 +99,7 @@ worth registering until SAP fixes either side of that mismatch.
 | ABAP SQL / FOR ALL ENTRIES / CTE syntax | ABAP keyword doc (ABAP SQL) + cheat-sheet SQL file |
 | ABAP Unit / test doubles | cheat-sheet ABAP Unit file + ABAP keyword doc |
 | Authorization (AUTHORITY-CHECK, DCL, RAP auth) | ABAP keyword doc + RAP dev guide (authorization) |
-| Released APIs / ABAP Cloud allowed-or-not | `api.sap.com` + ABAP for Cloud Development keyword doc |
+| Released APIs / ABAP Cloud allowed-or-not | `released-objects` MCP server → `check_objects` (first source); `api.sap.com` + ABAP for Cloud Development keyword doc as the fallback when the server is unavailable |
 | "Since which release" / release news | ABAP keyword doc release news (`abennews.htm`) |
 
 Each skill's own `## References` section lists the precise URLs for its topic — that is the first place to look when the loaded skill matches the question.
