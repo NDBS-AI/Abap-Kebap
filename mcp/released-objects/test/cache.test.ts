@@ -245,6 +245,29 @@ test('evicting a file that is already gone is not an error', async () => {
   assert.equal(cache.status(CORE.id), 'missing')
 })
 
+test('a lazy download and a daily check running together both write the manifest', async () => {
+  // Both paths end in the same manifest write, and a lookup that pulls a partner file in while
+  // the daily check is still running does exactly this. Two writes of one target that start in
+  // the same millisecond must not end up sharing a temp file: the second rename would find the
+  // temp already moved and fail the download that only needed to save a manifest entry.
+  const { cache, dataDir } = await makeCache({
+    'objectReleaseInfo_BTPLatest.json': jsonResponse(payload(200)),
+    'partner/objectClassifications_OTX.json': jsonResponse({
+      formatVersion: '2',
+      objectClassifications: [{ tadirObject: 'CLAS', tadirObjName: '/OTX/CL_A', objectType: 'CLAS', objectKey: '/OTX/CL_A', state: 'released' }],
+    }),
+  })
+
+  await Promise.all([cache.refresh([CORE]), cache.ensureFile(PARTNER, 500)])
+
+  assert.equal(cache.status(CORE.id), 'ready')
+  assert.equal(cache.status(PARTNER.id), 'ready')
+  // The manifest on disk has to carry both entries, not whichever write happened to land last.
+  const manifest = JSON.parse(await readFile(join(dataDir, 'manifest.json'), 'utf8')) as { files: Record<string, unknown> }
+  assert.ok(manifest.files[CORE.id])
+  assert.ok(manifest.files[PARTNER.id])
+})
+
 test('a write that cannot even be started leaves no temp file behind', async () => {
   // A path no file system can hold: the temp file is refused before a byte is written, which is
   // the one failure the rename path's cleanup never saw.

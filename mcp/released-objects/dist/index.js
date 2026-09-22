@@ -62467,6 +62467,7 @@ function validatePayload(text, arrayKey, previousEntries) {
   }
   return { ok: true, entries: rows.length };
 }
+var writeSequence = 0;
 function sha256(text) {
   return (0, import_node_crypto.createHash)("sha256").update(text, "utf8").digest("hex");
 }
@@ -62497,6 +62498,8 @@ var CacheManager = class {
   inFlight = /* @__PURE__ */ new Map();
   listeners = [];
   refreshing = null;
+  /** The tail of the manifest write queue; never rejects, so a failed write ends with its caller. */
+  manifestWrite = Promise.resolve();
   lastNetworkFailed = false;
   subscribe(listener) {
     this.listeners.push(listener);
@@ -62518,8 +62521,20 @@ var CacheManager = class {
     }
     return this.manifest;
   }
-  async saveManifest() {
-    await this.atomicWrite(this.manifestPath(), JSON.stringify(this.readManifest(), null, 2));
+  /**
+   * Manifest writers take turns, and each serialises the manifest at the moment its turn comes
+   * rather than when it asked: a lazy download and the daily check both save, and without the
+   * queue the slower rename lands last and puts a snapshot back on disk that no longer holds
+   * the other one's entry. The file would then be missing a file the cache has, so the next
+   * process re-downloads it - with no etag to earn a 304. The chain itself never rejects, so one
+   * failed write cannot fail every write after it; the caller still sees its own failure.
+   */
+  saveManifest() {
+    const write = this.manifestWrite.then(
+      () => this.atomicWrite(this.manifestPath(), JSON.stringify(this.readManifest(), null, 2))
+    );
+    this.manifestWrite = write.catch(() => void 0);
+    return write;
   }
   get offline() {
     return this.lastNetworkFailed;
@@ -62546,7 +62561,7 @@ var CacheManager = class {
   /** Temp file then rename, so a reader never sees a half-written dataset. */
   async atomicWrite(target, text) {
     (0, import_node_fs.mkdirSync)((0, import_node_path.dirname)(target), { recursive: true });
-    const temp = `${target}.${process.pid}.${Date.now()}.tmp`;
+    const temp = `${target}.${process.pid}.${Date.now()}.${writeSequence += 1}.tmp`;
     try {
       await (0, import_promises.writeFile)(temp, text, "utf8");
     } catch (error62) {
