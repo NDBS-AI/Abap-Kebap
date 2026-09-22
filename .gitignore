@@ -29,3 +29,7 @@ desktop.ini
 _scratch/
 example/
 .axet-code/
+
+# MCP server build artifacts (dist/index.js IS committed)
+mcp/released-objects/node_modules/
+mcp/released-objects/build/

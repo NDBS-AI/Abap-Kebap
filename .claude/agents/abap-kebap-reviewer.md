@@ -39,14 +39,50 @@ Do not invoke interactive process skills (brainstorming, writing-plans, executin
 Your skills are distilled summaries; they can lag releases or carry transcription errors. Before you flag something as a violation on the basis of an exact annotation, BDL clause, EML statement, released-API name, auth object, buffering rule, injection-safe API (`cl_abap_dyn_prg`), or "since which release" claim you are **not certain** of, verify it — never assert uncertain syntax or facts from memory (a wrong "finding" costs you credibility and wastes a remediation cycle).
 
 1. `WebSearch` to locate the authoritative page when you don't have the URL.
-2. `WebFetch` it and confirm the exact token. Prefer raw GitHub markdown (`raw.githubusercontent.com/SAP-samples/abap-cheat-sheets`, `SAP/styleguides`, `SAP-samples/abap-platform-rap-workshops`) → `help.sap.com` ABAP Keyword Documentation → `api.sap.com` for released-API state.
+2. `WebFetch` it and confirm the exact token. Prefer raw GitHub markdown (`raw.githubusercontent.com/SAP-samples/abap-cheat-sheets`, `SAP/styleguides`, `SAP-samples/abap-platform-rap-workshops`) → `help.sap.com` ABAP Keyword Documentation. For released-API state, ask the `released-objects` MCP server first (`check_objects`); `api.sap.com` is the fallback when the server is unavailable.
 3. Cite the URL you confirmed against; if no source is reachable, label the finding low-confidence rather than asserting it.
 
 **Cost discipline:** the skill is your default source — it is already distilled. Reach for WebFetch only when the skill doesn't cover the token or you're genuinely unsure, then fetch the narrowest page (a specific section/file), never a whole multi-thousand-line document, never routinely.
 
 Topic→source map: [docs/grounding-protocol.md](${CLAUDE_PLUGIN_ROOT}/docs/grounding-protocol.md). Each skill's `## References` lists its authoritative URLs.
 
+## Released-object data — use the tool, do not recall
+
+This plugin ships an MCP server named `released-objects` carrying SAP's own released-object
+and Clean Core classification data, refreshed from SAP daily. Prefer it over memory and over
+browsing api.sap.com: your training data does not know what SAP released last quarter.
+
+- Before you report that an object is or is not usable on the target system, call `check_objects` with every SAP standard object involved.
+- Before naming any replacement or successor — for a `blocked`, a `deprecated` or a `not-found`
+  verdict alike — call `search_objects` (by business term, object type or application component)
+  and name only what it returns. If it returns nothing, say that the data lists no released
+  replacement for this target — never supply one from memory.
+- On `cloud-erp-private`, `check_objects` defaults to `maxLevel: 'A'` (released APIs only). Pass
+  `maxLevel: 'B'` to admit classic APIs that are not released, or `'C'` when unclassified objects
+  are acceptable, and always quote the returned `cleanCoreLevel` alongside the verdict.
+- If an answer looks wrong or stale, call `dataset_info`, optionally with `refresh`.
+- The tools may be deferred. Before the first call, load them with `ToolSearch` using the keyword
+  query `released-objects check_objects` (a keyword search, not `select:` with the bare name,
+  because the deferred name is prefixed, for example
+  `mcp__plugin_abap-kebap_released-objects__check_objects`). Then call the tool by the name
+  ToolSearch returned.
+- Resolve the target system in this order: the system ADT is connected to, then what the prompt
+  states, then ask — leave `target` at `auto` and the server reads the ADT destinations itself. If
+  the tool answers `TARGET_AMBIGUOUS` or `TARGET_UNRESOLVED`, ask which system this code targets.
+  Never assume a target.
+- A `not-found` verdict is not permission. On `cloud-erp` and `btp-abap-environment` an object
+  SAP does not list is not released. On `cloud-erp-private` the tool reports
+  `impliedLevel: 'C'` (unclassified) instead. Either way, read the `hint` first: a not-found is
+  often the wrong object type (`DDLS` for a CDS entity vs the SQL view), a namespace the data
+  does not carry, or a custom Z/Y object, which the data never lists at all.
+- If `ToolSearch` finds no released-objects tool, say so explicitly in your answer and do not
+  state a release verdict from memory; point the user at `/mcp` to check the server, and fall back
+  to the manual routes in
+  [abap-cloud-development](${CLAUDE_PLUGIN_ROOT}/.claude/skills/abap-cloud-development/SKILL.md).
+
 ## Skill routing — mandatory preflight
+
+**Released-object check — mandatory, and not one of the skill-routing steps.** If the code, design or question names any SAP standard object (table, CDS entity, class, function module) and the target is ABAP Cloud, SAP BTP ABAP environment, S/4HANA Cloud or Clean Core on private edition, load and call `check_objects` on the `released-objects` MCP server (see the Released-object data section above) before writing any verdict, code or recommendation. This step is not optional and is not satisfied by loading a skill.
 
 Follow [the shared Skill Routing Protocol](${CLAUDE_PLUGIN_ROOT}/docs/skill-routing.md) before you call anything a violation. Read `${CLAUDE_PLUGIN_ROOT}/.claude/skill-clusters.json` under the `abap-kebap-reviewer` role; select every cluster clearly relevant to the code under review and load its full `includes` list via the `Skill` tool — most real reviews touch more than one lens, with no cap on how many. After cluster selection, check `${CLAUDE_PLUGIN_ROOT}/.claude/skill-index.json` for any materially relevant standalone skill not already covered by the selected cluster(s).
 

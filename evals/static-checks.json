@@ -5,7 +5,8 @@
     ".claude/agents",
     ".claude-plugin",
     ".github",
-    "docs"
+    "docs",
+    "mcp/released-objects/src"
   ],
   "scanFiles": [
     "CLAUDE.md",
@@ -19,7 +20,8 @@
     ".ddls",
     ".ddlx",
     ".dcls",
-    ".xml"
+    ".xml",
+    ".ts"
   ],
   "rules": [
     {
@@ -269,6 +271,167 @@
       "pattern": "zprd_",
       "in": ".claude/skills",
       "note": "Skills are global: no customer/project object names from retrospectives. Port lessons as self-contained generic examples in the skill's existing domain (inventory job, ZSC_TRAVEL proxy, rate service), never as renamed project code."
+    },
+    {
+      "id": "mcp-server-declared-in-plugin",
+      "kind": "required",
+      "pattern": "released-objects",
+      "in": ".claude-plugin/plugin.json",
+      "note": "The plugin must declare the server or nothing auto-provisions it."
+    },
+    {
+      "id": "mcp-data-dir-uses-plugin-data",
+      "kind": "required",
+      "pattern": "${CLAUDE_PLUGIN_DATA}",
+      "in": ".claude-plugin/plugin.json",
+      "note": "Data must survive plugin updates."
+    },
+    {
+      "id": "mcp-bundle-path-uses-plugin-root",
+      "kind": "required",
+      "pattern": "${CLAUDE_PLUGIN_ROOT}/mcp/released-objects/dist/index.js",
+      "in": ".claude-plugin/plugin.json",
+      "note": "The bundle is referenced by placeholder, never by a relative path."
+    },
+    {
+      "id": "agents-know-check-objects-architect",
+      "kind": "required",
+      "pattern": "check_objects",
+      "in": ".claude/agents/abap-kebap-architect.md",
+      "note": "This agent must know the tool exists."
+    },
+    {
+      "id": "agents-know-check-objects-developer",
+      "kind": "required",
+      "pattern": "check_objects",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "This agent must know the tool exists."
+    },
+    {
+      "id": "agents-know-check-objects-reviewer",
+      "kind": "required",
+      "pattern": "check_objects",
+      "in": ".claude/agents/abap-kebap-reviewer.md",
+      "note": "This agent must know the tool exists."
+    },
+    {
+      "id": "agents-never-guess-target-architect",
+      "kind": "required",
+      "pattern": "TARGET_AMBIGUOUS",
+      "in": ".claude/agents/abap-kebap-architect.md",
+      "note": "This agent must know to ask rather than assume a system."
+    },
+    {
+      "id": "agents-never-guess-target-developer",
+      "kind": "required",
+      "pattern": "TARGET_AMBIGUOUS",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "This agent must know to ask rather than assume a system."
+    },
+    {
+      "id": "agents-never-guess-target-reviewer",
+      "kind": "required",
+      "pattern": "TARGET_AMBIGUOUS",
+      "in": ".claude/agents/abap-kebap-reviewer.md",
+      "note": "This agent must know to ask rather than assume a system."
+    },
+    {
+      "id": "agents-load-deferred-tool-architect",
+      "kind": "required",
+      "pattern": "released-objects check_objects",
+      "in": ".claude/agents/abap-kebap-architect.md",
+      "note": "Plugin MCP tools arrive deferred under a prefixed name; without the ToolSearch keyword query this agent cannot call them and answers from memory instead."
+    },
+    {
+      "id": "agents-load-deferred-tool-developer",
+      "kind": "required",
+      "pattern": "released-objects check_objects",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "Plugin MCP tools arrive deferred under a prefixed name; without the ToolSearch keyword query this agent cannot call them and answers from memory instead."
+    },
+    {
+      "id": "agents-load-deferred-tool-reviewer",
+      "kind": "required",
+      "pattern": "released-objects check_objects",
+      "in": ".claude/agents/abap-kebap-reviewer.md",
+      "note": "Plugin MCP tools arrive deferred under a prefixed name; without the ToolSearch keyword query this agent cannot call them and answers from memory instead."
+    },
+    {
+      "id": "agents-search-before-replacement-architect",
+      "kind": "required",
+      "pattern": "never supply one from memory",
+      "in": ".claude/agents/abap-kebap-architect.md",
+      "note": "A not-found verdict tempts this agent to recall a successor; every replacement must come from search_objects or be declared absent."
+    },
+    {
+      "id": "agents-search-before-replacement-developer",
+      "kind": "required",
+      "pattern": "never supply one from memory",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "A not-found verdict tempts this agent to recall a successor; every replacement must come from search_objects or be declared absent."
+    },
+    {
+      "id": "agents-search-before-replacement-reviewer",
+      "kind": "required",
+      "pattern": "never supply one from memory",
+      "in": ".claude/agents/abap-kebap-reviewer.md",
+      "note": "A not-found verdict tempts this agent to recall a successor; every replacement must come from search_objects or be declared absent."
+    },
+    {
+      "id": "agents-preflight-check-objects-architect",
+      "kind": "required",
+      "pattern": "is not satisfied by loading a skill",
+      "in": ".claude/agents/abap-kebap-architect.md",
+      "note": "This agent obeys its skill-routing preflight every run but skipped the released-object block below it; the check must sit inside the preflight itself."
+    },
+    {
+      "id": "agents-preflight-check-objects-developer",
+      "kind": "required",
+      "pattern": "is not satisfied by loading a skill",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "This agent obeys its skill-routing preflight every run but skipped the released-object block below it; the check must sit inside the preflight itself."
+    },
+    {
+      "id": "agents-preflight-check-objects-reviewer",
+      "kind": "required",
+      "pattern": "is not satisfied by loading a skill",
+      "in": ".claude/agents/abap-kebap-reviewer.md",
+      "note": "This agent obeys its skill-routing preflight every run but skipped the released-object block below it; the check must sit inside the preflight itself."
+    },
+    {
+      "id": "cloud-skill-points-at-mcp",
+      "kind": "required",
+      "pattern": "`released-objects` MCP server",
+      "in": ".claude/skills/abap-cloud-development/SKILL.md",
+      "note": "The manual route must not drift back to being the only route: the skill must name the MCP server itself, not merely the released-objects CDS views."
+    },
+    {
+      "id": "review-skill-points-at-mcp",
+      "kind": "required",
+      "pattern": "check_objects",
+      "in": ".claude/skills/abap-code-review/SKILL.md",
+      "note": "The review gate must call the tool."
+    },
+    {
+      "id": "mcp-server-never-writes-stdout",
+      "kind": "forbidden",
+      "pattern": "console.log(",
+      "in": "mcp/released-objects/src/",
+      "note": "Stdout is the MCP transport; a stray log breaks the protocol."
+    },
+    {
+      "id": "mcp-server-never-writes-stdout-raw",
+      "kind": "forbidden",
+      "pattern": "process.stdout.write",
+      "in": "mcp/released-objects/src/",
+      "note": "Same reason, for the raw stream."
+    },
+    {
+      "id": "mcp-server-no-credential-fields",
+      "kind": "forbidden",
+      "pattern": "authenticationKind",
+      "in": "mcp/released-objects/src/",
+      "note": "The ADT destinations file is read for host and protocol only."
     }
   ]
 }
