@@ -20,13 +20,38 @@ import { DATASET_INFO_DESCRIPTION, handleDatasetInfo } from './tools/dataset-inf
 import { toolFailure, type ServerContext, type ToolResult } from './tools/context'
 import { handleSearchObjects, SEARCH_OBJECTS_DESCRIPTION } from './tools/search-objects'
 
-export const MIN_NODE_MAJOR = 20
+/**
+ * The whole version, not just the major: undici 7 declares `>=20.18.1`, so a major-only check
+ * lets the server start on Node 20.0-20.18.0 and then fail on the first download, from inside a
+ * dependency, with nothing in the message pointing at the Node version. Keep this in step with
+ * `engines.node` in package.json.
+ */
+export const MIN_NODE_VERSION = '20.18.1'
+
+/** `[major, minor, patch]`; a part that is absent or unreadable becomes NaN, never a zero. */
+function versionParts(version: string): number[] {
+  const core = version.replace(/^v/, '').split('-')[0] ?? ''
+  const parts = core.split('.')
+  return [0, 1, 2].map((index) => Number.parseInt(parts[index] ?? '', 10))
+}
+
+/** True when `version` is below the floor. A version that cannot be read counts as below it. */
+function belowFloor(version: string): boolean {
+  const actual = versionParts(version)
+  const required = versionParts(MIN_NODE_VERSION)
+  // Not evidence of a new enough Node, so it is refused rather than waved through.
+  if (actual.some(Number.isNaN)) return true
+  // The first part that differs decides; equal the whole way through is new enough.
+  for (const [index, part] of actual.entries()) {
+    if (part !== required[index]) return part < (required[index] ?? 0)
+  }
+  return false
+}
 
 export function assertNodeVersion(version: string): void {
-  const major = Number.parseInt(version.replace(/^v/, '').split('.')[0] ?? '0', 10)
-  if (Number.isNaN(major) || major < MIN_NODE_MAJOR) {
+  if (belowFloor(version)) {
     throw new Error(
-      `The released-objects MCP server needs Node.js ${MIN_NODE_MAJOR} or newer, and this is ${version}. ` +
+      `The released-objects MCP server needs Node.js ${MIN_NODE_VERSION} or newer, and this is ${version}. ` +
         'Install a current Node.js and restart Claude Code.',
     )
   }

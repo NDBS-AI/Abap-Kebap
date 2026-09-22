@@ -205,8 +205,7 @@ so the calling model can read and act on them rather than seeing a protocol faul
 | Verdicts look wrong for your system | The wrong target was resolved | Check `resolvedFrom` and `confidence` in any response; pin `ABAP_KEBAP_RELEASED_OBJECTS_TARGET`. |
 | A `/NS/` object is always `not-found` | That vendor published no classification file | Expected. The response says so and tells you to ask the vendor. |
 | `dataset_info` reports `stale-error` on a file | A download failed validation, or the file on disk was edited | Call `dataset_info` with `refresh: true`; the file is evicted and re-fetched. See [docs/operations.md](docs/operations.md). |
-| The server will not start | Node older than 20 | The startup check names the version it found. Install a current Node and restart the client. |
-| The server starts but every download throws from inside undici | Node 20.0–20.18.0 | The startup check only enforces major ≥ 20; the dependency floor is 20.18.1. Upgrade Node. |
+| The server will not start | Node older than 20.18.1 | The startup check names the floor and the version it found. Install a current Node and restart the client. The floor is undici's, not a preference: below it the HTTP client does not run. |
 
 ## Development
 

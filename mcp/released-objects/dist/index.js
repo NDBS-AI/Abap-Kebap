@@ -33057,7 +33057,7 @@ ${captureLines}` : capture.stack;
 // src/index.ts
 var index_exports = {};
 __export(index_exports, {
-  MIN_NODE_MAJOR: () => MIN_NODE_MAJOR,
+  MIN_NODE_VERSION: () => MIN_NODE_VERSION,
   assertNodeVersion: () => assertNodeVersion,
   buildContext: () => buildContext,
   createLogger: () => createLogger,
@@ -63882,12 +63882,25 @@ async function handleSearchObjects(context, input2) {
 }
 
 // src/index.ts
-var MIN_NODE_MAJOR = 20;
+var MIN_NODE_VERSION = "20.18.1";
+function versionParts(version2) {
+  const core = version2.replace(/^v/, "").split("-")[0] ?? "";
+  const parts = core.split(".");
+  return [0, 1, 2].map((index) => Number.parseInt(parts[index] ?? "", 10));
+}
+function belowFloor(version2) {
+  const actual = versionParts(version2);
+  const required2 = versionParts(MIN_NODE_VERSION);
+  if (actual.some(Number.isNaN)) return true;
+  for (const [index, part] of actual.entries()) {
+    if (part !== required2[index]) return part < (required2[index] ?? 0);
+  }
+  return false;
+}
 function assertNodeVersion(version2) {
-  const major = Number.parseInt(version2.replace(/^v/, "").split(".")[0] ?? "0", 10);
-  if (Number.isNaN(major) || major < MIN_NODE_MAJOR) {
+  if (belowFloor(version2)) {
     throw new Error(
-      `The released-objects MCP server needs Node.js ${MIN_NODE_MAJOR} or newer, and this is ${version2}. Install a current Node.js and restart Claude Code.`
+      `The released-objects MCP server needs Node.js ${MIN_NODE_VERSION} or newer, and this is ${version2}. Install a current Node.js and restart Claude Code.`
     );
   }
 }
@@ -63982,7 +63995,7 @@ if (require.main === module) {
 }
 // Annotate the CommonJS export names for ESM import in node:
 0 && (module.exports = {
-  MIN_NODE_MAJOR,
+  MIN_NODE_VERSION,
   assertNodeVersion,
   buildContext,
   createLogger,
