@@ -218,7 +218,11 @@ private-edition release (for example `2023`) when you use `cloud-erp-private`.
 The data is cached under the plugin's data directory; set
 `ABAP_KEBAP_RELEASED_OBJECTS_DATA_DIR` to an absolute path to keep it somewhere else.
 
-The server needs Node 20.18 or newer. Run `/mcp` in Claude Code to turn it off.
+The server needs Node 20.18.1 or newer. Run `/mcp` in Claude Code to turn it off.
+
+Full documentation — every tool parameter and response field, the architecture, and the
+operations guide for proxies, mirrors, air-gapped machines and cache repair — lives in
+[`mcp/released-objects/README.md`](mcp/released-objects/README.md).
 
 The data is SAP's, published under Apache-2.0, and SAP's own note applies: the license
 covers the released-object lists, not the use of the SAP APIs those lists describe. The
