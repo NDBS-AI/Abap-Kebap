@@ -147,8 +147,18 @@ export function toolDefinitions(context: ServerContext): ToolDefinition[] {
   ]
 }
 
+/**
+ * Shown by clients that list connected servers (VS Code's MCP picker among them) next to the bare
+ * server name. Without it "released-objects" reads as an unlabelled entry beside servers that do
+ * supply one, and nothing here says the server belongs to the ABAP Kebap plugin.
+ */
+const SERVER_INSTRUCTIONS =
+  'Part of the ABAP Kebap plugin for SAP ABAP work. Checks whether SAP standard objects (tables, ' +
+  'classes, function modules, CDS views, …) are released for use in ABAP Cloud, and names the ' +
+  'successor when they are not - using SAP\'s own Cloudification Repository data, cached locally.'
+
 export function createServer(context: ServerContext): McpServer {
-  const server = new McpServer({ name: 'released-objects', version: SERVER_VERSION })
+  const server = new McpServer({ name: 'released-objects', version: SERVER_VERSION }, { instructions: SERVER_INSTRUCTIONS })
   for (const tool of toolDefinitions(context)) {
     server.registerTool(tool.name, { description: tool.description, inputSchema: tool.inputSchema as never }, tool.handler as never)
   }

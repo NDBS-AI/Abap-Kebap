@@ -3,7 +3,9 @@ import assert from 'node:assert/strict'
 import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { assertNodeVersion, buildContext, createLogger, MIN_NODE_VERSION, toolDefinitions } from '../src/index'
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js'
+import { assertNodeVersion, buildContext, createLogger, createServer, MIN_NODE_VERSION, toolDefinitions } from '../src/index'
 
 const dataDir = async () => mkdtemp(join(tmpdir(), 'ro-index-'))
 const payloadOf = (result: { content: { text: string }[] }) => JSON.parse(result.content[0]?.text ?? '{}')
@@ -76,6 +78,24 @@ test('a version that cannot be read is refused rather than assumed new enough', 
 
 test('a pre-release of a new enough Node is accepted, since the tag is not part of the order', () => {
   assert.doesNotThrow(() => assertNodeVersion('v22.0.0-nightly20240101'))
+})
+
+test('a connecting client is told what the server is for, not just its bare name', async () => {
+  // Client pickers (VS Code's MCP list among them) show this string next to the server name.
+  // Without it "released-objects" reads as an unlabelled entry alongside servers that do supply one.
+  const context = buildContext([], { ABAP_KEBAP_RELEASED_OBJECTS_DATA_DIR: await dataDir() })
+  const server = createServer(context)
+  const client = new Client({ name: 'test-client', version: '0.0.0' })
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+  await Promise.all([client.connect(clientTransport), server.connect(serverTransport)])
+  try {
+    const instructions = client.getInstructions()
+    assert.ok(instructions && instructions.length > 40, 'expected a real sentence, not a blank or token label')
+    assert.match(instructions, /ABAP Kebap/)
+    assert.match(instructions, /SAP/)
+  } finally {
+    await client.close()
+  }
 })
 
 test('the logger writes to stderr only, because stdout carries the protocol', () => {

@@ -63970,8 +63970,9 @@ function toolDefinitions(context) {
     }
   ];
 }
+var SERVER_INSTRUCTIONS = "Part of the ABAP Kebap plugin for SAP ABAP work. Checks whether SAP standard objects (tables, classes, function modules, CDS views, \u2026) are released for use in ABAP Cloud, and names the successor when they are not - using SAP's own Cloudification Repository data, cached locally.";
 function createServer(context) {
-  const server = new McpServer({ name: "released-objects", version: SERVER_VERSION });
+  const server = new McpServer({ name: "released-objects", version: SERVER_VERSION }, { instructions: SERVER_INSTRUCTIONS });
   for (const tool of toolDefinitions(context)) {
     server.registerTool(tool.name, { description: tool.description, inputSchema: tool.inputSchema }, tool.handler);
   }
