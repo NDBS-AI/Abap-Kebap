@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { assertNodeVersion, buildContext, createLogger, MIN_NODE_MAJOR, toolDefinitions } from '../src/index'
+import { assertNodeVersion, buildContext, createLogger, MIN_NODE_VERSION, toolDefinitions } from '../src/index'
 
 const dataDir = async () => mkdtemp(join(tmpdir(), 'ro-index-'))
 const payloadOf = (result: { content: { text: string }[] }) => JSON.parse(result.content[0]?.text ?? '{}')
@@ -55,9 +55,27 @@ test('a mirror base URL keeps the server away from the GitHub API entirely', asy
 })
 
 test('Node older than the floor is refused by name, and the floor itself is accepted', () => {
-  assert.throws(() => assertNodeVersion('v18.19.0'), /Node\.js 20/)
-  assert.doesNotThrow(() => assertNodeVersion(`v${MIN_NODE_MAJOR}.0.0`))
+  assert.throws(() => assertNodeVersion('v18.19.0'), /Node\.js 20\.18\.1/)
+  assert.doesNotThrow(() => assertNodeVersion(`v${MIN_NODE_VERSION}`))
   assert.doesNotThrow(() => assertNodeVersion('v22.11.0'))
+})
+
+test('the floor is the whole version, because a Node 20 below 20.18.1 cannot run the HTTP client', () => {
+  // undici 7 declares >=20.18.1. A major-only check lets the server start and then fail on the
+  // first download, from inside a dependency, with nothing pointing at the Node version.
+  assert.throws(() => assertNodeVersion('v20.5.0'), /Node\.js 20\.18\.1/)
+  assert.throws(() => assertNodeVersion('v20.18.0'), /Node\.js 20\.18\.1/)
+  assert.doesNotThrow(() => assertNodeVersion('v20.18.2'))
+  assert.doesNotThrow(() => assertNodeVersion('v20.19.0'))
+})
+
+test('a version that cannot be read is refused rather than assumed new enough', () => {
+  assert.throws(() => assertNodeVersion('v'), /Node\.js 20\.18\.1/)
+  assert.throws(() => assertNodeVersion('not-a-version'), /Node\.js 20\.18\.1/)
+})
+
+test('a pre-release of a new enough Node is accepted, since the tag is not part of the order', () => {
+  assert.doesNotThrow(() => assertNodeVersion('v22.0.0-nightly20240101'))
 })
 
 test('the logger writes to stderr only, because stdout carries the protocol', () => {

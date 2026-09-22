@@ -4,7 +4,7 @@
   "private": true,
   "description": "Bundled MCP server exposing SAP's Cloudification Repository (released APIs and Clean Core classifications) to the abap-kebap agents.",
   "license": "MIT",
-  "engines": { "node": ">=20" },
+  "engines": { "node": ">=20.18.1" },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "tsc -p tsconfig.json && cd build && node --test",
