@@ -11,7 +11,7 @@ A team of **3 focused Claude Code agents** for SAP ABAP, backed by **36 in-depth
 **As a Claude Code plugin** (plugin name: `abap-kebap`):
 
 ```
-/plugin marketplace add abgunes/Abap-Kebap
+/plugin marketplace add NDBS-AI/Abap-Kebap
 /plugin install abap-kebap@abgunes
 ```
 
@@ -242,7 +242,7 @@ not to use plugins, two alternatives:
 ### Clone (project-local, also enables the contributor tools)
 
 ```bash
-git clone https://github.com/abgunes/Abap-Kebap.git
+git clone https://github.com/NDBS-AI/Abap-Kebap.git
 cd Abap-Kebap
 ```
 
