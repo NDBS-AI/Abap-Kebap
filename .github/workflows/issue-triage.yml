@@ -1,0 +1,30 @@
+name: issue-triage
+
+# Checks issues opened from the forms in .github/ISSUE_TEMPLATE. The issue text is untrusted:
+# it is never interpolated into a run step; run.mjs reads the event file and the API instead.
+on:
+  issues:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency:
+  group: issue-triage-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Check the issue
+        run: node scripts/issue-triage/run.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

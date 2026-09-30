@@ -1,0 +1,91 @@
+name: Request a new skill
+description: A topic no skill covers yet.
+labels: ["skill-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This repository is shared company-wide.** Do not paste customer code, customer or system names, hostnames, SIDs, user names or credentials. Reduce examples to generic Z objects.
+  - type: input
+    id: topic
+    attributes:
+      label: Topic
+      placeholder: ABAP Channels (AMC and APC)
+    validations:
+      required: true
+  - type: input
+    id: slug
+    attributes:
+      label: Proposed slug
+      description: Optional. Lowercase kebab-case, starting with abap-, rap-, cds-, fiori- or enhancements-.
+      placeholder: abap-channels
+  - type: textarea
+    id: scope
+    attributes:
+      label: What tasks would it cover?
+    validations:
+      required: true
+  - type: checkboxes
+    id: agents
+    attributes:
+      label: Which agents would use it?
+      options:
+        - label: abap-kebap-architect
+        - label: abap-kebap-developer
+        - label: abap-kebap-reviewer
+  - type: dropdown
+    id: related
+    attributes:
+      label: Related existing skills
+      multiple: true
+      options:
+        # BEGIN generated skills (scripts/build_issue_forms.py)
+        - abap-abapgit
+        - abap-amdp-hierarchies
+        - abap-authorization
+        - abap-background-processing
+        - abap-builtin-functions
+        - abap-business-configuration
+        - abap-classic-ui
+        - abap-clean-style
+        - abap-cloud-development
+        - abap-code-review
+        - abap-constructor-expressions
+        - abap-data-objects
+        - abap-dictionary-ddic
+        - abap-dynamic-programming
+        - abap-internal-tables
+        - abap-modernization-playbook
+        - abap-odata
+        - abap-oo-patterns
+        - abap-output-management
+        - abap-parallel-processing
+        - abap-sap-luw
+        - abap-sql-performance
+        - abap-strings-regex
+        - abap-systematic-debugging
+        - abap-unit-tdd
+        - abap-xco-library
+        - abap-xml-json
+        - cds-entity-types
+        - cds-views-authoring
+        - enhancements-extensibility
+        - fiori-elements-ui-annotations
+        - rap-actions-validations-determinations
+        - rap-bo-modeling
+        - rap-business-events-side-effects
+        - rap-eml
+        - rap-saves-and-numbering
+        # END generated skills
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources
+      description: Optional. If you add links, include at least one public SAP link.
+  - type: checkboxes
+    id: sanitized
+    attributes:
+      label: Before you submit
+      options:
+        - label: I removed customer code, customer and system names, hostnames, users and credentials.
+          required: true

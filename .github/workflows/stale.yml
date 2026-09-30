@@ -1,0 +1,32 @@
+name: stale
+
+# Closes issues whose author did not act on the triage bot's comment. Scoped to needs-info:
+# no other issue and no pull request is ever marked stale.
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  actions: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v11
+        with:
+          only-labels: needs-info
+          days-before-stale: 10
+          days-before-close: 4
+          days-before-pr-stale: -1
+          days-before-pr-close: -1
+          stale-issue-label: stale
+          close-issue-reason: not_planned
+          stale-issue-message: >-
+            This issue has waited 10 days for the fixes the automatic checks asked for.
+            It closes in 4 days unless it is edited or commented on.
+          close-issue-message: >-
+            Closed after 14 days without the requested fixes. Edit the issue and ask a
+            maintainer to reopen it when it is ready.
