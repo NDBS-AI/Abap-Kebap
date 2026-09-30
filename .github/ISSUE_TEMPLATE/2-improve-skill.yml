@@ -1,0 +1,86 @@
+name: Improve a skill
+description: An existing skill is missing something or is wrong.
+labels: ["skill-improvement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This repository is shared company-wide.** Do not paste customer code, customer or system names, hostnames, SIDs, user names or credentials. Reduce examples to generic Z objects.
+  - type: dropdown
+    id: skill
+    attributes:
+      label: Skill
+      options:
+        # BEGIN generated skills (scripts/build_issue_forms.py)
+        - abap-abapgit
+        - abap-amdp-hierarchies
+        - abap-authorization
+        - abap-background-processing
+        - abap-builtin-functions
+        - abap-business-configuration
+        - abap-classic-ui
+        - abap-clean-style
+        - abap-cloud-development
+        - abap-code-review
+        - abap-constructor-expressions
+        - abap-data-objects
+        - abap-dictionary-ddic
+        - abap-dynamic-programming
+        - abap-internal-tables
+        - abap-modernization-playbook
+        - abap-odata
+        - abap-oo-patterns
+        - abap-output-management
+        - abap-parallel-processing
+        - abap-sap-luw
+        - abap-sql-performance
+        - abap-strings-regex
+        - abap-systematic-debugging
+        - abap-unit-tdd
+        - abap-xco-library
+        - abap-xml-json
+        - cds-entity-types
+        - cds-views-authoring
+        - enhancements-extensibility
+        - fiori-elements-ui-annotations
+        - rap-actions-validations-determinations
+        - rap-bo-modeling
+        - rap-business-events-side-effects
+        - rap-eml
+        - rap-saves-and-numbering
+        # END generated skills
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is missing or wrong?
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: Proposed change
+      description: What the skill should say instead, as concretely as you can.
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources
+      description: At least one public SAP link (help.sap.com, community.sap.com, developers.sap.com, or github.com/SAP, SAP-samples or SAP-docs). Other public links are welcome alongside it.
+    validations:
+      required: true
+  - type: checkboxes
+    id: self
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to make this change myself through a pull request
+  - type: checkboxes
+    id: sanitized
+    attributes:
+      label: Before you submit
+      options:
+        - label: I removed customer code, customer and system names, hostnames, users and credentials.
+          required: true

@@ -1,0 +1,71 @@
+name: Contribute your own skill
+description: You wrote a skill and want it merged.
+labels: ["skill-contribution"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This repository is shared company-wide.** Do not paste customer code, customer or system names, hostnames, SIDs, user names or credentials. Reduce examples to generic Z objects.
+
+        **How a contribution works:** open this issue first. A maintainer reviews it and adds the `approved` label. Then fork the repository, build the skill from `templates/skill`, and open a pull request that says `Closes #<this issue>`. The CI gates run on the pull request. [CONTRIBUTING.md](https://github.com/NDBS-AI/Abap-Kebap/blob/main/CONTRIBUTING.md) has the details.
+  - type: input
+    id: slug
+    attributes:
+      label: Skill slug
+      description: Lowercase kebab-case, starting with abap-, rap-, cds-, fiori- or enhancements-. It becomes the folder name under .claude/skills.
+      placeholder: abap-channels
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Frontmatter description
+      description: 'Starts with "Use when"; at least 50 words; at most 1024 characters.'
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope summary
+      description: What the skill covers and what it leaves out.
+    validations:
+      required: true
+  - type: checkboxes
+    id: agents
+    attributes:
+      label: Which agents would use it?
+      options:
+        - label: abap-kebap-architect
+        - label: abap-kebap-developer
+        - label: abap-kebap-reviewer
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources
+      description: At least one public SAP link (help.sap.com, community.sap.com, developers.sap.com, or github.com/SAP, SAP-samples or SAP-docs). Other public links are welcome alongside it.
+    validations:
+      required: true
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I started from templates/skill
+          required: true
+        - label: All content is in English
+          required: true
+        - label: The skill cites public sources only, including at least one public SAP source
+          required: true
+        - label: The skill contains no customer or project names
+          required: true
+        - label: I agree to license the contribution under the repository's MIT license
+          required: true
+        - label: I will open a pull request from my fork after a maintainer approves this issue
+          required: true
+  - type: checkboxes
+    id: sanitized
+    attributes:
+      label: Before you submit
+      options:
+        - label: I removed customer code, customer and system names, hostnames, users and credentials.
+          required: true

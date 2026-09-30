@@ -1,0 +1,132 @@
+name: Report wrong output
+description: An agent, a skill or the released-objects MCP server gave a wrong answer.
+labels: ["wrong-output"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This repository is shared company-wide.** Do not paste customer code, customer or system names, hostnames, SIDs, user names or credentials. Reduce examples to generic Z objects.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where did it go wrong?
+      options:
+        - abap-kebap-architect
+        - abap-kebap-developer
+        - abap-kebap-reviewer
+        - A skill, used directly
+        - released-objects MCP server
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: skill
+    attributes:
+      label: Skill involved
+      description: The skill the answer came from, if you know it.
+      options:
+        - Not sure
+        # BEGIN generated skills (scripts/build_issue_forms.py)
+        - abap-abapgit
+        - abap-amdp-hierarchies
+        - abap-authorization
+        - abap-background-processing
+        - abap-builtin-functions
+        - abap-business-configuration
+        - abap-classic-ui
+        - abap-clean-style
+        - abap-cloud-development
+        - abap-code-review
+        - abap-constructor-expressions
+        - abap-data-objects
+        - abap-dictionary-ddic
+        - abap-dynamic-programming
+        - abap-internal-tables
+        - abap-modernization-playbook
+        - abap-odata
+        - abap-oo-patterns
+        - abap-output-management
+        - abap-parallel-processing
+        - abap-sap-luw
+        - abap-sql-performance
+        - abap-strings-regex
+        - abap-systematic-debugging
+        - abap-unit-tdd
+        - abap-xco-library
+        - abap-xml-json
+        - cds-entity-types
+        - cds-views-authoring
+        - enhancements-extensibility
+        - fiori-elements-ui-annotations
+        - rap-actions-validations-determinations
+        - rap-bo-modeling
+        - rap-business-events-side-effects
+        - rap-eml
+        - rap-saves-and-numbering
+        # END generated skills
+  - type: dropdown
+    id: tool
+    attributes:
+      label: Tool
+      options:
+        - Claude Code
+        - GitHub Copilot
+        - Both
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Plugin version
+      description: The abap-kebap version shown in your plugin list.
+      placeholder: "0.3.0"
+  - type: input
+    id: model
+    attributes:
+      label: Model
+      placeholder: Claude Sonnet 5
+  - type: dropdown
+    id: environment
+    attributes:
+      label: SAP environment
+      options:
+        - ABAP Cloud (BTP ABAP environment)
+        - S/4HANA Cloud Public Edition
+        - S/4HANA on-premise or Private Cloud
+        - ECC or NetWeaver (classic)
+        - Not system-specific
+    validations:
+      required: true
+  - type: textarea
+    id: prompt
+    attributes:
+      label: What did you ask?
+      description: The prompt or task, with objects reduced to generic Z names.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What did it produce?
+      description: "The relevant part of the answer. Put code in a fenced block that starts with ```abap."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What is correct?
+      description: The correct result, and why.
+    validations:
+      required: true
+  - type: textarea
+    id: sources
+    attributes:
+      label: Source for the correct behaviour
+      description: A link to SAP documentation or another public source, if you have one.
+  - type: checkboxes
+    id: sanitized
+    attributes:
+      label: Before you submit
+      options:
+        - label: I removed customer code, customer and system names, hostnames, users and credentials.
+          required: true
