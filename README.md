@@ -307,6 +307,16 @@ You can also load a single skill in the main thread by typing its name as a slas
 
 ---
 
+## Feedback and contributions
+
+Found a wrong answer, a gap in a skill, or a topic no skill covers? Open an issue and pick one of
+four forms: **Report wrong output**, **Improve a skill**, **Request a new skill** or **Contribute
+your own skill**. A bot checks each submission and comments when something is missing. The whole
+process, including how to contribute a skill through a pull request, is in
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
 ## Development process
 
 For development discipline — design-before-code, plan-before-implement, test-first, verify-before-done, independent review — install the [superpowers plugin](https://github.com/obra/superpowers). The **main session** drives its process loop and dispatches an ABAP agent at each stage: `brainstorming` → `abap-kebap-architect`, `writing-plans`, `test-driven-development` → `abap-kebap-developer` (writes the failing test first, then makes it pass), `systematic-debugging` → `abap-kebap-developer`, `requesting-code-review` → `abap-kebap-reviewer`, and `verification-before-completion` → the repo gates. The agents run as subagents, so they never invoke those interactive process skills themselves.

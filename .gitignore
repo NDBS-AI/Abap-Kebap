@@ -24,7 +24,11 @@ desktop.ini
 # Logs
 *.log
 
+# Python bytecode (the unittest gate imports scripts/*.py)
+__pycache__/
+
 # Local-only working folders (never published)
+docs/superpowers/
 .playwright-mcp/
 _scratch/
 example/
