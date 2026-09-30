@@ -28,6 +28,14 @@ jobs:
         run: |
           python scripts/build_copilot.py
           git diff --exit-code -- .github/prompts
+      - name: Issue forms are in sync
+        run: |
+          python scripts/build_issue_forms.py
+          git diff --exit-code -- .github/ISSUE_TEMPLATE
+      - name: Python script tests
+        run: python -m unittest discover -s scripts -p "test_*.py"
+      - name: Issue triage tests
+        run: node --test scripts/issue-triage/*.test.mjs
 
   plugin:
     runs-on: ubuntu-latest

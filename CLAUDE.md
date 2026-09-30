@@ -14,7 +14,7 @@ process loop: the **main session** drives the loop and dispatches an ABAP agent 
 | Implement (green/refactor) | same | `abap-kebap-developer` | `abap-clean-style` **unconditionally** before generating ABAP (Tier-1 preloaded, never a routing decision), plus cluster/topic skills |
 | Bugfix | `superpowers:systematic-debugging` (generic discipline) | `abap-kebap-developer` | `abap-systematic-debugging` — the ABAP adaptation (ST22/ST05/SAT) |
 | Review gate | `superpowers:requesting-code-review` pattern | `abap-kebap-reviewer` — Clean ABAP + security + performance in one gate | `abap-code-review` (Tier-1 preloaded) |
-| Done gate | `superpowers:verification-before-completion` | — | repo gates: `python scripts/generate_skill_index.py`, `python scripts/validate_skills.py`, `node evals/run-static.mjs`, `cd mcp/released-objects && npm test`; behavioral evals at milestones only |
+| Done gate | `superpowers:verification-before-completion` | — | repo gates: `python scripts/generate_skill_index.py`, `python scripts/validate_skills.py`, `node evals/run-static.mjs`, `python scripts/build_issue_forms.py`, `python -m unittest discover -s scripts -p "test_*.py"`, `node --test scripts/issue-triage/*.test.mjs`, `cd mcp/released-objects && npm test`; behavioral evals at milestones only |
 
 ## The subagent rule
 
