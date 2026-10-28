@@ -78,8 +78,8 @@ body:
     id: version
     attributes:
       label: Plugin version
-      description: The abap-kebap version shown in your plugin list.
-      placeholder: "0.3.0"
+      description: The abap-kebap version in your plugin list. It is a commit id such as 0b3ad98e4836, because the plugin has no version number.
+      placeholder: "0b3ad98e4836"
   - type: input
     id: model
     attributes:

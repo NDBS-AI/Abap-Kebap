@@ -791,6 +791,13 @@
       "pattern": "development destination",
       "in": ".claude/agents/abap-kebap-developer.md",
       "note": "Free-to-do must state the real boundary now that the agent edits objects through the ADT tools: development destination after the intake, never production."
+    },
+    {
+      "id": "plugin-manifest-has-no-pinned-version",
+      "kind": "forbidden",
+      "pattern": "\"version\"",
+      "in": ".claude-plugin/plugin.json",
+      "note": "A version in plugin.json pins Claude Code users to that string until someone changes it: tested end to end, `claude plugin update` answers 'already at the latest version' however many commits are pushed. Without it Claude Code uses the commit SHA, so every merge to main is an update. (VS Code updates by pulling the repository and does not need it.)"
     }
   ]
 }

@@ -15,6 +15,12 @@ A team of **3 focused Claude Code agents** for SAP ABAP, backed by **36 in-depth
 /plugin install abap-kebap@abgunes
 ```
 
+**Updates.** The plugin deliberately has no version number: Claude Code then uses the commit
+as the version, so every merge to `main` is an update. Turn on marketplace auto-update once
+(`/plugin` → Marketplaces → Enable auto-update; it is off by default for marketplaces like
+this one) or run `claude plugin update abap-kebap@abgunes`, then `/reload-plugins`. In VS Code,
+plugins update with extension auto-update, or run **Chat: Update Plugins**.
+
 Skills are then invoked as `/abap-kebap:<skill-name>`; the role agents are
 `abap-kebap-architect`, `abap-kebap-developer`, and `abap-kebap-reviewer`.
 The `/abap-learn` command is deliberately **not** part of the plugin — it edits this
