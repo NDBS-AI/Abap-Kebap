@@ -60,6 +60,56 @@ test('no credential-like value survives into the serialized summary', async () =
   }
 })
 
+// ADT for VS Code 1.2.0 writes a versioned envelope, and an RFC destination names its host in
+// `applicationServer` (with `systemNumber`, `sncType` and the rest) instead of a `systemUrl`.
+const SAMPLE_RFC = {
+  formatVersion: 1,
+  destinations: [
+    {
+      id: 'HTTP1', protocol: 'http',
+      properties: { systemUrl: 'https://my123456.s4hana.cloud.sap/sap/bc/adt', systemId: 'S4D', client: '100', language: 'EN' },
+      user: 'SOME_USER', authenticationKind: 'basic',
+    },
+    {
+      id: 'RFC1', protocol: 'rfc',
+      properties: { applicationServer: 'abap.internal.corp.example.com', systemNumber: '00', client: '100', language: 'EN', ssoEnabled: false, sncType: 'none' },
+      user: 'SOME_USER',
+    },
+  ],
+}
+
+test('a 1.2.0 envelope with an RFC destination keeps the RFC host from applicationServer', async () => {
+  const dir = await workspace()
+  const summaries = await readDestinations(await writeDestinations(dir, SAMPLE_RFC))
+  assert.deepEqual(summaries, [
+    { id: 'HTTP1', protocol: 'http', host: 'my123456.s4hana.cloud.sap', systemId: 'S4D' },
+    { id: 'RFC1', protocol: 'rfc', host: 'abap.internal.corp.example.com', systemId: '' },
+  ])
+})
+
+test('an applicationServer with user info or a port yields only its host, and nothing else leaks', async () => {
+  const dir = await workspace()
+  const withUserInfo = {
+    destinations: [{
+      id: 'RFC2', protocol: 'rfc',
+      properties: { applicationServer: 'SOME_USER:never-read-this@appsrv.corp.example.com:3300', systemNumber: '00', sncType: 'none' },
+      user: 'SOME_USER',
+    }],
+  }
+  const summaries = await readDestinations(await writeDestinations(dir, withUserInfo))
+  assert.deepEqual(summaries.map((summary) => summary.host), ['appsrv.corp.example.com'])
+  const serialized = JSON.stringify(summaries)
+  for (const secret of ['SOME_USER', 'never-read-this', '3300', 'systemNumber', 'sncType', 'applicationServer']) {
+    assert.equal(serialized.includes(secret), false, `${secret} leaked into the summary`)
+  }
+})
+
+test('an HTTP destination keeps its systemUrl host even when applicationServer is present', async () => {
+  const dir = await workspace()
+  const mixed = { destinations: [{ id: 'X', protocol: 'http', properties: { systemUrl: 'https://a.b.example.com/adt', applicationServer: 'other.example.org' } }] }
+  assert.deepEqual((await readDestinations(await writeDestinations(dir, mixed))).map((summary) => summary.host), ['a.b.example.com'])
+})
+
 test('a missing or malformed destinations file yields an empty list rather than throwing', async () => {
   const dir = await workspace()
   assert.deepEqual(await readDestinations(join(dir, 'absent.json')), [])
