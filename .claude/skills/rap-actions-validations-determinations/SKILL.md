@@ -21,6 +21,8 @@ Every construct is a **two-sided contract**: a declaration line in the BDEF and 
 
 All handler parameters are typed with BDEF derived types (`%tky`, `%param`, `%control`, ...) — the component semantics live in [rap-eml](../rap-eml/SKILL.md).
 
+**Never commit in a handler.** `COMMIT ENTITIES`, `COMMIT WORK` and `ROLLBACK WORK` are illegal in a handler or saver **or any code they call**, so a helper class counts too. The framework saves after the action returns. To persist another BO independently, see [Calling and committing another BO from an action](#calling-and-committing-another-bo-from-an-action) and [rap-eml](../rap-eml/SKILL.md#the-commit-boundary-follows-the-call-stack).
+
 ## Workflow
 
 1. **Pick the construct** — use the table above; when two fit, prefer the one that runs latest (validation over precheck for consistency rules) or earliest (on-modify determination when the UI must see the value before save).
@@ -428,7 +430,7 @@ Draft twist: `Prepare` executes its assigned on-save determinations/validations 
 
 ## Calling and committing another BO from an action
 
-A frequent need: an action must create or update instances of a *different* BO. What you must NOT do: `COMMIT ENTITIES` (or `COMMIT WORK`) anywhere inside a handler or saver — in ABAP Cloud contexts this terminates with the `BEHAVIOR_ILLEGAL_STMT_IN_CALL` runtime error (see [abap-sap-luw](../abap-sap-luw/SKILL.md)). Three legal paths, in order of preference:
+A frequent need: an action must create or update instances of a *different* BO. What you must NOT do: `COMMIT ENTITIES` (or `COMMIT WORK`) anywhere inside a handler or saver, or in code they call. A helper class that wraps your EML counts: the check is made at runtime while the handler is on the call stack, so the helper compiles, usually passes unit tests (a test is its own top of stack), and fails only in the real action call. In ABAP Cloud contexts this terminates with the `BEHAVIOR_ILLEGAL_STMT_IN_CALL` runtime error (see [rap-eml](../rap-eml/SKILL.md#the-commit-boundary-follows-the-call-stack) and [abap-sap-luw](../abap-sap-luw/SKILL.md)). Three legal paths, in order of preference:
 
 1. **Same LUW (default).** `MODIFY ENTITIES` of the other BO from the action handler *without* committing. The other BO's changes join the caller's RAP LUW; the framework commits both BOs together in one save sequence. Fully consistent: if the caller's transaction fails or rolls back, the other BO's changes are rolled back too.
 
@@ -516,6 +518,7 @@ define behavior for ZC_SalesOrder alias Order
 | Expecting a precheck failure to abort the whole request | Prechecks drop only the failed rows; the rest proceeds — use a validation for all-or-nothing semantics |
 | Enabling an action in the projection that the base BDEF doesn't declare | Projections only `use` what exists below — declare in the base BDEF first |
 | `COMMIT ENTITIES` inside an action handler to persist another BO | `BEHAVIOR_ILLEGAL_STMT_IN_CALL` dump — modify without commit (same LUW), isolate in a `CL_ABAP_PARALLEL` task, or go async via bgPF/events |
+| `COMMIT ENTITIES` in a helper class the handler calls (the handler method itself looks clean) | Same dump, found only at runtime. The helper returns `mapped` / `failed` / `reported` and never commits; the handler hands independent work to a `CL_ABAP_PARALLEL` task, where the worker commits |
 
 ## References
 

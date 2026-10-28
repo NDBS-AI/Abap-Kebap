@@ -165,7 +165,7 @@ READ ENTITY IN LOCAL MODE demo_rap_entity
 
 ## COMMIT ENTITIES
 
-Triggers the RAP save sequence (early save phase → late save phase); implicitly includes `COMMIT WORK`. Forbidden inside behavior implementations. In natively supported scenarios (OData/Fiori) the RAP runtime engine commits automatically.
+Triggers the RAP save sequence (early save phase → late save phase); implicitly includes `COMMIT WORK`. Forbidden inside behavior implementations or any code they call (the check is made at runtime while a handler or saver is on the call stack; see the commit boundary in [SKILL.md](../SKILL.md)). In natively supported scenarios (OData/Fiori) the RAP runtime engine commits automatically.
 
 | Variant | Syntax | Notes |
 |---|---|---|

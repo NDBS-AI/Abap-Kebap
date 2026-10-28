@@ -30,6 +30,7 @@ Before a human reviewer reads a single line, automated checks should be clean. T
 
 - **ATC** (ABAP Test Cockpit) — run with the project's check variant. No high/very-high findings should reach peer review.
 - **abaplint / code-pal-for-abap** — if configured in CI, a failed pipeline is the gate, not a reviewer.
+- **ADT MCP tools** (when connected; see [adt-mcp](../../../docs/adt-mcp.md)) — `abap_atc_run_start` then `abap_atc_run_get_result` run ATC on the real system, `abap_object_check` is a syntax check without activation, `abap_unit_run_tests` shows whether the tests pass. Cite each finding with the tool's own priority. An empty result covers only those checks; it is not proof that the code is Clean ABAP, secure or fast.
 - **Pretty-printer** — code formatting (indentation, line length ≤120 chars) should be normalized before review; large formatting diffs obscure real changes.
 
 If ATC findings exist: the author fixes them first, then requests review. Do not review code that hasn't passed its automated gate.

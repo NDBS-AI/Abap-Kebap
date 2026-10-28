@@ -264,7 +264,7 @@ Mapping classic → RAP:
 | `COMMIT WORK` | `COMMIT ENTITIES` (implicitly triggers `COMMIT WORK`) |
 | `ROLLBACK WORK` | `ROLLBACK ENTITIES` (triggers `ROLLBACK WORK`) |
 
-- **`COMMIT ENTITIES`** implicitly triggers `COMMIT WORK` and adds RAP-specific functionality. It enforces a **local update** (or **synchronous** `COMMIT WORK AND WAIT` if the local update fails) — so a RAP commit is **never asynchronous**.
+- **`COMMIT ENTITIES`** implicitly triggers `COMMIT WORK` and adds RAP-specific functionality. It enforces a **local update** (or **synchronous** `COMMIT WORK AND WAIT` if the local update fails) — so a RAP commit is **never asynchronous**. Only top-level code may issue it (a report, a test, a job, a worker task): never a handler or saver, nor any code they call. See [rap-eml](../rap-eml/SKILL.md#the-commit-boundary-follows-the-call-stack).
 - **`ROLLBACK ENTITIES`** resets all changes of the current transaction, clears the transactional buffer, and triggers `ROLLBACK WORK`.
 - In ABAP Cloud, `COMMIT WORK` and `COMMIT WORK AND WAIT` behave **identically** (local update is always enforced), so the choice is irrelevant; `COMMIT WORK` typically returns `sy-subrc = 0`, other values raise a runtime error.
 
