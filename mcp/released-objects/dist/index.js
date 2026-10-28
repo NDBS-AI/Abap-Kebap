@@ -63466,7 +63466,7 @@ async function readDestinations(path) {
     summaries.push({
       id,
       protocol: typeof record2.protocol === "string" ? record2.protocol.toLowerCase() : "http",
-      host: hostOf(typeof properties.systemUrl === "string" ? properties.systemUrl : ""),
+      host: hostOf(typeof properties.systemUrl === "string" ? properties.systemUrl : "") || hostOf(typeof properties.applicationServer === "string" ? properties.applicationServer : ""),
       systemId: typeof properties.systemId === "string" ? properties.systemId : ""
     });
   }

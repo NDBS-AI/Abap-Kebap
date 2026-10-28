@@ -79,6 +79,8 @@ The tools to know, in roughly this order:
 | Code Inspector / ATC | `SCI` / `SATC` | Static analysis for known patterns | Findings list |
 | Memory inspector | `S_MEMORY_INSPECTOR` | Memory growth, leaks | Heap snapshots |
 
+**Dumps through ADT.** With the ADT MCP tools connected ([adt-mcp](../../../docs/adt-mcp.md)), `abap_feed_get_schema` (without `detailed` first) lists the feeds of the logged-on system, and `abap_feed_query` reads **ABAP Runtime Errors** with an FQL filter: the same dumps as `ST22`, without leaving the session. Take the error class, the failing statement and the call stack from it. Variable contents in a dump can be business data, so keep them out of issues, pull requests and chat exports.
+
 **Capture before you act.** Save the dump (export from ST22), save the trace (ST05 → save). Once a user re-runs the job, the trace is gone. The dump in ST22 also rolls over.
 
 See [references/common-dumps.md](references/common-dumps.md) for a triage table of the most frequent dump categories. See [references/sql-trace-reading.md](references/sql-trace-reading.md) for how to read an ST05 output.

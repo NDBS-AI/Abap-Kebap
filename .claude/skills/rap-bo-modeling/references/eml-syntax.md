@@ -8,7 +8,7 @@ EML (Entity Manipulation Language) is how ABAP code — consumers, tests, and th
 |---|---|---|
 | `MODIFY ENTITIES [OF root]` | CREATE / CREATE BY `\_assoc` / UPDATE / DELETE / EXECUTE action against the transactional buffer | `MAPPED`, `FAILED`, `REPORTED` (+ `RESULT` directly after an `EXECUTE` whose action declares a result) |
 | `READ ENTITIES [OF root]` | Read buffer state (including uncommitted changes), also by association | `RESULT` (mandatory), `LINK` (by association, optional), `FAILED`, `REPORTED` |
-| `COMMIT ENTITIES` | Trigger the save sequence and persist; check `sy-subrc` (0 ok / 4 early-save failed / 8 late-save failed) | `RESPONSE OF root FAILED ... REPORTED ...`; variants: `IN SIMULATION MODE`, commit scope `BEGIN ... END` |
+| `COMMIT ENTITIES` | Trigger the save sequence and persist (top-level code only: never in a handler, a saver or anything they call); check `sy-subrc` (0 ok / 4 early-save failed / 8 late-save failed) | `RESPONSE OF root FAILED ... REPORTED ...`; variants: `IN SIMULATION MODE`, commit scope `BEGIN ... END` |
 | `ROLLBACK ENTITIES` | Discard the RAP transaction: clear the buffer, release locks | none |
 | `GET PERMISSIONS` | Ask what the user/instance may do (authorization + feature control), e.g. for UI enablement | `REQUEST` (input, a structure), `RESULT`, `FAILED`, `REPORTED` |
 | `SET LOCKS` | Acquire the exclusive locks up front (held until commit/rollback) | `FAILED`, `REPORTED` |

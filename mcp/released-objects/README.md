@@ -151,7 +151,8 @@ rather than told — an `assumption` sentence for the agent to quote back to you
 ### What is read from the ADT configuration
 
 `~/.adtls/destinations.json` is opened **read-only**, and exactly four things are taken from
-each entry: the destination `id`, the `protocol`, the **host** of `properties.systemUrl`, and
+each entry: the destination `id`, the `protocol`, the **host** of `properties.systemUrl` (an RFC
+destination has none and names its host in `properties.applicationServer`), and
 `properties.systemId`. User names, tokens and authentication settings are never bound to a
 named value, never returned and never logged. Any `user:password@` prefix is stripped from
 the URL before the host is read, and every host that reaches a response or a log line is

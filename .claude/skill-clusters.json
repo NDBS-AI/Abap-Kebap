@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "Hand-maintained. Role-scoped: the same domain needs different skills for design (architect) vs implementation (developer) vs review (reviewer). Every name in an 'includes' list must exist in .claude/skill-index.json — validated by scripts/validate_skills.py. A cluster's own Tier-1 preloaded skills (this agent's `skills:` frontmatter) are deliberately omitted from 'includes' to avoid a redundant re-load instruction; the routing algorithm dedupes regardless.",
+  "note": "Hand-maintained. Role-scoped: the same domain needs different skills for design (architect) vs implementation (developer) vs review (reviewer). Every name in an 'includes' list must exist in .claude/skill-index.json — validated by scripts/validate_skills.py. A cluster's own Tier-1 preloaded skills (this agent's `skills:` frontmatter) are deliberately omitted from 'includes' to avoid a redundant re-load instruction; the routing algorithm dedupes regardless. `triggers` are the cues rendered into each agent's skill table (scripts/build_agent_routing.py regenerates it); `read_first` optionally narrows what is loaded first; `additions` route skills that no cluster of that role includes; `preload_cues` say when to read a Tier-1 skill in runtimes that do not preload it (GitHub Copilot).",
   "standalone_skills": {
     "note": "Skills intentionally reachable ONLY via .claude/skill-index.json standalone lookup (Tier 3) — no cluster fits them, and they don't need one. Listing a name here suppresses the 'orphaned skill' hard error for it; scripts/validate_skills.py errors if a listed name isn't a real skill, or if it's ALSO covered by some cluster (redundant — remove it from one or the other).",
     "skills": [
@@ -8,6 +8,150 @@
       "abap-business-configuration",
       "abap-strings-regex"
     ]
+  },
+  "preload_cues": {
+    "abap-clean-style": "before you generate or change any ABAP",
+    "abap-unit-tdd": "before you write a test or implement behavior (test first)",
+    "abap-sql-performance": "when the code reads the database (SELECT, joins, FOR ALL ENTRIES)",
+    "abap-code-review": "before you start a review",
+    "rap-bo-modeling": "when the design involves a RAP business object",
+    "cds-views-authoring": "when the design involves CDS views or projections"
+  },
+  "additions": {
+    "abap-cloud-development": {
+      "roles": [
+        "abap-kebap-developer"
+      ],
+      "triggers": [
+        "ABAP Cloud",
+        "Steampunk",
+        "released",
+        "Clean Core",
+        "BTP",
+        "S/4HANA Cloud",
+        "released API",
+        "language version",
+        "ABAP for Cloud Development"
+      ]
+    },
+    "abap-authorization": {
+      "roles": [
+        "abap-kebap-developer"
+      ],
+      "triggers": [
+        "AUTHORITY-CHECK",
+        "authorization",
+        "authorization object",
+        "DCL",
+        "access control",
+        "PFCG",
+        "IAM app",
+        "business role"
+      ]
+    },
+    "abap-dynamic-programming": {
+      "roles": [
+        "abap-kebap-developer"
+      ],
+      "triggers": [
+        "dynamic SQL",
+        "dynamic ASSIGN",
+        "field symbol",
+        "field symbols",
+        "ASSIGN COMPONENT",
+        "RTTI",
+        "RTTS",
+        "CREATE DATA",
+        "data reference",
+        "type description"
+      ]
+    },
+    "abap-strings-regex": {
+      "roles": [
+        "abap-kebap-developer"
+      ],
+      "triggers": [
+        "regex",
+        "regular expression",
+        "capture group",
+        "PCRE",
+        "string template",
+        "string function"
+      ]
+    },
+    "abap-builtin-functions": {
+      "roles": [
+        "abap-kebap-developer"
+      ],
+      "triggers": [
+        "built-in function",
+        "time stamp",
+        "timestamp",
+        "utclong",
+        "rounding",
+        "decfloat",
+        "packed number",
+        "date calculation",
+        "arithmetic",
+        "line_exists",
+        "numeric type"
+      ]
+    },
+    "abap-business-configuration": {
+      "roles": [
+        "abap-kebap-developer"
+      ],
+      "triggers": [
+        "business configuration",
+        "BCMO",
+        "customizing table",
+        "BC set",
+        "Custom Business Configurations"
+      ]
+    },
+    "rap-eml": {
+      "roles": [
+        "abap-kebap-reviewer"
+      ],
+      "triggers": [
+        "EML",
+        "MODIFY ENTITIES",
+        "COMMIT ENTITIES",
+        "READ ENTITIES",
+        "behavior pool",
+        "RAP handler",
+        "RAP saver"
+      ]
+    },
+    "rap-actions-validations-determinations": {
+      "roles": [
+        "abap-kebap-reviewer"
+      ],
+      "triggers": [
+        "RAP handler",
+        "RAP saver",
+        "RAP action",
+        "action handler",
+        "RAP determination",
+        "RAP validation",
+        "behavior pool",
+        "COMMIT ENTITIES",
+        "COMMIT WORK"
+      ]
+    },
+    "abap-sap-luw": {
+      "roles": [
+        "abap-kebap-reviewer"
+      ],
+      "triggers": [
+        "COMMIT WORK",
+        "ROLLBACK WORK",
+        "COMMIT ENTITIES",
+        "LUW",
+        "ENQUEUE",
+        "update task"
+      ]
+    }
   },
   "clusters": {
     "abap-kebap-developer": {
@@ -21,6 +165,31 @@
         "do_not_load_when": [
           "the question is only generic CDS syntax with no RAP behavior involved",
           "the question is only ABAP Unit syntax unrelated to RAP"
+        ],
+        "triggers": [
+          "RAP",
+          "EML",
+          "MODIFY ENTITIES",
+          "COMMIT ENTITIES",
+          "BDEF",
+          "behavior pool",
+          "handler",
+          "saver",
+          "action",
+          "determination",
+          "validation",
+          "managed",
+          "READ ENTITIES",
+          "behavior definition",
+          "unmanaged",
+          "draft",
+          "late numbering",
+          "save sequence"
+        ],
+        "read_first": [
+          "rap-eml",
+          "rap-actions-validations-determinations",
+          "rap-bo-modeling"
         ],
         "includes": [
           "rap-bo-modeling",
@@ -36,6 +205,14 @@
         "load_when": [
           "the RAP BO raises or consumes business events, or needs Fiori-refresh side effects"
         ],
+        "triggers": [
+          "business event",
+          "business events",
+          "RAP event",
+          "side effect",
+          "side effects",
+          "raise event"
+        ],
         "includes": [
           "rap-business-events-side-effects"
         ]
@@ -44,6 +221,20 @@
         "description": "The Fiori UI layer on top of a RAP BO: @UI annotations, metadata extensions, facets, value helps.",
         "load_when": [
           "the task includes @UI annotations, metadata extensions, facets, or value helps for the BO"
+        ],
+        "triggers": [
+          "@UI",
+          "UI annotation",
+          "UI annotations",
+          "Fiori Elements",
+          "facet",
+          "facets",
+          "line item",
+          "lineItem",
+          "metadata extension",
+          "value help",
+          "list report",
+          "object page"
         ],
         "includes": [
           "fiori-elements-ui-annotations"
@@ -59,6 +250,24 @@
           "the task is really a RAP BO — use rap-business-object instead, it already includes the CDS skills",
           "the task also needs Fiori UI annotations — add cluster rap-fiori-ui on top, don't expect this cluster to cover it"
         ],
+        "triggers": [
+          "CDS",
+          "CDS view",
+          "view entity",
+          "association",
+          "annotation",
+          "annotations",
+          "table function",
+          "hierarchy",
+          "custom entity",
+          "abstract entity",
+          "DDIC",
+          "data element",
+          "table definition"
+        ],
+        "read_first": [
+          "cds-views-authoring"
+        ],
         "includes": [
           "cds-views-authoring",
           "cds-entity-types",
@@ -70,6 +279,25 @@
         "load_when": [
           "converting FORM/PERFORM or a MACRO to a method",
           "converting a classic ALV/dynpro report toward OO or RAP+Fiori"
+        ],
+        "triggers": [
+          "PERFORM",
+          "subroutine",
+          "macro",
+          "classic report",
+          "classic ALV",
+          "dynpro",
+          "selection screen",
+          "modernize",
+          "modernization",
+          "legacy",
+          "BAdI",
+          "enhancement",
+          "user exit",
+          "modification"
+        ],
+        "read_first": [
+          "abap-modernization-playbook"
         ],
         "includes": [
           "abap-modernization-playbook",
@@ -83,6 +311,27 @@
         "load_when": [
           "designing or refactoring classes, interfaces, or exception hierarchies",
           "choosing a constructor expression (VALUE/CORRESPONDING/REDUCE/FILTER/COND/SWITCH) or an internal-table kind/key"
+        ],
+        "triggers": [
+          "class design",
+          "interface",
+          "exception class",
+          "inheritance",
+          "factory",
+          "dependency injection",
+          "CORRESPONDING",
+          "constructor expression",
+          "REDUCE",
+          "VALUE #",
+          "internal table",
+          "sorted table",
+          "FILTER #",
+          "COND #",
+          "SWITCH #",
+          "hashed table"
+        ],
+        "read_first": [
+          "abap-oo-patterns"
         ],
         "includes": [
           "abap-oo-patterns",
@@ -98,6 +347,22 @@
           "internal-table access pattern is part of a performance investigation",
           "table buffering, key, or DDIC design is implicated in the slowdown"
         ],
+        "triggers": [
+          "AMDP",
+          "SQLScript",
+          "HANA",
+          "pushdown",
+          "code pushdown",
+          "table buffering",
+          "FOR ALL ENTRIES",
+          "ST05",
+          "slow SELECT",
+          "slow report",
+          "long runtime"
+        ],
+        "read_first": [
+          "abap-amdp-hierarchies"
+        ],
         "includes": [
           "abap-amdp-hierarchies",
           "abap-internal-tables",
@@ -109,6 +374,20 @@
         "load_when": [
           "reasoning about COMMIT/ROLLBACK WORK, ENQUEUE/DEQUEUE, or SAP LUW boundaries"
         ],
+        "triggers": [
+          "COMMIT WORK",
+          "ROLLBACK WORK",
+          "COMMIT ENTITIES",
+          "SAP LUW",
+          "LUW",
+          "ENQUEUE",
+          "DEQUEUE",
+          "lock object",
+          "update task",
+          "IN UPDATE TASK",
+          "commit",
+          "rollback"
+        ],
         "includes": [
           "abap-sap-luw"
         ]
@@ -117,6 +396,23 @@
         "description": "Asynchronous or parallel execution.",
         "load_when": [
           "scheduling background jobs or fanning work out in parallel"
+        ],
+        "triggers": [
+          "background job",
+          "background processing",
+          "bgPF",
+          "application job",
+          "in the background",
+          "asynchronously",
+          "asynchronous",
+          "schedule",
+          "parallel",
+          "CL_ABAP_PARALLEL",
+          "aRFC",
+          "fan out"
+        ],
+        "read_first": [
+          "abap-background-processing"
         ],
         "includes": [
           "abap-background-processing",
@@ -129,6 +425,19 @@
           "exposing or consuming an OData service",
           "serializing/parsing XML or JSON"
         ],
+        "triggers": [
+          "OData",
+          "SEGW",
+          "service binding",
+          "service definition",
+          "XML",
+          "JSON",
+          "CALL TRANSFORMATION",
+          "REST",
+          "HTTP client",
+          "serialize",
+          "deserialize"
+        ],
         "includes": [
           "abap-odata",
           "abap-xml-json"
@@ -138,6 +447,16 @@
         "description": "Print/forms/PDF output.",
         "load_when": [
           "generating a form, print output, or PDF"
+        ],
+        "triggers": [
+          "print form",
+          "output form",
+          "PDF",
+          "Adobe Forms",
+          "ADS",
+          "output management",
+          "form template",
+          "XDP"
         ],
         "includes": [
           "abap-output-management"
@@ -149,6 +468,15 @@
           "generating a repository object via XCO",
           "working with abapGit repositories"
         ],
+        "triggers": [
+          "XCO",
+          "XLSX",
+          "Excel file",
+          "xco_cp",
+          "abapGit",
+          "generate repository objects",
+          "zip export"
+        ],
         "includes": [
           "abap-xco-library",
           "abap-abapgit"
@@ -158,6 +486,17 @@
         "description": "Root-causing a dump, trace, or runtime error before fixing it.",
         "load_when": [
           "diagnosing an ST22 dump, ST05/SAT trace, or an unexplained runtime error"
+        ],
+        "triggers": [
+          "dump",
+          "ST22",
+          "short dump",
+          "runtime error",
+          "ST05",
+          "SAT",
+          "trace",
+          "debug",
+          "unexpected exception"
         ],
         "includes": [
           "abap-systematic-debugging"
@@ -172,6 +511,19 @@
           "deciding the save sequence or numbering strategy",
           "designing the authorization model for the BO"
         ],
+        "triggers": [
+          "RAP",
+          "BDEF",
+          "managed",
+          "unmanaged",
+          "abstract entity",
+          "draft",
+          "behavior contract",
+          "save strategy",
+          "numbering",
+          "late numbering",
+          "authorization model"
+        ],
         "includes": [
           "cds-entity-types",
           "rap-saves-and-numbering",
@@ -183,6 +535,15 @@
         "load_when": [
           "the RAP BO targets ABAP Cloud / Steampunk and released-API compatibility is a design constraint"
         ],
+        "triggers": [
+          "ABAP Cloud",
+          "Steampunk",
+          "released API",
+          "released",
+          "Clean Core",
+          "BTP",
+          "S/4HANA Cloud"
+        ],
         "includes": [
           "abap-cloud-development"
         ]
@@ -192,6 +553,17 @@
         "load_when": [
           "deciding CDS VDM layering, associations, or entity-type choice",
           "designing keys, buffering strategy, or the authorization model for the model"
+        ],
+        "triggers": [
+          "CDS",
+          "VDM",
+          "layering",
+          "association",
+          "entity type",
+          "key design",
+          "buffering",
+          "table function",
+          "hierarchy"
         ],
         "includes": [
           "cds-entity-types",
@@ -204,6 +576,15 @@
         "load_when": [
           "choosing between a BAdI, an implicit enhancement, or a RAP BO extension"
         ],
+        "triggers": [
+          "BAdI",
+          "enhancement",
+          "extension",
+          "implicit enhancement",
+          "extend standard",
+          "customer exit",
+          "key user extensibility"
+        ],
         "includes": [
           "enhancements-extensibility",
           "abap-modernization-playbook"
@@ -214,6 +595,15 @@
         "load_when": [
           "recommending FORM->method, DB SELECT->CDS, or ALV->RAP+Fiori",
           "recommending a classic-to-cloud migration path"
+        ],
+        "triggers": [
+          "modernize",
+          "modernization",
+          "migration",
+          "FORM to method",
+          "classic to cloud",
+          "ALV to RAP",
+          "legacy"
         ],
         "includes": [
           "abap-modernization-playbook",
@@ -226,6 +616,13 @@
         "load_when": [
           "designing OData exposure or service activation strategy"
         ],
+        "triggers": [
+          "OData",
+          "service exposure",
+          "service binding",
+          "expose",
+          "API design"
+        ],
         "includes": [
           "abap-odata"
         ]
@@ -234,6 +631,15 @@
         "description": "Architecture for asynchronous or parallel-fan-out execution.",
         "load_when": [
           "designing background-job, async, or parallel-fan-out architecture"
+        ],
+        "triggers": [
+          "background job",
+          "asynchronous",
+          "parallel",
+          "fan-out",
+          "bgPF",
+          "scheduling",
+          "queue"
         ],
         "includes": [
           "abap-background-processing",
@@ -245,6 +651,15 @@
         "load_when": [
           "designing SAP LUW / transactional boundaries or locking strategy"
         ],
+        "triggers": [
+          "LUW",
+          "COMMIT",
+          "ROLLBACK",
+          "locking",
+          "lock object",
+          "transactional boundary",
+          "caller context"
+        ],
         "includes": [
           "abap-sap-luw"
         ]
@@ -255,6 +670,17 @@
         "description": "Reviewing a RAP BO or CDS view for authorization, injection, exposure, and OO smells (abap-code-review, abap-clean-style, abap-sql-performance are already Tier-1 preloaded for this role).",
         "load_when": [
           "the artifact under review is a RAP BO or CDS view/projection"
+        ],
+        "triggers": [
+          "RAP",
+          "BDEF",
+          "CDS",
+          "CDS view",
+          "projection",
+          "behavior",
+          "business object",
+          "DCL",
+          "access control"
         ],
         "includes": [
           "abap-authorization",
@@ -268,6 +694,16 @@
         "load_when": [
           "the artifact under review is primarily class/interface design or constructor-expression usage"
         ],
+        "triggers": [
+          "class design",
+          "interface design",
+          "inheritance",
+          "constructor expression",
+          "CORRESPONDING",
+          "REDUCE",
+          "exception class",
+          "test double"
+        ],
         "includes": [
           "abap-oo-patterns",
           "abap-constructor-expressions",
@@ -278,6 +714,14 @@
         "description": "Reviewing a classic report or procedural ABAP for modernization and OO opportunities.",
         "load_when": [
           "the artifact under review is a classic report, FORM/PERFORM, or procedural code"
+        ],
+        "triggers": [
+          "classic report",
+          "FORM routine",
+          "PERFORM",
+          "procedural",
+          "function module",
+          "dynpro"
         ],
         "includes": [
           "abap-modernization-playbook",
@@ -290,6 +734,17 @@
         "load_when": [
           "the artifact under review pushes logic to HANA (AMDP/SQLScript/table functions) or performance is the primary review lens"
         ],
+        "triggers": [
+          "AMDP",
+          "SQLScript",
+          "HANA",
+          "pushdown",
+          "table function",
+          "performance",
+          "SELECT in a loop",
+          "aggregation",
+          "FOR ALL ENTRIES"
+        ],
         "includes": [
           "abap-amdp-hierarchies",
           "abap-internal-tables"
@@ -299,6 +754,17 @@
         "description": "Reviewing auth, dynamic code, or released-API exposure as the primary security lens.",
         "load_when": [
           "the review scope is explicitly security: authorization, dynamic SQL/ASSIGN, released-API exposure"
+        ],
+        "triggers": [
+          "security",
+          "authorization",
+          "AUTHORITY-CHECK",
+          "dynamic SQL",
+          "injection",
+          "released API",
+          "exposure",
+          "credentials",
+          "secrets"
         ],
         "includes": [
           "abap-authorization",

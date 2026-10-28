@@ -11,6 +11,8 @@ A guide for designing and implementing RAP Business Objects. RAP is SAP's modern
 
 **Core principle:** RAP is built in layers. Each layer is small and focused. Treat each as its own design decision: data model (CDS), behavior contract (BDEF), behavior implementation (class), projection (consumption CDS + projection BDEF), and exposure (service definition + binding).
 
+**Transaction boundary:** handlers and savers, and everything they call, never `COMMIT`; the framework saves. Only top-level code (a report, a test, a job, a worker task) commits with `COMMIT ENTITIES`. Details and the escape hatches: [rap-eml](../rap-eml/SKILL.md#the-commit-boundary-follows-the-call-stack).
+
 ## When to Use
 
 - Designing a new RAP BO for a custom transactional entity.
@@ -280,7 +282,7 @@ Key points:
 
 ## EML — Entity Manipulation Language
 
-EML is how non-framework code (tests, batch jobs, other BOs) drives a RAP BO. This section is the overview; the full statement catalog and BDEF derived-type reference live in [rap-eml](../rap-eml/SKILL.md).
+EML is how code outside the BO's own handlers (tests, batch jobs, reports, consumer classes) drives a RAP BO. This section is the overview; the full statement catalog and BDEF derived-type reference live in [rap-eml](../rap-eml/SKILL.md).
 
 ```abap
 MODIFY ENTITIES OF Z_C_Customer
@@ -302,7 +304,7 @@ ELSE.
 ENDIF.
 ```
 
-Pattern: `MODIFY ENTITIES … COMMIT ENTITIES` is the unit of work. Inside one work unit you can create + update + delete + action across multiple BOs; `COMMIT ENTITIES` makes it durable.
+Pattern for **top-level** consumers (report, test, job): `MODIFY ENTITIES … COMMIT ENTITIES` is the unit of work. Inside one work unit you can create + update + delete + action across multiple BOs; `COMMIT ENTITIES` makes it durable. It is **not** the pattern for code that runs inside another BO's handler or saver, or in anything they call (a helper class counts): there you `MODIFY` without `COMMIT` and the framework saves. See [rap-eml](../rap-eml/SKILL.md#the-commit-boundary-follows-the-call-stack).
 
 `%cid` = client-side correlation id (for CREATE; you don't know the key yet).
 `%tky` = transactional key (`%key` plus `%is_draft` and, with late numbering, `%pid`) — prefer it over `%key`; valid for READ on draft and active.
@@ -374,6 +376,8 @@ define service Z_CUSTOMER_SD {
 ```
 
 Binding: in ADT, create a Service Binding, target the Service Definition, choose protocol "OData V4 — UI", activate, and you get a URL. Plug that into a Fiori app or browse via the "Service Binding" preview.
+
+**Generators.** With the ADT MCP tools connected ([adt-mcp](../../../docs/adt-mcp.md)), `abap_objects_generator_list`, `abap_objects_generator_get_schema` and `abap_objects_generator_run` create the RAP stack (tables, CDS views, behavior definitions, service definition and binding) from a generator schema, and `abap_object_run_action` publishes a service binding. Ask for the package first, apply the naming convention to every generated name, and let the user confirm before `abap_objects_generator_run`, because it creates objects. A generator does not replace the design above: decide managed or unmanaged, draft and the key first.
 
 ## Decision matrix — quick reference
 

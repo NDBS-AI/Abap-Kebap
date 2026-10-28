@@ -248,7 +248,8 @@ What never leaves the machine: the object names you look up, your source code, y
 identity, your credentials. Every lookup is answered from local files.
 
 What is read from the ADT configuration: `~/.adtls/destinations.json`, **read-only**, and only
-the destination `id`, `protocol`, the **host** of `systemUrl` and `systemId`. Credential
+the destination `id`, `protocol`, the **host** of `systemUrl` (of `applicationServer` for an RFC
+destination) and `systemId`. Credential
 fields are never bound to a named value, never returned and never logged; a static check
 enforces that their names do not appear in the source at all. Any `user:password@` prefix is
 stripped before the host is read, and every host that can reach a response or a log line is

@@ -16,6 +16,8 @@ Two programming models:
 
 **Core principle:** parallelization is a *last-resort* elapsed-time optimization for **independent, data-intensive work units**. It buys wall-clock time by spending system resources (dialog work processes on the whole system) and by giving up transactional unity (every task is its own session and LUW). Before fanning out, push set-based work into the database ([abap-sql-performance](../abap-sql-performance/SKILL.md)) and check whether the requirement is really "faster now" (parallel) or "later, reliably" (background — [abap-background-processing](../abap-background-processing/SKILL.md)).
 
+**From a RAP handler or saver:** neither the handler nor any helper it calls may `COMMIT ENTITIES` or `COMMIT WORK`. A `CL_ABAP_PARALLEL` worker is the isolation escape hatch; see the section *RAP commit isolation* below, and use it deliberately.
+
 ## Workflow
 
 1. **Decide whether to parallelize at all** (first decision guide below). If the work is DB-bound, order-dependent, or the units are tiny, don't.
@@ -259,13 +261,14 @@ Design workers to be **self-contained and idempotent** where possible: a failed 
 
 ### RAP commit isolation — persisting another BO from a behavior implementation
 
-Inside a RAP handler or saver, `COMMIT ENTITIES` / `COMMIT WORK` terminates with `BEHAVIOR_ILLEGAL_STMT_IN_CALL` (ABAP Cloud contexts — see [abap-sap-luw](../abap-sap-luw/SKILL.md)). A `CL_ABAP_PARALLEL` worker is an isolation escape hatch — its task runs in its own aRFC session with its own SAP LUW, so the worker's `do` method may legally `MODIFY ENTITIES` + `COMMIT ENTITIES` another BO — but use it **only** when the two BOs must be genuinely decoupled transactions: an attempt log, a counter, an audit trail that must survive the caller's rollback. For anything that merely needs to happen *after* the caller's transaction succeeds (a cross-BO side effect, a notification), prefer an after-commit bgPF operation or a business event instead — see [abap-background-processing](../abap-background-processing/SKILL.md).
+Inside a RAP handler or saver, or any code they call (a helper class that wraps the EML counts), `COMMIT ENTITIES` / `COMMIT WORK` terminates with `BEHAVIOR_ILLEGAL_STMT_IN_CALL` (ABAP Cloud contexts — see [abap-sap-luw](../abap-sap-luw/SKILL.md)). A `CL_ABAP_PARALLEL` worker is an isolation escape hatch — its task runs in its own aRFC session with its own SAP LUW, so the worker's `do` method may legally `MODIFY ENTITIES` + `COMMIT ENTITIES` another BO — but use it **only** when the two BOs must be genuinely decoupled transactions: an attempt log, a counter, an audit trail that must survive the caller's rollback. For anything that merely needs to happen *after* the caller's transaction succeeds (a cross-BO side effect, a notification), prefer an after-commit bgPF operation or a business event instead — see [abap-background-processing](../abap-background-processing/SKILL.md).
 
 Use it deliberately, not by default:
 
 - **Default remains same-LUW EML**: modifying the other BO *without* commit from the handler joins the caller's RAP LUW — atomic, and no dump. Reach for isolation only when genuine transactional independence is the requirement, not a side effect.
 - **Rollback-consistency implication**: the isolated commit is final and unconditional — if the caller's RAP transaction later rolls back, the worker's independent `COMMIT ENTITIES` does **not** roll back with it. The other BO's change stands even though the transaction that triggered it was undone; design for that (idempotency, compensating action, or accept the inconsistency as a documented trade-off).
 - For work that should run only *after* the caller commits — rather than genuinely independently of it — prefer bgPF or a business event over parallel isolation.
+- **Where the commit lives:** only in the worker's `do` method, which runs in its own LUW. The handler, and every helper it calls, only builds the work unit and starts the task; a helper that calls `COMMIT ENTITIES` itself is the same dump, because it still runs on the handler's call stack.
 
 Decision path and a worked handler example: [rap-actions-validations-determinations](../rap-actions-validations-determinations/SKILL.md), "Calling and committing another BO from an action".
 

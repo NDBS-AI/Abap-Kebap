@@ -220,7 +220,8 @@ capped at `medium`; an unrecognised host is `low`. The agents are instructed to 
 low-confidence assumption to the user.
 
 **Reading the ADT configuration is deliberately narrow.** Four fields, read-only: `id`,
-`protocol`, the **host** of `systemUrl`, `systemId`. Credential fields are never bound to a
+`protocol`, the **host** of `systemUrl` (of `applicationServer` for an RFC destination, which has
+no `systemUrl`), `systemId`. Credential fields are never bound to a
 named value, never returned and never logged — a static check enforces that their field names
 do not even appear under `src/`. `stripUserInfo()` removes any `user:password@` prefix from
 both the URL and the schemeless RFC spellings before a host is read, and `redactHost()` trims

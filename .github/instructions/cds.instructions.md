@@ -1,5 +1,5 @@
 ---
-applyTo: "**/*.ddls,**/*.dcls,**/*.ddlx,**/*.bdef"
+applyTo: "**/*.ddls,**/*.dcls,**/*.ddlx,**/*.bdef,**/*.asddls,**/*.abdl,**/*.acds,**/*.ddic"
 ---
 
 # CDS / RAP artifact rules

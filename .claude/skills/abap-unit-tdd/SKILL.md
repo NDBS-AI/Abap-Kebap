@@ -41,6 +41,10 @@ REFACTOR → Improve the structure (extract method, rename, dedupe) without chan
            Back to RED with the next smallest behavior.
 ```
 
+### Running the cycle against a real system
+
+When the ADT MCP tools are connected ([adt-mcp](../../../docs/adt-mcp.md)), RED and GREEN are tool calls, not judgments. Write the test in the object's local test-class include (`abap_object_list_file_uris` finds it), run `abap_unit_run_tests` for the object, and read the real failure or pass. A red you did not see, or a green you did not run, is not red or green: say which one you could not run. The deliberate-break check in "Verify your tests fail for the right reason" works the same way.
+
 ### Why TDD in ABAP
 
 - Production code becomes testable by construction (you can't write code with hidden dependencies if a test must drive it).

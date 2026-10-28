@@ -15,6 +15,12 @@ A team of **3 focused Claude Code agents** for SAP ABAP, backed by **36 in-depth
 /plugin install abap-kebap@abgunes
 ```
 
+**Updates.** The plugin deliberately has no version number: Claude Code then uses the commit
+as the version, so every merge to `main` is an update. Turn on marketplace auto-update once
+(`/plugin` → Marketplaces → Enable auto-update; it is off by default for marketplaces like
+this one) or run `claude plugin update abap-kebap@abgunes`, then `/reload-plugins`. In VS Code,
+plugins update with extension auto-update, or run **Chat: Update Plugins**.
+
 Skills are then invoked as `/abap-kebap:<skill-name>`; the role agents are
 `abap-kebap-architect`, `abap-kebap-developer`, and `abap-kebap-reviewer`.
 The `/abap-learn` command is deliberately **not** part of the plugin — it edits this
@@ -50,6 +56,16 @@ ships. Put the repo where Copilot runs, and it picks these up:
    picker in the Chat view. (The github.com coding agent and Copilot CLI historically read
    `.github/agents`; whether they also read `.claude/agents` is unconfirmed — if your setup
    needs a `.github/agents` mirror for those surfaces, see the note below.)
+
+**Skills load on their own.** You never invoke a skill. Each role agent carries a trigger table
+(generated from [`.claude/skill-clusters.json`](.claude/skill-clusters.json) by
+`scripts/build_agent_routing.py`) and a few red lines, and the agent reads the matching `SKILL.md`
+with `read_file` before it writes code, because Copilot has no `Skill` tool and preloads nothing.
+The plugin also registers a PreToolUse hook ([`hooks/abap-guard.mjs`](hooks/abap-guard.mjs)) that
+asks before an edit adds `COMMIT` or `ROLLBACK` to ABAP code: the mistake that compiles, passes
+activation and tests, and fails only at runtime under a RAP handler. For this to work well,
+switch off the skills of plugins you do not use for ABAP (Configure Skills) and keep `chat.useHooks`
+on. Details, and how to measure whether it works: [`docs/skill-routing.md`](docs/skill-routing.md).
 
 The role agents live **only** in `.claude/agents/*.md` (single source of truth): Claude Code
 loads them as plugin agents, and VS Code Copilot reads the same `.claude/agents` folder
@@ -237,7 +253,7 @@ not to use plugins, two alternatives:
 
 ### Prerequisites
 - [Claude Code](https://claude.ai/code)
-- For live ABAP system access (optional): the `sapse.adt-vscode` VS Code extension and a local ADT MCP server that bridges Claude Code to your ABAP system. Setup is environment-specific and out of scope for this repo.
+- For live ABAP system access (optional): the `sapse.adt-vscode` VS Code extension and its local ADT MCP server, which lets the agents run ABAP Unit and ATC, read dumps and edit objects on your system. Enabling it, the access restrictions it applies, and the rules the agents follow are in [docs/adt-mcp.md](docs/adt-mcp.md).
 
 ### Clone (project-local, also enables the contributor tools)
 

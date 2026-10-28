@@ -15,8 +15,9 @@ export interface DestinationSummary {
 
 /**
  * Reads the ADT destinations file. Only `id`, `protocol`, the host of
- * `properties.systemUrl` and `properties.systemId` are extracted. Credential
- * fields are never bound to a named value, never returned and never logged.
+ * `properties.systemUrl` (or, for an RFC destination, of `properties.applicationServer`) and
+ * `properties.systemId` are extracted. Credential fields are never bound to a named value,
+ * never returned and never logged.
  */
 export async function readDestinations(path: string): Promise<DestinationSummary[]> {
   let parsed: unknown
@@ -38,7 +39,8 @@ export async function readDestinations(path: string): Promise<DestinationSummary
     summaries.push({
       id,
       protocol: typeof record.protocol === 'string' ? record.protocol.toLowerCase() : 'http',
-      host: hostOf(typeof properties.systemUrl === 'string' ? properties.systemUrl : ''),
+      host: hostOf(typeof properties.systemUrl === 'string' ? properties.systemUrl : '')
+        || hostOf(typeof properties.applicationServer === 'string' ? properties.applicationServer : ''),
       systemId: typeof properties.systemId === 'string' ? properties.systemId : '',
     })
   }
