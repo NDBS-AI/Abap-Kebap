@@ -358,7 +358,6 @@ def validate_agents(skill_names: set[str]) -> tuple[list[str], list[str]]:
         for required_ref, label in (
             (f"{PLUGIN_ROOT_VAR}/docs/skill-routing.md", "shared skill-routing protocol link"),
             (f"{PLUGIN_ROOT_VAR}/.claude/skill-index.json", "skill-index registry preflight instruction"),
-            (f"{PLUGIN_ROOT_VAR}/.claude/skill-clusters.json", "skill-clusters preflight instruction"),
         ):
             if required_ref not in text:
                 errors.append(
@@ -366,6 +365,16 @@ def validate_agents(skill_names: set[str]) -> tuple[list[str], list[str]]:
                     f"{PLUGIN_ROOT_VAR} prefix ({required_ref!r}) - a bare "
                     "relative path resolves against the user's project, not "
                     "this plugin, once installed elsewhere"
+                )
+
+        # The cluster routing is no longer read at run time (GitHub Copilot has
+        # no Skill tool and agents skipped the 12k-character read): its cues are
+        # rendered into each agent between markers by scripts/build_agent_routing.py.
+        for marker in ("<!-- BEGIN generated skill triggers", "<!-- END generated skill triggers"):
+            if marker not in text:
+                errors.append(
+                    f"{relative_path}: missing the generated skill-trigger table marker "
+                    f"({marker!r}) - python scripts/build_agent_routing.py fills the block between them"
                 )
 
         # General case of the same problem: ANY local (non-URL) markdown link
@@ -380,6 +389,7 @@ def validate_agents(skill_names: set[str]) -> tuple[list[str], list[str]]:
     if clusters_data is not None:
         errors.extend(validate_skill_clusters(clusters_data, skill_names, agent_names))
         errors.extend(validate_no_same_role_redundancy(clusters_by_role, preloads_by_role))
+        errors.extend(validate_routing_cues(clusters_data, skill_names, agent_names, preloads_by_role))
         standalone_errors, standalone_names = validate_standalone_skills(
             clusters_data, skill_names, clusters_by_role, all_preloaded
         )
@@ -735,6 +745,66 @@ def validate_skill_clusters(data: dict, skill_names: set[str], agent_names: set[
                     f".claude/skill-clusters.json: cluster {role}/{cluster_name!r} "
                     "is missing a non-empty string description"
                 )
+    return errors
+
+
+def validate_routing_cues(
+    data: dict, skill_names: set[str], agent_names: set[str], preloads_by_role: dict[str, set[str]]
+) -> list[str]:
+    """The cues that scripts/build_agent_routing.py renders into every agent.
+
+    Every cluster needs non-empty `triggers` (an agent without cues cannot route to it), an optional
+    `read_first` must be a subset of `includes`, `additions` must name real skills for real roles and
+    must not duplicate a route the role already has, and every Tier-1 preload needs a `preload_cues`
+    entry (it is read on demand in runtimes that do not preload it)."""
+    errors: list[str] = []
+    path = ".claude/skill-clusters.json"
+
+    def non_empty_strings(value: object) -> bool:
+        return isinstance(value, list) and bool(value) and all(isinstance(item, str) and item.strip() for item in value)
+
+    for role, clusters in data.get("clusters", {}).items():
+        for cluster_name, cluster in clusters.items():
+            where = f"{path}: cluster {role}/{cluster_name!r}"
+            if not non_empty_strings(cluster.get("triggers")):
+                errors.append(f"{where} needs `triggers`: a non-empty list of cue strings")
+            read_first = cluster.get("read_first")
+            if read_first is not None:
+                if not non_empty_strings(read_first):
+                    errors.append(f"{where} `read_first` must be a non-empty list of skill names")
+                else:
+                    stray = sorted(set(read_first) - set(cluster.get("includes", [])))
+                    if stray:
+                        errors.append(f"{where} `read_first` names {stray}, which are not in `includes`")
+
+    clustered_by_role = {
+        role: {skill for cluster in clusters.values() for skill in cluster.get("includes", [])}
+        for role, clusters in data.get("clusters", {}).items()
+    }
+    for skill, entry in data.get("additions", {}).items():
+        where = f"{path}: additions[{skill!r}]"
+        if skill not in skill_names:
+            errors.append(f"{where} is not a skill")
+        roles = entry.get("roles") if isinstance(entry, dict) else None
+        if not non_empty_strings(roles):
+            errors.append(f"{where} needs `roles`: a non-empty list of agent names")
+            roles = []
+        for role in roles:
+            if role not in agent_names:
+                errors.append(f"{where} role {role!r} matches no agent file")
+            elif skill in preloads_by_role.get(role, set()) or skill in clustered_by_role.get(role, set()):
+                errors.append(f"{where} is already a preload or cluster member for {role}; drop the addition")
+        if not (isinstance(entry, dict) and non_empty_strings(entry.get("triggers"))):
+            errors.append(f"{where} needs `triggers`: a non-empty list of cue strings")
+
+    cues = data.get("preload_cues", {})
+    for role, preloads in preloads_by_role.items():
+        for skill in sorted(preloads):
+            if not isinstance(cues.get(skill), str) or not cues[skill].strip():
+                errors.append(f"{path}: preload_cues needs an entry for {skill!r} (Tier-1 preload of {role})")
+    for skill in cues:
+        if skill not in skill_names:
+            errors.append(f"{path}: preload_cues[{skill!r}] is not a skill")
     return errors
 
 

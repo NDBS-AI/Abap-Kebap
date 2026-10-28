@@ -68,6 +68,7 @@ Why sequential: design must precede code, code must precede its review, and the 
 
 **Gate discipline:**
 - Always surface the architect's design for approval before dispatching the developer. Use the normal plan/approval flow.
+- For **new objects**, also have the package, the transport request number (or "local package, none") and the confirmed object names before you dispatch the developer, and put them in its prompt. Without them it stops and returns its intake question instead of building.
 - The `abap-kebap-reviewer` gate already covers security and performance; for architecturally-loaded changes add `abap-kebap-architect` as a second review lens.
 - Cap the review→fix loop at 1–2 rounds; if Critical findings persist, stop and raise it with the user rather than looping.
 
@@ -96,7 +97,7 @@ Design stage (main session ran superpowers:brainstorming):
   → surface design, get human approval
 
 Red → green (main session holds superpowers:test-driven-development):
-  Agent(subagent_type: "abap-kebap-developer", prompt: "Write a FAILING ABAP Unit test for the blocked-customer save rejection, then make it pass and refactor: <approved design>")
+  Agent(subagent_type: "abap-kebap-developer", prompt: "Write a FAILING ABAP Unit test for the blocked-customer save rejection, then make it pass and refactor: <approved design, package, transport request number, confirmed object names>")
 
 Review gate (main session ran superpowers:requesting-code-review):
   Agent(subagent_type: "abap-kebap-reviewer", prompt: "Independent review of the implementation + tests — Clean ABAP + correctness, security, and performance: <artifacts>")
@@ -112,6 +113,7 @@ On VS Code Copilot — and any surface where there is exactly one agent thread a
 - **Name the hat once, then act.** State which stage you are entering ("Switching to build — test-first"), then do it. Don't re-announce every turn, and don't loop back to ask for permission the user has already given.
 - **Hold the five gates yourself:** design approved → plan → failing test → verify with evidence → independent review pass. What changes on a single thread is that *you* hold all five in one context instead of dispatching each to a peer — not that any of them is skipped.
 - **"You have access — do it yourself" means proceed.** When the user says the tools are reachable and tells you to act, that is approval to run them: verify reachability once, then use them. Repeatedly deferring after the user has said "go" is the failure mode to avoid.
+- **Load skills yourself.** On a single thread nobody dispatches or invokes skills for you, and Copilot has no `Skill` tool: follow your agent's generated trigger table and `read_file` the `SKILL.md` of every matching row before your first edit (see [`skill-routing.md`](skill-routing.md)).
 
 ## Project conventions the agents honor
 
@@ -137,7 +139,7 @@ Pipeline (sequential — await each, gate after design):
 ```
 1. Agent(subagent_type: "abap-kebap-architect", prompt: "Design a RAP BO for <requirement>. Options + recommendation + data model + contract.")
    → surface design, get human approval
-2. Agent(subagent_type: "abap-kebap-developer", prompt: "Implement this approved design, test-first (failing ABAP Unit test, then green/refactor): <design>")
+2. Agent(subagent_type: "abap-kebap-developer", prompt: "Implement this approved design, test-first (failing ABAP Unit test, then green/refactor): <design, package, transport request number, confirmed object names>")
 3. Agent(subagent_type: "abap-kebap-reviewer",  prompt: "Independent review of the implementation + tests: <artifacts>")
 ```
 
@@ -151,6 +153,8 @@ Pipeline (sequential — await each, gate after design):
 **Removed (too token-heavy):**
 - `abap-review-panel` and `abap-quality-gate` workflows — the parallel-lens + per-finding-verify fan-out cost ~1.2M tokens to review one ~500-line report. Multi-lens review is now a manual, opt-in dispatch (Play 1); the build-pipeline tail (developer tests → reviewer) is manual too (Play 2). The shared findings JSON schema went with them.
 
+**Optional, when connected:**
+- ADT MCP live grounding (real unit-test runs, ATC, dumps, object read/edit) — highest-precision ceiling, needs a reachable ABAP system and the `sapse.adt-vscode` extension; see [`adt-mcp.md`](adt-mcp.md). The agents use it when the tools are present and say what they could not verify when they are not.
+
 **Deferred:**
-- ADT MCP live grounding (live syntax check / ATC / real DDIC) — highest-precision ceiling, needs a reachable ABAP system.
 - Candidate roles: a Fiori/UI5 frontend agent (would use the installed `ui5-best-practices` / `sap-fiori-mcp` skills to close RAP→Fiori end-to-end), a transport/release advisor, an explicit process-coordinator persona.

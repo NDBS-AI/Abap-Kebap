@@ -6,6 +6,7 @@
     ".claude-plugin",
     ".github",
     "docs",
+    "hooks",
     "mcp/released-objects/src"
   ],
   "scanFiles": [
@@ -21,7 +22,8 @@
     ".ddlx",
     ".dcls",
     ".xml",
-    ".ts"
+    ".ts",
+    ".mjs"
   ],
   "rules": [
     {
@@ -432,6 +434,363 @@
       "pattern": "authenticationKind",
       "in": "mcp/released-objects/src/",
       "note": "The ADT destinations file is read for host and protocol only."
+    },
+    {
+      "id": "adt-doc-destination-first",
+      "kind": "required",
+      "pattern": "abap_destination_list",
+      "in": "docs/adt-mcp.md",
+      "note": "Every ADT MCP tool but this one takes a destination; the guide must tell agents to resolve it first instead of guessing a system."
+    },
+    {
+      "id": "adt-doc-activation-needs-a-go",
+      "kind": "required",
+      "pattern": "Ask once per task whether you may activate",
+      "in": "docs/adt-mcp.md",
+      "note": "The ADT edit tool does not activate and says not to unless asked; activation stays a confirmed step, never a side effect of editing."
+    },
+    {
+      "id": "adt-doc-dumps-never-quote-values",
+      "kind": "required",
+      "pattern": "never variable values",
+      "in": "docs/adt-mcp.md",
+      "note": "A runtime-error entry can carry business data; only the error class, statement and call stack may leave the session."
+    },
+    {
+      "id": "agents-know-adt-guide-developer",
+      "kind": "required",
+      "pattern": "docs/adt-mcp.md",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "The developer must know the live ADT rules (destination first, real test output, activation and transport confirmation)."
+    },
+    {
+      "id": "agents-know-adt-guide-architect",
+      "kind": "required",
+      "pattern": "docs/adt-mcp.md",
+      "in": ".claude/agents/abap-kebap-architect.md",
+      "note": "The architect grounds designs in the real system through the read-only ADT tools."
+    },
+    {
+      "id": "agents-know-adt-guide-reviewer",
+      "kind": "required",
+      "pattern": "docs/adt-mcp.md",
+      "in": ".claude/agents/abap-kebap-reviewer.md",
+      "note": "The reviewer uses ATC and unit-test output from the system as evidence."
+    },
+    {
+      "id": "reviewer-adt-stays-read-only",
+      "kind": "required",
+      "pattern": "You review; you do not change the system.",
+      "in": ".claude/agents/abap-kebap-reviewer.md",
+      "note": "An independent gate must not edit, activate or file ATC exemptions through the ADT tools it was given for evidence."
+    },
+    {
+      "id": "developer-agent-has-new-development-intake",
+      "kind": "required",
+      "pattern": "Before you start new development",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "New objects need a package, a transport and confirmed names before the first line is written; without a named gate the developer starts building and asks later."
+    },
+    {
+      "id": "developer-agent-intake-needs-package",
+      "kind": "required",
+      "pattern": "the new objects go into",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "The package is part of the intake: never invented or defaulted, because it decides ownership and which transport applies."
+    },
+    {
+      "id": "developer-agent-intake-needs-transport-number",
+      "kind": "required",
+      "pattern": "transport request number",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "A new object in a transportable package must be recorded on a request the user named; the number is asked for up front, not discovered at activation."
+    },
+    {
+      "id": "developer-agent-intake-local-package-needs-no-transport",
+      "kind": "required",
+      "pattern": "no request exists",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "Local packages ($TMP) carry no transport request; the gate must say so, or the developer blocks on a number that cannot exist."
+    },
+    {
+      "id": "developer-agent-intake-proposes-names-before-starting",
+      "kind": "required",
+      "pattern": "a table of every object you are about to create",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "Concrete object names, not only the convention, are proposed for confirmation before development starts."
+    },
+    {
+      "id": "adt-doc-intake-before-you-create",
+      "kind": "required",
+      "pattern": "Intake before you create",
+      "in": "docs/adt-mcp.md",
+      "note": "The ADT create and generator tools take a transport number and write to a package; the guide must hold the same package, transport and names gate as the developer agent."
+    },
+    {
+      "id": "developer-agent-names-current-adt-generator-tool",
+      "kind": "required",
+      "pattern": "abap_objects_generator_run",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "The generator misfire lesson must point at the tool the ADT MCP server really exposes (3.62.0), or the agent looks for a tool that is not there."
+    },
+    {
+      "id": "agents-no-stale-adt-generator-tool-name",
+      "kind": "forbidden",
+      "pattern": "`generate_objects`",
+      "in": ".claude/agents/",
+      "note": "Not a tool of the ADT MCP server any more; the generator tools are abap_objects_generator_list, _get_schema and _run. (The ABAP method of that name in the XCO example is unrelated and outside this path.)"
+    },
+    {
+      "id": "rap-eml-commit-boundary-follows-call-stack",
+      "kind": "required",
+      "pattern": "The commit boundary follows the call stack",
+      "in": ".claude/skills/rap-eml/SKILL.md",
+      "note": "Real incident: an agent put COMMIT ENTITIES in a helper class that an action calls. It compiled, passed activation and tests, and is only wrong at runtime. The rule is about what runs while a handler or saver is on the stack, not about which class holds the statement, and it must sit in the first screen of the skill, where agents stop reading."
+    },
+    {
+      "id": "rap-eml-workflow-commit-only-at-top-of-call-stack",
+      "kind": "required",
+      "pattern": "only if your code is the top of the call stack",
+      "in": ".claude/skills/rap-eml/SKILL.md",
+      "note": "The consumer workflow's commit step was unconditional (step 5); it must be conditional on the caller context."
+    },
+    {
+      "id": "rap-eml-not-allowed-covers-called-code",
+      "kind": "required",
+      "pattern": "inside handler/saver methods or any code they call",
+      "in": ".claude/skills/rap-eml/SKILL.md",
+      "note": "'Inside handler/saver methods' read as lexical; a helper class called from a handler is the same violation. The pattern is unique to the Not-allowed bullet, so removing that bullet's wording fails the rule."
+    },
+    {
+      "id": "rap-bo-modeling-names-transaction-boundary-up-front",
+      "kind": "required",
+      "pattern": "Transaction boundary",
+      "in": ".claude/skills/rap-bo-modeling/SKILL.md",
+      "note": "Agents read the first ~100 lines of a skill; the no-commit-in-handlers rule cannot live only in the EML section at line ~280."
+    },
+    {
+      "id": "rap-bo-modeling-commit-pattern-is-top-level-only",
+      "kind": "required",
+      "pattern": "inside another BO's handler or saver",
+      "in": ".claude/skills/rap-bo-modeling/SKILL.md",
+      "note": "MODIFY ENTITIES ... COMMIT ENTITIES is the unit of work for top-level consumers only."
+    },
+    {
+      "id": "rap-bo-modeling-no-unqualified-unit-of-work",
+      "kind": "forbidden",
+      "pattern": "Pattern: `MODIFY ENTITIES … COMMIT ENTITIES` is the unit of work.",
+      "in": ".claude/skills/rap-bo-modeling/SKILL.md",
+      "note": "The unqualified sentence taught the commit pattern without saying it is wrong inside handlers, savers and anything they call."
+    },
+    {
+      "id": "rap-bo-modeling-no-other-bos-as-commit-consumers",
+      "kind": "forbidden",
+      "pattern": "non-framework code (tests, batch jobs, other BOs)",
+      "in": ".claude/skills/rap-bo-modeling/SKILL.md",
+      "note": "'Other BOs' means other BOs' handlers, which must not commit; the sentence invited exactly that."
+    },
+    {
+      "id": "rap-actions-never-commit-in-handler-up-front",
+      "kind": "required",
+      "pattern": "Never commit in a handler.",
+      "in": ".claude/skills/rap-actions-validations-determinations/SKILL.md",
+      "note": "Top-of-skill warning, inside the first lines an agent actually reads."
+    },
+    {
+      "id": "rap-actions-commit-rule-covers-helper-classes",
+      "kind": "required",
+      "pattern": "helper class that wraps your EML",
+      "in": ".claude/skills/rap-actions-validations-determinations/SKILL.md",
+      "note": "The cross-BO section must say the helper-class variant fails the same way and only at runtime."
+    },
+    {
+      "id": "rap-actions-mistake-row-helper-class-commit",
+      "kind": "required",
+      "pattern": "in a helper class the handler calls",
+      "in": ".claude/skills/rap-actions-validations-determinations/SKILL.md",
+      "note": "Common Mistakes must list the helper-class variant, which looks clean in the handler method."
+    },
+    {
+      "id": "parallel-commit-rule-covers-called-code",
+      "kind": "required",
+      "pattern": "or any code they call",
+      "in": ".claude/skills/abap-parallel-processing/SKILL.md",
+      "note": "The isolation section's first sentence must not read as lexical either."
+    },
+    {
+      "id": "parallel-names-where-the-commit-lives",
+      "kind": "required",
+      "pattern": "Where the commit lives",
+      "in": ".claude/skills/abap-parallel-processing/SKILL.md",
+      "note": "Only the worker's do method commits; the handler and its helpers only start the task."
+    },
+    {
+      "id": "rap-eml-catalog-commit-covers-called-code",
+      "kind": "required",
+      "pattern": "or any code they call",
+      "in": ".claude/skills/rap-eml/references/eml-statement-catalog.md",
+      "note": "The statement catalog is read on its own; its COMMIT ENTITIES header must carry the call-stack scope."
+    },
+    {
+      "id": "rap-bo-eml-card-commit-top-level-only",
+      "kind": "required",
+      "pattern": "top-level code only",
+      "in": ".claude/skills/rap-bo-modeling/references/eml-syntax.md",
+      "note": "The EML statement table listed COMMIT ENTITIES with no context."
+    },
+    {
+      "id": "sap-luw-commit-entities-top-level-only",
+      "kind": "required",
+      "pattern": "Only top-level code may issue it",
+      "in": ".claude/skills/abap-sap-luw/SKILL.md",
+      "note": "The LUW skill maps COMMIT WORK to COMMIT ENTITIES; the review checklist points here, so it must carry the handler/saver restriction too."
+    },
+    {
+      "id": "agent-developer-has-generated-skill-table",
+      "kind": "required",
+      "pattern": "BEGIN generated skill triggers",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "Nobody invokes skills in Copilot and it has no Skill tool: the agent needs the generated trigger table (scripts/build_agent_routing.py) or it loads nothing."
+    },
+    {
+      "id": "agent-developer-loads-skills-with-read-file",
+      "kind": "required",
+      "pattern": "`read_file`",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "The only way a Copilot agent can load a skill is read_file on the path from its skills list; the agent must be told so."
+    },
+    {
+      "id": "agent-developer-red-line-covers-called-code",
+      "kind": "required",
+      "pattern": "or any code they call",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "Red line that holds even when no skill was loaded: a commit reachable from a RAP handler or saver, directly or through helper classes, is wrong."
+    },
+    {
+      "id": "agent-architect-has-generated-skill-table",
+      "kind": "required",
+      "pattern": "BEGIN generated skill triggers",
+      "in": ".claude/agents/abap-kebap-architect.md",
+      "note": "Nobody invokes skills in Copilot and it has no Skill tool: the agent needs the generated trigger table (scripts/build_agent_routing.py) or it loads nothing."
+    },
+    {
+      "id": "agent-architect-loads-skills-with-read-file",
+      "kind": "required",
+      "pattern": "`read_file`",
+      "in": ".claude/agents/abap-kebap-architect.md",
+      "note": "The only way a Copilot agent can load a skill is read_file on the path from its skills list; the agent must be told so."
+    },
+    {
+      "id": "agent-architect-red-line-covers-called-code",
+      "kind": "required",
+      "pattern": "or any code they call",
+      "in": ".claude/agents/abap-kebap-architect.md",
+      "note": "Red line that holds even when no skill was loaded: a commit reachable from a RAP handler or saver, directly or through helper classes, is wrong."
+    },
+    {
+      "id": "agent-reviewer-has-generated-skill-table",
+      "kind": "required",
+      "pattern": "BEGIN generated skill triggers",
+      "in": ".claude/agents/abap-kebap-reviewer.md",
+      "note": "Nobody invokes skills in Copilot and it has no Skill tool: the agent needs the generated trigger table (scripts/build_agent_routing.py) or it loads nothing."
+    },
+    {
+      "id": "agent-reviewer-loads-skills-with-read-file",
+      "kind": "required",
+      "pattern": "`read_file`",
+      "in": ".claude/agents/abap-kebap-reviewer.md",
+      "note": "The only way a Copilot agent can load a skill is read_file on the path from its skills list; the agent must be told so."
+    },
+    {
+      "id": "agent-reviewer-red-line-covers-called-code",
+      "kind": "required",
+      "pattern": "or any code they call",
+      "in": ".claude/agents/abap-kebap-reviewer.md",
+      "note": "Red line that holds even when no skill was loaded: a commit reachable from a RAP handler or saver, directly or through helper classes, is wrong."
+    },
+    {
+      "id": "agents-no-skill-tool-only-loading",
+      "kind": "forbidden",
+      "pattern": "load its full `includes` list via the `Skill` tool",
+      "in": ".claude/agents/",
+      "note": "Copilot has no Skill tool (measured: 38 distinct tools in real chats, none for skills); an instruction that only works through it is never followed there."
+    },
+    {
+      "id": "hooks-manifest-registers-the-pretooluse-guard",
+      "kind": "required",
+      "pattern": "PreToolUse",
+      "in": "hooks/hooks.json",
+      "note": "The commit-under-a-handler guard only exists if the plugin registers it; both Claude Code and VS Code read hooks/hooks.json."
+    },
+    {
+      "id": "hooks-manifest-resolves-the-guard-from-the-plugin-root",
+      "kind": "required",
+      "pattern": "${CLAUDE_PLUGIN_ROOT}/hooks/abap-guard.mjs",
+      "in": "hooks/hooks.json",
+      "note": "A bare relative path would resolve against the user's project, not this plugin, once it is installed elsewhere."
+    },
+    {
+      "id": "abap-guard-never-denies-single-quoted",
+      "kind": "forbidden",
+      "pattern": "'deny'",
+      "in": "hooks/abap-guard.mjs",
+      "note": "A commit is legal in a report, a test, a job or a worker task; the guard asks, it must never block."
+    },
+    {
+      "id": "abap-guard-never-denies-double-quoted",
+      "kind": "forbidden",
+      "pattern": "\"deny\"",
+      "in": "hooks/abap-guard.mjs",
+      "note": "Same rule for the double-quoted spelling."
+    },
+    {
+      "id": "abap-guard-adds-the-rule-as-model-context",
+      "kind": "required",
+      "pattern": "additionalContext",
+      "in": "hooks/abap-guard.mjs",
+      "note": "The user sees the reason; the model must get the rule too, or it only learns that the edit was approved."
+    },
+    {
+      "id": "agents-no-runtime-read-of-skill-clusters",
+      "kind": "forbidden",
+      "pattern": "Read `${CLAUDE_PLUGIN_ROOT}/.claude/skill-clusters.json`",
+      "in": ".claude/agents/",
+      "note": "Reading the cluster file at run time cost a 12k-character read and was skipped in practice; its cues are rendered into the agent by scripts/build_agent_routing.py."
+    },
+    {
+      "id": "rap-eml-no-bgpf-commit-overclaim",
+      "kind": "forbidden",
+      "pattern": "`CL_ABAP_PARALLEL` or bgPF task",
+      "in": ".claude/skills/rap-eml/SKILL.md",
+      "note": "A controlled bgPF operation (if_bgmc_op_single) must not commit; abap-background-processing says so. Only an uncontrolled one may."
+    },
+    {
+      "id": "rap-eml-names-the-uncontrolled-bgpf-operation",
+      "kind": "required",
+      "pattern": "uncontrolled bgPF operation",
+      "in": ".claude/skills/rap-eml/SKILL.md",
+      "note": "The top-of-call-stack list must name the one kind of bgPF operation that may commit."
+    },
+    {
+      "id": "abap-guard-names-the-uncontrolled-bgpf-operation",
+      "kind": "required",
+      "pattern": "uncontrolled bgPF",
+      "in": "hooks/abap-guard.mjs",
+      "note": "The confirmation text must not tell the user that any bgPF worker may commit."
+    },
+    {
+      "id": "rap-eml-hedges-standard-abap-contract-check",
+      "kind": "required",
+      "pattern": "may only be logged",
+      "in": ".claude/skills/rap-eml/SKILL.md",
+      "note": "SAP's cheat sheet says contract violations 'result in a runtime error (or are logged)'; the skill must not claim a dump on every release."
+    },
+    {
+      "id": "developer-agent-edits-only-on-a-development-destination",
+      "kind": "required",
+      "pattern": "development destination",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "Free-to-do must state the real boundary now that the agent edits objects through the ADT tools: development destination after the intake, never production."
     }
   ]
 }

@@ -51,6 +51,16 @@ ships. Put the repo where Copilot runs, and it picks these up:
    `.github/agents`; whether they also read `.claude/agents` is unconfirmed — if your setup
    needs a `.github/agents` mirror for those surfaces, see the note below.)
 
+**Skills load on their own.** You never invoke a skill. Each role agent carries a trigger table
+(generated from [`.claude/skill-clusters.json`](.claude/skill-clusters.json) by
+`scripts/build_agent_routing.py`) and a few red lines, and the agent reads the matching `SKILL.md`
+with `read_file` before it writes code, because Copilot has no `Skill` tool and preloads nothing.
+The plugin also registers a PreToolUse hook ([`hooks/abap-guard.mjs`](hooks/abap-guard.mjs)) that
+asks before an edit adds `COMMIT` or `ROLLBACK` to ABAP code: the mistake that compiles, passes
+activation and tests, and fails only at runtime under a RAP handler. For this to work well,
+switch off the skills of plugins you do not use for ABAP (Configure Skills) and keep `chat.useHooks`
+on. Details, and how to measure whether it works: [`docs/skill-routing.md`](docs/skill-routing.md).
+
 The role agents live **only** in `.claude/agents/*.md` (single source of truth): Claude Code
 loads them as plugin agents, and VS Code Copilot reads the same `.claude/agents` folder
 natively (Claude sub-agent format), so each role appears **once** in the VS Code picker as
@@ -237,7 +247,7 @@ not to use plugins, two alternatives:
 
 ### Prerequisites
 - [Claude Code](https://claude.ai/code)
-- For live ABAP system access (optional): the `sapse.adt-vscode` VS Code extension and a local ADT MCP server that bridges Claude Code to your ABAP system. Setup is environment-specific and out of scope for this repo.
+- For live ABAP system access (optional): the `sapse.adt-vscode` VS Code extension and its local ADT MCP server, which lets the agents run ABAP Unit and ATC, read dumps and edit objects on your system. Enabling it, the access restrictions it applies, and the rules the agents follow are in [docs/adt-mcp.md](docs/adt-mcp.md).
 
 ### Clone (project-local, also enables the contributor tools)
 

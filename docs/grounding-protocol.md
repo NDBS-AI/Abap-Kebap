@@ -2,7 +2,7 @@
 
 Every ABAP agent carries distilled skills, not the source of truth. Distillations lag releases and can carry transcription errors (a real one shipped: `@Semantics.systemDate.*` instead of `@Semantics.systemDateTime.*`). This protocol makes agents **confirm uncertain facts against authoritative public sources at answer time** instead of asserting from memory.
 
-It is grounding via **remote sources only** — WebSearch + WebFetch against the canonical GitHub repos and SAP Help. (Local clones and ADT MCP are intentionally out of scope for now.)
+It is grounding via **remote sources** — WebSearch + WebFetch against the canonical GitHub repos and SAP Help. (Local clones are intentionally out of scope.) When ADT for VS Code is connected, the **system itself** is the stronger source for what it can run, test and report: see [adt-mcp.md](adt-mcp.md).
 
 ## The rule
 
@@ -101,6 +101,7 @@ worth registering until SAP fixes either side of that mismatch.
 | Authorization (AUTHORITY-CHECK, DCL, RAP auth) | ABAP keyword doc + RAP dev guide (authorization) |
 | Released APIs / ABAP Cloud allowed-or-not | `released-objects` MCP server → `check_objects` (first source); `api.sap.com` + ABAP for Cloud Development keyword doc as the fallback when the server is unavailable |
 | "Since which release" / release news | ABAP keyword doc release news (`abennews.htm`) |
+| Does this code run, pass its tests, pass ATC / what does this dump say | the ADT MCP tools (`abap_unit_run_tests`, `abap_atc_run_start`, `abap_feed_query`) on the logged-on system; see [adt-mcp.md](adt-mcp.md). If they are not connected, say the check was not run |
 
 Each skill's own `## References` section lists the precise URLs for its topic — that is the first place to look when the loaded skill matches the question.
 

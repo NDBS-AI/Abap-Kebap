@@ -1,0 +1,17 @@
+{
+  "description": "Asks before an edit adds COMMIT or ROLLBACK to ABAP code (illegal at runtime under a RAP handler or saver and anything they call). Works in Claude Code and in GitHub Copilot for VS Code; see hooks/abap-guard.mjs.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^(Edit|Write|MultiEdit)$|abap.*(edit|create|write|insert|save)|replace_string_in_file|create_file|insert_edit_into_file",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/abap-guard.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

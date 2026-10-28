@@ -36,6 +36,12 @@ jobs:
         run: python -m unittest discover -s scripts -p "test_*.py"
       - name: Issue triage tests
         run: node --test scripts/issue-triage/*.test.mjs
+      - name: Agent skill-trigger tables are in sync
+        run: |
+          python scripts/build_agent_routing.py
+          git diff --exit-code -- .claude/agents
+      - name: Hook tests
+        run: node --test hooks/*.test.mjs
 
   plugin:
     runs-on: ubuntu-latest
