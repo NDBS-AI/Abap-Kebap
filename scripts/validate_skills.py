@@ -157,23 +157,27 @@ def check_local_links(md_file: Path, base_relative: Path) -> list[str]:
 
 
 def check_agent_plugin_links(md_file: Path, base_relative: Path) -> list[str]:
-    """Every local (non-URL) markdown link inside an agent file must be
-    ${CLAUDE_PLUGIN_ROOT}-prefixed. A dispatched subagent's cwd is the
-    user's own project, not this plugin's install directory, so a bare
-    relative link resolves against the wrong project once installed
-    elsewhere."""
+    """An agent file must contain no local (non-URL) markdown link.
+
+    A dispatched subagent's cwd is the user's own project, not this plugin's
+    install directory, so a bare relative link resolves against the wrong
+    project once installed elsewhere. A link to ${CLAUDE_PLUGIN_ROOT}/... is no
+    better: Claude Code fills the placeholder in, but GitHub renders it as a
+    dead 'undefined' URL and VS Code (GitHub Copilot) does not substitute it in
+    agent text. Write the path as inline code instead
+    (`${CLAUDE_PLUGIN_ROOT}/docs/x.md`): that stays a plain string for the model
+    and breaks no link for a human."""
     errors: list[str] = []
     text = strip_code(md_file.read_text(encoding="utf-8"))
     for raw_target in MARKDOWN_LINK_PATTERN.findall(text):
         target = unquote(raw_target.split("#", 1)[0].strip())
         if not target or re.match(r"^[a-z][a-z0-9+.-]*:", target, re.IGNORECASE):
             continue
-        if not target.startswith(PLUGIN_ROOT_VAR):
-            errors.append(
-                f"{base_relative}: local link {raw_target!r} is not "
-                f"{PLUGIN_ROOT_VAR}-prefixed - it resolves against the "
-                "user's project, not this plugin, once installed elsewhere"
-            )
+        errors.append(
+            f"{base_relative}: local markdown link {raw_target!r} - write the path as inline "
+            f"code ({PLUGIN_ROOT_VAR}/...) instead: a bare relative link resolves against the "
+            "user's project, and a placeholder link is a dead URL on GitHub and in VS Code"
+        )
     return errors
 
 

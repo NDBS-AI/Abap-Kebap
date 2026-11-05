@@ -52,6 +52,11 @@ LOADING = (
     "edit**. Nobody will invoke a skill for you, and a rule that lives only in a skill cannot protect you "
     "until you have read it."
 )
+PATHS = (
+    "**Paths.** `${CLAUDE_PLUGIN_ROOT}/` is the plugin's root folder. Claude Code fills it in. GitHub Copilot does not: "
+    "there, take the folder that contains `.claude/skills/` (the `<file>` path of any skill in your skills list, minus "
+    "`/.claude/skills/<name>/SKILL.md`) and `read_file` the docs this file names from it."
+)
 PRELOAD_INTRO = "In Claude Code your `skills:` frontmatter already preloads these; in Copilot read each one yourself:"
 TABLE_INTRO = (
     "Then, for every row whose cue appears in the task, load the skills under *Load first*; load *Then, when "
@@ -126,7 +131,7 @@ def render_block(role: str, data: dict, preloaded: list[str]) -> list[str]:
     missing = [skill for skill in preloaded if skill not in cues]
     if missing:
         raise RoutingError(f"{role}: no preload_cues entry in skill-clusters.json for {', '.join(missing)}")
-    lines = [LOADING, ""]
+    lines = [LOADING, "", PATHS, ""]
     if preloaded:
         lines += [PRELOAD_INTRO] + [f"- `{skill}` - {cues[skill]}" for skill in preloaded] + [""]
     lines += [TABLE_INTRO, "", "| If the task involves | Load first | Then, when needed |", "|---|---|---|"]

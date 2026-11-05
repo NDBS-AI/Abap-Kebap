@@ -2,7 +2,7 @@
 
 Agents load skills **themselves**. Nobody invokes a skill by hand, and GitHub Copilot has no `Skill` tool and preloads nothing, so each agent carries a trigger table, generated from the routing data, that says which skills to load for which kind of task and how. There is no fixed cap on how many skills a task may load: the constraint is relevance, not a budget.
 
-> **Paths.** Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` (the plugin's install directory) in agent files; GitHub Copilot does not. In Copilot the agent finds a skill through the `<file>` path listed for it in its skills list. Either way, never read a bare relative path: a dispatched agent's working directory is the user's own project, not this plugin.
+> **Paths.** Docs and skills are named in the agent files as inline code, `${CLAUDE_PLUGIN_ROOT}/docs/x.md`, never as markdown links: GitHub shows a link to the placeholder as a dead `undefined` URL, and bare relative links resolve against the user's project, not this plugin. Claude Code substitutes `${CLAUDE_PLUGIN_ROOT}` (the plugin's install directory) in agent files; GitHub Copilot does not. In Copilot the plugin root is the folder that contains `.claude/skills/`: take it from the `<file>` path listed for any skill in the skills list. `scripts/validate_skills.py` fails on any markdown link in an agent file.
 
 ## How skills get loaded
 
