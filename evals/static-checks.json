@@ -798,6 +798,34 @@
       "pattern": "\"version\"",
       "in": ".claude-plugin/plugin.json",
       "note": "A version in plugin.json pins Claude Code users to that string until someone changes it: tested end to end, `claude plugin update` answers 'already at the latest version' however many commits are pushed. Without it Claude Code uses the commit SHA, so every merge to main is an update. (VS Code updates by pulling the repository and does not need it.)"
+    },
+    {
+      "id": "agents-no-placeholder-markdown-links",
+      "kind": "forbidden",
+      "pattern": "](${CLAUDE_PLUGIN_ROOT}",
+      "in": ".claude/agents/",
+      "note": "GitHub shows ${CLAUDE_PLUGIN_ROOT} links as dead 'undefined' URLs and VS Code does not substitute the placeholder in agent text. Write the path as inline code instead; Claude Code still fills it in."
+    },
+    {
+      "id": "agents-explain-the-plugin-root-in-copilot",
+      "kind": "required",
+      "pattern": "is the plugin's root folder",
+      "in": ".claude/agents/abap-kebap-developer.md",
+      "note": "Copilot does not fill in ${CLAUDE_PLUGIN_ROOT}; the agent must be told how to find the plugin root (the folder that holds .claude/skills/), or every doc path in the agent is unusable there."
+    },
+    {
+      "id": "agents-explain-the-plugin-root-in-copilot-architect",
+      "kind": "required",
+      "pattern": "is the plugin's root folder",
+      "in": ".claude/agents/abap-kebap-architect.md",
+      "note": "Same, for the architect."
+    },
+    {
+      "id": "agents-explain-the-plugin-root-in-copilot-reviewer",
+      "kind": "required",
+      "pattern": "is the plugin's root folder",
+      "in": ".claude/agents/abap-kebap-reviewer.md",
+      "note": "Same, for the reviewer."
     }
   ]
 }

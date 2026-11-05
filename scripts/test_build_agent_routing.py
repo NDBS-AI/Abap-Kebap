@@ -83,6 +83,12 @@ class RenderTests(unittest.TestCase):
         with self.assertRaises(routing.RoutingError):
             routing.render(BEGIN + END, "role-a", MINI, ["abap-unit-tdd"])
 
+    def test_the_plugin_root_is_explained_for_runtimes_that_do_not_fill_it_in(self) -> None:
+        out = self.render(BEGIN + END)
+        self.assertIn("is the plugin's root folder", out)
+        self.assertIn("GitHub Copilot does not", out)
+        self.assertIn(".claude/skills/", out)
+
     def test_the_two_runtimes_are_both_named(self) -> None:
         out = self.render(BEGIN + END)
         self.assertIn("`Skill` tool", out)
